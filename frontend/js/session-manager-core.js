@@ -505,9 +505,87 @@ class SessionManagerCore {
     }
 
     /**
-     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     * REFRESH USER DATA (Atualizar dados do usuário)
+     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     * 
+     * Método de compatibilidade para chamar checkSession() e retornar dados.
+     * Usado por componentes que precisam atualizar dados do usuário manualmente.
+     * 
+     * @returns {Promise<Object>} Dados da sessão com estrutura normalizada
+     * @example
+     * const sessionMgr = SessionManagerCore.getInstance();
+     * const dados = await sessionMgr.refreshUserData();
+     * console.log(dados.usuario); // Dados do usuário atual
+     */
+    async refreshUserData() {
+        console.log('[SessionManager] 🔄 Atualizando dados do usuário (refreshUserData)...');
+        
+        try {
+            // Executar verificação de sessão
+            const checkOk = await this.checkSession();
+            
+            if (!checkOk) {
+                console.warn('[SessionManager] ⚠️ Verificação de sessão falhou em refreshUserData');
+                return {
+                    sucesso: false,
+                    sessao_ativa: false,
+                    usuario: null,
+                    tempo_restante: null
+                };
+            }
+            
+            // Retornar dados normalizados
+            const dados = {
+                sucesso: true,
+                sessao_ativa: this.isAuthenticated,
+                usuario: this.currentUser,
+                tempo_restante: this.sessionExpireTime,
+                sessao: {
+                    tempo_restante: this.sessionExpireTime,
+                    tempo_restante_formatado: this.formatarTempoRestante(this.sessionExpireTime)
+                }
+            };
+            
+            console.log('[SessionManager] ✅ Dados do usuário atualizados com sucesso');
+            return dados;
+            
+        } catch (erro) {
+            console.error('[SessionManager] ❌ Erro ao atualizar dados do usuário:', erro.message);
+            return {
+                sucesso: false,
+                sessao_ativa: false,
+                usuario: null,
+                tempo_restante: null,
+                erro: erro.message
+            };
+        }
+    }
+
+    /**
+     * Formatar tempo restante em formato legível
+     * @private
+     */
+    formatarTempoRestante(segundos) {
+        if (!segundos || segundos <= 0) return '0s';
+        
+        const horas = Math.floor(segundos / 3600);
+        const minutos = Math.floor((segundos % 3600) / 60);
+        const secs = segundos % 60;
+        
+        if (horas > 0) {
+            return `${horas}h ${minutos}m`;
+        } else if (minutos > 0) {
+            return `${minutos}m ${secs}s`;
+        } else {
+            return `${secs}s`;
+        }
+    }
+
+    /**
+     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      * GET SESSION DATA (for UI components)
-     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      */
     async getSessionData() {
         try {
