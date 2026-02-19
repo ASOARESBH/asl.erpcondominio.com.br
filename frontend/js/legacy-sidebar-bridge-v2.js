@@ -1,30 +1,11 @@
-/**
- * ═══════════════════════════════════════════════════════════════════════════
- * Legacy Sidebar Bridge v2 - Com Integração ao MenuController
- * ═══════════════════════════════════════════════════════════════════════════
- * 
- * Versão melhorada que:
- * 1. Usa MenuController como Single Source of Truth
- * 2. Mantém compatibilidade com versão anterior
- * 3. Adiciona fallback seguro
- * 4. Melhor tratamento de erros
- * 
- * Versão: 2.0
- * Data: 19 de Fevereiro de 2026
- */
-
 (function () {
     'use strict';
 
     const config = {
         logEnabled: true,
         fallbackEnabled: true,
-        useMenuController: true // Usar MenuController se disponível
+        useMenuController: true
     };
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // FALLBACK - Compatibilidade com versão anterior
-    // ═══════════════════════════════════════════════════════════════════════════
 
     const pageToHrefFallback = {
         dashboard: 'dashboard.html',
@@ -40,162 +21,148 @@
         administrativa: 'administrativa.html'
     };
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // FUNÇÕES PRIVADAS
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    function log(message, data = null) {
+    function log(message, data) {
         if (!config.logEnabled) return;
-
-        const timestamp = new Date().toLocaleTimeString();
-        const prefix = '[LegacySidebarBridge v2]';
-
-        if (data) {
-            console.log(`${prefix} ${timestamp} ${message}`, data);
+        if (typeof data !== 'undefined') {
+            console.log('[LegacySidebarBridge v2]', message, data);
         } else {
-            console.log(`${prefix} ${timestamp} ${message}`);
+            console.log('[LegacySidebarBridge v2]', message);
         }
     }
 
-    /**
-     * Obtém mapeamento page -> href
-     * Tenta usar MenuController primeiro, depois fallback
-     */
     function getPageToHref() {
-        // Tentar usar MenuController se disponível
-        if (config.useMenuController && typeof window.MenuController !== 'undefined') {
+        if (
+            config.useMenuController &&
+            window.MenuController &&
+            typeof window.MenuController.getPageToHref === 'function'
+        ) {
             try {
-                const mapping = window.MenuController.getPageToHref();
-                log('✅ Usando mapeamento do MenuController', Object.keys(mapping).length + ' itens');
-                return mapping;
+                return window.MenuController.getPageToHref();
             } catch (error) {
-                log('⚠️ Erro ao obter mapeamento do MenuController', error);
+                log('Falha ao ler mapeamento do MenuController', error);
             }
         }
 
-        // Fallback para mapeamento local
-        if (config.fallbackEnabled) {
-            log('📋 Usando mapeamento fallback');
-            return { ...pageToHrefFallback };
-        }
-
-        return {};
+        return { ...pageToHrefFallback };
     }
 
-    /**
-     * Marca item ativo baseado na URL
-     */
-    function marcarAtivo(links) {
-        const arquivoAtual = (window.location.pathname.split('/').pop() || '').toLowerCase();
-        const paginasFinanceirasLegadas = ['contas_pagar.html', 'contas_receber.html', 'planos_contas.html'];
+    function markActiveByHref(links) {
+        const currentFile = (window.location.pathname.split('/').pop() || '').toLowerCase();
+        const currentPageParam = new URLSearchParams(window.location.search).get('page');
+        const legacyFinancialPages = ['contas_pagar.html', 'contas_receber.html', 'planos_contas.html'];
 
-        log('🔍 Marcando item ativo', { arquivoAtual });
+        links.forEach((link) => link.classList.remove('active'));
 
-        // Remover classe active de todos
-        links.forEach((link) => {
-            link.classList.remove('active');
-        });
+        if (currentPageParam) {
+            const pageLink = Array.from(links).find((link) => link.dataset.page === currentPageParam);
+            if (pageLink) {
+                pageLink.classList.add('active');
+                return;
+            }
+        }
 
-        // Caso especial: páginas financeiras legadas
-        if (paginasFinanceirasLegadas.includes(arquivoAtual)) {
-            const linkFinanceiro = Array.from(links).find((l) => l.dataset.page === 'financeiro');
-            if (linkFinanceiro) {
-                linkFinanceiro.classList.add('active');
-                log('⭐ Página financeira legada marcada como ativa');
+        if (legacyFinancialPages.includes(currentFile)) {
+            const financeLink = Array.from(links).find((link) => link.dataset.page === 'financeiro');
+            if (financeLink) {
+                financeLink.classList.add('active');
             }
             return;
         }
 
-        // Encontrar link atual
-        const linkAtual = Array.from(links).find((l) => {
-            const href = (l.getAttribute('href') || '').toLowerCase();
-            return href === arquivoAtual;
+        const current = Array.from(links).find((link) => {
+            const href = (link.getAttribute('href') || '').toLowerCase();
+            return href === currentFile || href.startsWith(currentFile + '?');
         });
 
-        if (linkAtual) {
-            linkAtual.classList.add('active');
-            log('⭐ Item marcado como ativo', linkAtual.dataset.page);
-        } else {
-            log('⚠️ Nenhum item encontrado para página atual');
+        if (current) {
+            current.classList.add('active');
         }
     }
 
-    /**
-     * Carrega sidebar via fetch
-     */
+    function applyFallbackNavigation(sidebar) {
+        const pageToHref = getPageToHref();
+        const links = sidebar.querySelectorAll('a[data-page]');
+
+        links.forEach((link) => {
+            const page = link.dataset.page;
+            if (pageToHref[page]) {
+                link.setAttribute('href', pageToHref[page]);
+            }
+        });
+
+        markActiveByHref(sidebar.querySelectorAll('.nav-link'));
+    }
+
+    function renderWithMenuController(sidebar) {
+        if (
+            !config.useMenuController ||
+            !window.MenuController ||
+            typeof window.MenuController.renderMenu !== 'function'
+        ) {
+            return false;
+        }
+
+        const container = sidebar.querySelector('.nav-menu');
+        if (!container) {
+            return false;
+        }
+
+        const rendered = window.MenuController.renderMenu({ container: container, scope: sidebar });
+        if (rendered && typeof window.MenuController.markActive === 'function') {
+            window.MenuController.markActive({ container: container, scope: sidebar });
+        }
+
+        return !!rendered;
+    }
+
+    function emitSidebarLoaded(sidebar) {
+        const event = new CustomEvent('sidebarLoaded', {
+            detail: { sidebar: sidebar }
+        });
+        document.dispatchEvent(event);
+    }
+
     async function carregarSidebarComponente() {
         const sidebar = document.getElementById('sidebar');
         if (!sidebar) {
-            log('❌ Elemento #sidebar não encontrado');
+            log('Elemento #sidebar nao encontrado');
             return;
         }
 
         try {
-            log('📥 Carregando sidebar.html...');
-
             const response = await fetch('components/sidebar.html');
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error('HTTP ' + response.status);
             }
 
             const html = await response.text();
             sidebar.innerHTML = html;
 
-            log('✅ sidebar.html carregado');
+            const renderedByController = renderWithMenuController(sidebar);
+            if (!renderedByController) {
+                applyFallbackNavigation(sidebar);
+            }
 
-            // Atualizar links com data-page
-            const linksComDataPage = sidebar.querySelectorAll('a[data-page]');
-            const pageToHref = getPageToHref();
-
-            linksComDataPage.forEach((link) => {
-                const page = link.dataset.page;
-                if (pageToHref[page]) {
-                    link.setAttribute('href', pageToHref[page]);
-                    log('🔗 Link atualizado', { page, href: pageToHref[page] });
-                }
-            });
-
-            // Marcar item ativo
-            marcarAtivo(sidebar.querySelectorAll('.nav-link'));
-
-            // Chamar callback se disponível
             if (typeof window.refazerInterfaceUI === 'function') {
-                log('🎨 Chamando refazerInterfaceUI()');
                 window.refazerInterfaceUI();
             }
 
-            // Disparar evento customizado
-            const event = new CustomEvent('sidebarLoaded', {
-                detail: { sidebar: sidebar }
-            });
-            document.dispatchEvent(event);
-            log('📢 Evento sidebarLoaded disparado');
-
+            emitSidebarLoaded(sidebar);
         } catch (error) {
-            log('❌ Erro ao carregar sidebar', error);
+            log('Erro ao carregar sidebar', error);
 
-            // Fallback: manter estrutura mínima
             if (config.fallbackEnabled) {
-                log('🔄 Aplicando fallback seguro');
-                sidebar.innerHTML = `
-                    <div class="sidebar-header">
-                        <h1>Serra da Liberdade</h1>
-                    </div>
-                    <ul class="nav-menu">
-                        <li class="nav-item"><a href="#" class="nav-link">Menu indisponível</a></li>
-                    </ul>
-                `;
+                sidebar.innerHTML = [
+                    '<div class="sidebar-header"><h1>Serra da Liberdade</h1></div>',
+                    '<ul class="nav-menu">',
+                    '<li class="nav-item"><a href="dashboard.html" class="nav-link" data-page="dashboard">Dashboard</a></li>',
+                    '</ul>'
+                ].join('');
             }
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // INICIALIZAÇÃO
-    // ═══════════════════════════════════════════════════════════════════════════
-
     function initialize() {
-        log('🚀 Inicializando LegacySidebarBridge v2');
-
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', carregarSidebarComponente);
         } else {
@@ -203,25 +170,19 @@
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // API PÚBLICA
-    // ═══════════════════════════════════════════════════════════════════════════
-
     window.LegacySidebarBridge = {
         initialize: initialize,
         reload: carregarSidebarComponente,
-        setLogEnabled: function(enabled) {
-            config.logEnabled = enabled;
+        setLogEnabled: function (enabled) {
+            config.logEnabled = !!enabled;
         },
-        setUseMenuController: function(enabled) {
-            config.useMenuController = enabled;
+        setUseMenuController: function (enabled) {
+            config.useMenuController = !!enabled;
         },
-        setFallbackEnabled: function(enabled) {
-            config.fallbackEnabled = enabled;
+        setFallbackEnabled: function (enabled) {
+            config.fallbackEnabled = !!enabled;
         }
     };
 
-    // Inicializar automaticamente
     initialize();
-
 })();
