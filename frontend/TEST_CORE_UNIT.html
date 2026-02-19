@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🧪 Testes Unitários - Session Manager Core</title>
+    <title>ð§ª Testes Unitários - Session Manager Core</title>
     <style>
         body { font-family: 'Courier New', monospace; line-height: 1.6; padding: 20px; background: #1e1e1e; color: #fff; }
         .test { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-    <h1>🧪 FASE 2: Testes Unitários - Session Manager Core</h1>
+    <h1>ð§ª FASE 2: Testes Unitários - Session Manager Core</h1>
     <div id="output"></div>
 
     <script src="js/session-manager-core.js"></script>
@@ -23,7 +23,7 @@
         let failCount = 0;
 
         function log(name, passed, details) {
-            const status = passed ? '✅ PASS' : '❌ FAIL';
+            const status = passed ? 'â PASS' : 'â FAIL';
             const className = passed ? 'pass' : 'fail';
             
             tests.push({ name, passed, details });
@@ -39,7 +39,7 @@
         }
 
         async function runTests() {
-            console.log('=== INICIANDO TESTES UNITÁRIOS ===');
+            console.log('=== INICIANDO TESTES UNITRIOS ===');
 
             // TEST 1: Singleton
             try {
@@ -134,8 +134,8 @@
 
             // Resumo
             console.log(`\n=== RESUMO ===`);
-            console.log(`✅ PASSAR: ${passCount}`);
-            console.log(`❌ FALHAR: ${failCount}`);
+            console.log(`â PASSAR: ${passCount}`);
+            console.log(`â FALHAR: ${failCount}`);
             console.log(`TOTAL: ${tests.length}`);
 
             const div = document.createElement('div');
@@ -143,7 +143,7 @@
             div.style.padding = '15px';
             div.style.background = passCount === tests.length ? '#0d3d0d' : '#3d0d0d';
             div.style.borderRadius = '5px';
-            div.innerHTML = `<h2>${passCount === tests.length ? '✅ FASE 2 OK' : '❌ FASE 2 COM FALHAS'}</h2>
+            div.innerHTML = `<h2>${passCount === tests.length ? 'â FASE 2 OK' : 'â FASE 2 COM FALHAS'}</h2>
                             <p>Testes: ${passCount}/${tests.length} passaram</p>
                             <p>Status: ${passCount === tests.length ? 'Pronto para FASE 3' : 'Corrigir falhas antes de avançar'}`;
             output.appendChild(div);

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -487,7 +487,7 @@
                 <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i>
                         Relatórios</a></li>
                 <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i>
-                        Configurações</a></li>
+                        Configuraçµes</a></li>
                 <li class="nav-item"><a href="manutencao.html" class="nav-link active"><i class="fas fa-tools"></i>
                         Manutenção</a></li>
                 <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i>
@@ -528,7 +528,7 @@
                 </ul>
             </div>
 
-            <!-- ABA: CADASTRO DE VEÍCULOS -->
+            <!-- ABA: CADASTRO DE VECULOS -->
             <div id="aba-veiculos" class="aba-content">
                 <section class="section">
                     <h2><i class="fas fa-plus-circle"></i> Cadastrar Novo Veículo</h2>
@@ -580,7 +580,7 @@
                                     <th>Cor</th>
                                     <th>KM Inicial</th>
                                     <th>Data Cadastro</th>
-                                    <th>Ações</th>
+                                    <th>Açµes</th>
                                 </tr>
                             </thead>
                             <tbody id="listaVeiculos">
@@ -596,7 +596,7 @@
                 </section>
             </div>
 
-            <!-- ABA: LANÇAMENTO DE ABASTECIMENTO -->
+            <!-- ABA: LANAMENTO DE ABASTECIMENTO -->
             <div id="aba-lancamento" class="aba-content u-hidden">
                 <!-- Display de Saldo -->
                 <div class="saldo-display" id="saldoDisplay">
@@ -642,7 +642,7 @@
                                 <select id="tipo_combustivel" required>
                                     <option value="">Selecione...</option>
                                     <option value="Gasolina">Gasolina</option>
-                                    <option value="Álcool">Álcool</option>
+                                    <option value="lcool">lcool</option>
                                     <option value="Diesel">Diesel</option>
                                 </select>
                             </div>
@@ -701,7 +701,7 @@
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> <strong>Sistema de Crédito/Débito:</strong> Para realizar
                         lançamentos de abastecimento, é necessário ter saldo. Quando o saldo atingir o valor mínimo,
-                        você será alertado. É possível continuar lançando mesmo com saldo negativo.
+                        vocª será alertado.  possível continuar lançando mesmo com saldo negativo.
                     </div>
                     <form id="formRecarga">
                         <div class="form-grid">
@@ -722,7 +722,7 @@
                                     valor</small>
                             </div>
                             <div>
-                                <label for="nf_recarga">Número da NF (Opcional)</label>
+                                <label for="nf_recarga">Nºmero da NF (Opcional)</label>
                                 <input type="text" id="nf_recarga" placeholder="Ex: 12345">
                             </div>
                         </div>
@@ -759,7 +759,7 @@
                 </section>
             </div>
 
-            <!-- ABA: RELATÓRIOS -->
+            <!-- ABA: RELATRIOS -->
             <div id="aba-relatorio" class="aba-content u-hidden">
                 <section class="section">
                     <h2><i class="fas fa-filter"></i> Filtros de Relatório</h2>
@@ -783,7 +783,7 @@
                             <select id="filtro_combustivel">
                                 <option value="">Todos</option>
                                 <option value="Gasolina">Gasolina</option>
-                                <option value="Álcool">Álcool</option>
+                                <option value="lcool">lcool</option>
                                 <option value="Diesel">Diesel</option>
                             </select>
                         </div>
@@ -847,7 +847,7 @@
 
     <script>
         // ============================================
-        // VARIÁVEIS GLOBAIS
+        // VARIVEIS GLOBAIS
         // ============================================
         let veiculos = [];
         let abastecimentos = [];
@@ -857,7 +857,7 @@
         let valorMinimoAlerta = 0;
 
         // ============================================
-        // FUNÇÕES AUXILIARES
+        // FUNES AUXILIARES
         // ============================================
         function toggleMenu() {
             document.getElementById('sidebar').classList.toggle('active');
@@ -941,7 +941,7 @@
         }
 
         // ============================================
-        // CADASTRO DE VEÍCULOS
+        // CADASTRO DE VECULOS
         // ============================================
         async function carregarVeiculos() {
             try {
@@ -1046,7 +1046,7 @@
 
             document.getElementById('detalhesVeiculoContent').innerHTML = `
                 <div class="info-box">
-                    <strong>Informações do Veículo</strong>
+                    <strong>Informaçµes do Veículo</strong>
                     <p><strong>Placa:</strong> ${veiculo.placa}</p>
                     <p><strong>Modelo:</strong> ${veiculo.modelo}</p>
                     <p><strong>Ano:</strong> ${veiculo.ano}</p>
@@ -1066,7 +1066,7 @@
         }
 
         // ============================================
-        // LANÇAMENTO DE ABASTECIMENTO
+        // LANAMENTO DE ABASTECIMENTO
         // ============================================
         async function carregarAbastecimentos() {
             try {
@@ -1146,7 +1146,7 @@
 
             if (abastVeiculo.length > 0) {
                 const ultimoKm = Math.max(...abastVeiculo.map(a => parseInt(a.km_abastecimento)));
-                document.getElementById('km_info').textContent = `Último KM registrado: ${ultimoKm.toLocaleString('pt-BR')} km`;
+                document.getElementById('km_info').textContent = `ltimo KM registrado: ${ultimoKm.toLocaleString('pt-BR')} km`;
             } else {
                 document.getElementById('km_info').textContent = `KM inicial do veículo: ${parseInt(veiculo.km_inicial).toLocaleString('pt-BR')} km`;
             }
@@ -1345,7 +1345,7 @@
         }
 
         // ============================================
-        // RELATÓRIOS
+        // RELATRIOS
         // ============================================
         function carregarVeiculosSelectFiltro() {
             const select = document.getElementById('filtro_veiculo');
@@ -1462,7 +1462,7 @@
         }
 
         // ============================================
-        // INICIALIZAÇÃO
+        // INICIALIZAO
         // ============================================
         window.addEventListener('load', function () {
             setDataAtual('data_abastecimento');

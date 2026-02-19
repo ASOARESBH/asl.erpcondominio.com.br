@@ -81,11 +81,11 @@
         const token = urlParams.get('token');
         
         if (!token) {
-            mostrarErro('Token inválido ou não fornecido');
+            mostrarErro('Token invÃ¡lido ou nÃ£o fornecido');
             setTimeout(() => window.location.href = 'login_morador.html', 2000);
         }
 
-        // Verificar força da senha
+        // Verificar forÃ§a da senha
         document.getElementById('senha').addEventListener('input', function(e) {
             const senha = e.target.value;
             let forca = 0;
@@ -107,7 +107,7 @@
             } else if (forca <= 3) {
                 bar.style.width = '60%';
                 bar.style.background = '#f59e0b';
-                text.textContent = 'Média';
+                text.textContent = 'MÃ©dia';
                 text.style.color = '#f59e0b';
             } else {
                 bar.style.width = '100%';
@@ -126,12 +126,12 @@
             const btn = document.getElementById('btnRedefinir');
             
             if (senha !== confirma) {
-                mostrarErro('As senhas não coincidem');
+                mostrarErro('As senhas nÃ£o coincidem');
                 return;
             }
             
             if (senha.length < 6) {
-                mostrarErro('A senha deve ter no mínimo 6 caracteres');
+                mostrarErro('A senha deve ter no mÃ­nimo 6 caracteres');
                 return;
             }
             
@@ -161,7 +161,7 @@
                 }
             })
             .catch(error => {
-                mostrarErro('Erro ao processar solicitação');
+                mostrarErro('Erro ao processar solicitaÃ§Ã£o');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check"></i> Redefinir Senha';
             });

@@ -415,7 +415,7 @@
             <p>Serra da Liberdade</p>
         </div>
 
-        <!-- Estatísticas -->
+        <!-- EstatÃ­sticas -->
         <div class="stats">
             <div class="stat-card">
                 <div class="number" id="statPermitidos">0</div>
@@ -435,7 +435,7 @@
             </div>
         </div>
 
-        <!-- Botões Principais -->
+        <!-- BotÂµes Principais -->
         <div class="main-buttons">
             <button class="btn-main btn-qr" onclick="abrirScanner()">
                 <i class="fas fa-qrcode"></i>
@@ -451,13 +451,13 @@
             </button>
         </div>
 
-        <!-- Formulário QR Code Temporário -->
+        <!-- FormulÃ¡rio QR Code TemporÃ¡rio -->
         <div class="form-temporario" id="formTemporario">
-            <h3><i class="fas fa-clock"></i> QR Code Temporário (Delivery)</h3>
+            <h3><i class="fas fa-clock"></i> QR Code TemporÃ¡rio (Delivery)</h3>
             <form id="formDelivery" onsubmit="criarTemporario(event)">
                 <div class="form-group">
                     <label for="nomeEntregador">Nome do Entregador</label>
-                    <input type="text" id="nomeEntregador" placeholder="Ex: João Silva">
+                    <input type="text" id="nomeEntregador" placeholder="Ex: JoÃ£o Silva">
                 </div>
                 <div class="form-group">
                     <label for="empresa">Empresa</label>
@@ -468,7 +468,7 @@
                     <input type="tel" id="telefone" placeholder="(31) 99999-9999">
                 </div>
                 <div class="form-group">
-                    <label for="placa">Placa do Veículo</label>
+                    <label for="placa">Placa do VeÃ­culo</label>
                     <input type="text" id="placa" placeholder="ABC-1234" maxlength="8" style="text-transform: uppercase;">
                 </div>
                 <div class="form-group">
@@ -540,13 +540,13 @@
         let html5QrCode = null;
         let scannerAtivo = false;
 
-        // Carregar estatísticas ao iniciar
+        // Carregar estatÃ­sticas ao iniciar
         window.addEventListener('load', () => {
             carregarEstatisticas();
             setInterval(carregarEstatisticas, 30000); // Atualizar a cada 30s
         });
 
-        // Carregar estatísticas
+        // Carregar estatÃ­sticas
         function carregarEstatisticas() {
             fetch('../api/api_console_acesso.php?action=estatisticas')
                 .then(response => response.json())
@@ -558,7 +558,7 @@
                         document.getElementById('statTotal').textContent = data.dados.total_validacoes;
                     }
                 })
-                .catch(error => console.error('Erro ao carregar estatísticas:', error));
+                .catch(error => console.error('Erro ao carregar estatÃ­sticas:', error));
         }
 
         // Abrir scanner
@@ -594,7 +594,7 @@
                 scannerAtivo = true;
             }).catch(err => {
                 console.error('Erro ao iniciar scanner:', err);
-                alert('Erro ao acessar câmera. Verifique as permissões.');
+                alert('Erro ao acessar cÃ¢mera. Verifique as permissÂµes.');
                 fecharScanner();
             });
         }
@@ -677,13 +677,13 @@
                     infoHTML += `<div class="result-info-item"><span class="result-info-label">Acesso:</span><span class="result-info-value">${data.dados.tipo_acesso}</span></div>`;
                 }
                 if (data.dados.horario) {
-                    infoHTML += `<div class="result-info-item"><span class="result-info-label">Horário:</span><span class="result-info-value">${data.dados.horario}</span></div>`;
+                    infoHTML += `<div class="result-info-item"><span class="result-info-label">HorÃ¡rio:</span><span class="result-info-value">${data.dados.horario}</span></div>`;
                 }
                 if (data.dados.veiculo) {
-                    infoHTML += `<div class="result-info-item"><span class="result-info-label">Veículo:</span><span class="result-info-value">${data.dados.veiculo}</span></div>`;
+                    infoHTML += `<div class="result-info-item"><span class="result-info-label">VeÃ­culo:</span><span class="result-info-value">${data.dados.veiculo}</span></div>`;
                 }
                 if (data.dados.valido_ate) {
-                    infoHTML += `<div class="result-info-item"><span class="result-info-label">Válido até:</span><span class="result-info-value">${data.dados.valido_ate}</span></div>`;
+                    infoHTML += `<div class="result-info-item"><span class="result-info-label">VÃ¡lido atÃ©:</span><span class="result-info-value">${data.dados.valido_ate}</span></div>`;
                 }
 
                 info.innerHTML = infoHTML;
@@ -695,7 +695,7 @@
                 icon.innerHTML = '<i class="fas fa-times-circle"></i>';
                 title.textContent = data.mensagem;
                 title.style.color = '#f5576c';
-                info.innerHTML = '<p style="text-align: center; color: #6c757d;">Acesso não autorizado</p>';
+                info.innerHTML = '<p style="text-align: center; color: #6c757d;">Acesso nÃ£o autorizado</p>';
 
                 // Tocar som de erro
                 playSound('error');
@@ -731,7 +731,7 @@
             }
         }
 
-        // Abrir portaria (criar QR Code temporário)
+        // Abrir portaria (criar QR Code temporÃ¡rio)
         function abrirPortaria() {
             document.getElementById('formTemporario').classList.add('active');
             
@@ -745,13 +745,13 @@
             document.getElementById('horaFinal').value = horaFinal;
         }
 
-        // Fechar formulário temporário
+        // Fechar formulÃ¡rio temporÃ¡rio
         function fecharFormTemporario() {
             document.getElementById('formTemporario').classList.remove('active');
             document.getElementById('formDelivery').reset();
         }
 
-        // Criar QR Code temporário
+        // Criar QR Code temporÃ¡rio
         function criarTemporario(event) {
             event.preventDefault();
 
@@ -778,7 +778,7 @@
                 document.getElementById('loading').classList.remove('active');
                 
                 if (data.sucesso) {
-                    alert(`QR Code temporário criado com sucesso!\n\nCódigo: ${data.dados.qr_code}\n\nVálido até: ${data.dados.valido_ate}`);
+                    alert(`QR Code temporÃ¡rio criado com sucesso!\n\nCÃ³digo: ${data.dados.qr_code}\n\nVÃ¡lido atÃ©: ${data.dados.valido_ate}`);
                     fecharFormTemporario();
                     carregarEstatisticas();
                 } else {
@@ -788,7 +788,7 @@
             .catch(error => {
                 document.getElementById('loading').classList.remove('active');
                 console.error('Erro:', error);
-                alert('Erro ao criar QR Code temporário');
+                alert('Erro ao criar QR Code temporÃ¡rio');
             });
         }
 

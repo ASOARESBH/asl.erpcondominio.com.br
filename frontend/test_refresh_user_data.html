@@ -115,15 +115,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧪 Teste - Método refreshUserData()</h1>
+        <h1>ð§ª Teste - Método refreshUserData()</h1>
         
         <div class="test-section">
-            <h2>📋 Objetivo do Teste</h2>
+            <h2>ð Objetivo do Teste</h2>
             <p>Validar que o método <code>refreshUserData()</code> foi adicionado corretamente ao <code>SessionManagerCore</code> e funciona conforme esperado.</p>
         </div>
 
         <div class="test-section">
-            <h2>🔍 Testes Unitários</h2>
+            <h2>ð Testes Unitários</h2>
             
             <h3>Teste 1: Verificar se método existe</h3>
             <div class="code">
@@ -175,7 +175,7 @@ await sessionMgr.refreshUserData();
         </div>
 
         <div class="test-section">
-            <h2>📊 Resumo dos Testes</h2>
+            <h2>ð Resumo dos Testes</h2>
             <table>
                 <thead>
                     <tr>
@@ -221,12 +221,12 @@ await sessionMgr.refreshUserData();
         </div>
 
         <div class="test-section">
-            <h2>🖥️ Console de Saída</h2>
+            <h2>ð¥ï¸ Console de Saída</h2>
             <div class="console-output" id="consoleOutput"></div>
         </div>
 
         <div class="test-section">
-            <h2>✅ Conclusão</h2>
+            <h2>â Conclusão</h2>
             <p id="conclusao">Execute os testes para validar a solução...</p>
         </div>
     </div>
@@ -269,17 +269,17 @@ await sessionMgr.refreshUserData();
                 
                 const resultado = document.getElementById('resultado1');
                 if (existe) {
-                    resultado.innerHTML = '<div class="result">✅ <strong>PASSOU:</strong> Método refreshUserData() existe e é uma função</div>';
-                    document.getElementById('status1').innerHTML = '<span class="status-pass">✅ PASSOU</span>';
+                    resultado.innerHTML = '<div class="result">â <strong>PASSOU:</strong> Método refreshUserData() existe e é uma função</div>';
+                    document.getElementById('status1').innerHTML = '<span class="status-pass">â PASSOU</span>';
                     document.getElementById('msg1').innerHTML = 'Método encontrado';
                 } else {
-                    resultado.innerHTML = '<div class="error">❌ <strong>FALHOU:</strong> Método não encontrado</div>';
-                    document.getElementById('status1').innerHTML = '<span class="status-fail">❌ FALHOU</span>';
+                    resultado.innerHTML = '<div class="error">â <strong>FALHOU:</strong> Método não encontrado</div>';
+                    document.getElementById('status1').innerHTML = '<span class="status-fail">â FALHOU</span>';
                     document.getElementById('msg1').innerHTML = 'Método não existe';
                 }
             } catch (e) {
-                document.getElementById('resultado1').innerHTML = '<div class="error">❌ <strong>ERRO:</strong> ' + e.message + '</div>';
-                document.getElementById('status1').innerHTML = '<span class="status-fail">❌ ERRO</span>';
+                document.getElementById('resultado1').innerHTML = '<div class="error">â <strong>ERRO:</strong> ' + e.message + '</div>';
+                document.getElementById('status1').innerHTML = '<span class="status-fail">â ERRO</span>';
                 document.getElementById('msg1').innerHTML = e.message;
             }
         }
@@ -292,17 +292,17 @@ await sessionMgr.refreshUserData();
                 
                 const resultadoEl = document.getElementById('resultado2');
                 if (ehPromise) {
-                    resultadoEl.innerHTML = '<div class="result">✅ <strong>PASSOU:</strong> Método retorna uma Promise</div>';
-                    document.getElementById('status2').innerHTML = '<span class="status-pass">✅ PASSOU</span>';
+                    resultadoEl.innerHTML = '<div class="result">â <strong>PASSOU:</strong> Método retorna uma Promise</div>';
+                    document.getElementById('status2').innerHTML = '<span class="status-pass">â PASSOU</span>';
                     document.getElementById('msg2').innerHTML = 'Retorna Promise';
                 } else {
-                    resultadoEl.innerHTML = '<div class="error">❌ <strong>FALHOU:</strong> Método não retorna Promise</div>';
-                    document.getElementById('status2').innerHTML = '<span class="status-fail">❌ FALHOU</span>';
+                    resultadoEl.innerHTML = '<div class="error">â <strong>FALHOU:</strong> Método não retorna Promise</div>';
+                    document.getElementById('status2').innerHTML = '<span class="status-fail">â FALHOU</span>';
                     document.getElementById('msg2').innerHTML = 'Não é Promise';
                 }
             } catch (e) {
-                document.getElementById('resultado2').innerHTML = '<div class="error">❌ <strong>ERRO:</strong> ' + e.message + '</div>';
-                document.getElementById('status2').innerHTML = '<span class="status-fail">❌ ERRO</span>';
+                document.getElementById('resultado2').innerHTML = '<div class="error">â <strong>ERRO:</strong> ' + e.message + '</div>';
+                document.getElementById('status2').innerHTML = '<span class="status-fail">â ERRO</span>';
                 document.getElementById('msg2').innerHTML = e.message;
             }
         }
@@ -318,17 +318,17 @@ await sessionMgr.refreshUserData();
                 
                 const resultadoEl = document.getElementById('resultado3');
                 if (todosPresentes) {
-                    resultadoEl.innerHTML = '<div class="result">✅ <strong>PASSOU:</strong> Estrutura de retorno correta<br><strong>Campos:</strong> ' + camposPresentes.join(', ') + '</div>';
-                    document.getElementById('status3').innerHTML = '<span class="status-pass">✅ PASSOU</span>';
+                    resultadoEl.innerHTML = '<div class="result">â <strong>PASSOU:</strong> Estrutura de retorno correta<br><strong>Campos:</strong> ' + camposPresentes.join(', ') + '</div>';
+                    document.getElementById('status3').innerHTML = '<span class="status-pass">â PASSOU</span>';
                     document.getElementById('msg3').innerHTML = 'Estrutura: ' + camposPresentes.join(', ');
                 } else {
-                    resultadoEl.innerHTML = '<div class="error">❌ <strong>FALHOU:</strong> Campos faltando<br><strong>Esperados:</strong> ' + camposEsperados.join(', ') + '<br><strong>Presentes:</strong> ' + camposPresentes.join(', ') + '</div>';
-                    document.getElementById('status3').innerHTML = '<span class="status-fail">❌ FALHOU</span>';
+                    resultadoEl.innerHTML = '<div class="error">â <strong>FALHOU:</strong> Campos faltando<br><strong>Esperados:</strong> ' + camposEsperados.join(', ') + '<br><strong>Presentes:</strong> ' + camposPresentes.join(', ') + '</div>';
+                    document.getElementById('status3').innerHTML = '<span class="status-fail">â FALHOU</span>';
                     document.getElementById('msg3').innerHTML = 'Campos faltando';
                 }
             } catch (e) {
-                document.getElementById('resultado3').innerHTML = '<div class="error">❌ <strong>ERRO:</strong> ' + e.message + '</div>';
-                document.getElementById('status3').innerHTML = '<span class="status-fail">❌ ERRO</span>';
+                document.getElementById('resultado3').innerHTML = '<div class="error">â <strong>ERRO:</strong> ' + e.message + '</div>';
+                document.getElementById('status3').innerHTML = '<span class="status-fail">â ERRO</span>';
                 document.getElementById('msg3').innerHTML = e.message;
             }
         }
@@ -345,23 +345,23 @@ await sessionMgr.refreshUserData();
                 ];
                 
                 let todosPassaram = true;
-                let html = '<div class="result">✅ <strong>Testes de Formatação:</strong><br>';
+                let html = '<div class="result">â <strong>Testes de Formatação:</strong><br>';
                 
                 testes.forEach(t => {
                     const resultado = sessionMgr.formatarTempoRestante(t.input);
                     const passou = resultado === t.esperado;
                     todosPassaram = todosPassaram && passou;
-                    html += `<strong>${t.descricao}:</strong> ${resultado} (esperado: ${t.esperado}) ${passou ? '✅' : '❌'}<br>`;
+                    html += `<strong>${t.descricao}:</strong> ${resultado} (esperado: ${t.esperado}) ${passou ? 'â' : 'â'}<br>`;
                 });
                 
                 html += '</div>';
                 
                 document.getElementById('resultado4').innerHTML = html;
-                document.getElementById('status4').innerHTML = todosPassaram ? '<span class="status-pass">✅ PASSOU</span>' : '<span class="status-fail">❌ FALHOU</span>';
+                document.getElementById('status4').innerHTML = todosPassaram ? '<span class="status-pass">â PASSOU</span>' : '<span class="status-fail">â FALHOU</span>';
                 document.getElementById('msg4').innerHTML = todosPassaram ? 'Formatação correta' : 'Erro na formatação';
             } catch (e) {
-                document.getElementById('resultado4').innerHTML = '<div class="error">❌ <strong>ERRO:</strong> ' + e.message + '</div>';
-                document.getElementById('status4').innerHTML = '<span class="status-fail">❌ ERRO</span>';
+                document.getElementById('resultado4').innerHTML = '<div class="error">â <strong>ERRO:</strong> ' + e.message + '</div>';
+                document.getElementById('status4').innerHTML = '<span class="status-fail">â ERRO</span>';
                 document.getElementById('msg4').innerHTML = e.message;
             }
         }
@@ -377,17 +377,17 @@ await sessionMgr.refreshUserData();
                 
                 const resultadoEl = document.getElementById('resultado5');
                 if (temRefreshLog && temSucessoLog) {
-                    resultadoEl.innerHTML = '<div class="result">✅ <strong>PASSOU:</strong> Logs apropriados encontrados<br><strong>Logs:</strong><br>' + logs.filter(l => l.includes('SessionManager')).join('<br>') + '</div>';
-                    document.getElementById('status5').innerHTML = '<span class="status-pass">✅ PASSOU</span>';
+                    resultadoEl.innerHTML = '<div class="result">â <strong>PASSOU:</strong> Logs apropriados encontrados<br><strong>Logs:</strong><br>' + logs.filter(l => l.includes('SessionManager')).join('<br>') + '</div>';
+                    document.getElementById('status5').innerHTML = '<span class="status-pass">â PASSOU</span>';
                     document.getElementById('msg5').innerHTML = 'Logging correto';
                 } else {
-                    resultadoEl.innerHTML = '<div class="warning">⚠️ <strong>AVISO:</strong> Alguns logs esperados não encontrados</div>';
-                    document.getElementById('status5').innerHTML = '<span class="status-fail">⚠️ AVISO</span>';
+                    resultadoEl.innerHTML = '<div class="warning">â ï¸ <strong>AVISO:</strong> Alguns logs esperados não encontrados</div>';
+                    document.getElementById('status5').innerHTML = '<span class="status-fail">â ï¸ AVISO</span>';
                     document.getElementById('msg5').innerHTML = 'Logs incompletos';
                 }
             } catch (e) {
-                document.getElementById('resultado5').innerHTML = '<div class="error">❌ <strong>ERRO:</strong> ' + e.message + '</div>';
-                document.getElementById('status5').innerHTML = '<span class="status-fail">❌ ERRO</span>';
+                document.getElementById('resultado5').innerHTML = '<div class="error">â <strong>ERRO:</strong> ' + e.message + '</div>';
+                document.getElementById('status5').innerHTML = '<span class="status-fail">â ERRO</span>';
                 document.getElementById('msg5').innerHTML = e.message;
             }
         }

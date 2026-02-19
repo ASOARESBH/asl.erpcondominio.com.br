@@ -355,7 +355,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🛍️ Marketplace</h1>
+            <h1>ðï¸ Marketplace</h1>
             <p>Encontre produtos e serviços oferecidos pelos fornecedores</p>
         </div>
 
@@ -398,7 +398,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="detalhesTitulo">Detalhes do Produto</h2>
-                <button class="modal-close" onclick="fecharModal('modalDetalhes')">✕</button>
+                <button class="modal-close" onclick="fecharModal('modalDetalhes')">â</button>
             </div>
 
             <div id="conteudoDetalhes"></div>
@@ -416,7 +416,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Fazer Pedido</h2>
-                <button class="modal-close" onclick="fecharModal('modalPedido')">✕</button>
+                <button class="modal-close" onclick="fecharModal('modalPedido')">â</button>
             </div>
 
             <form id="formPedido" onsubmit="enviarPedido(event)">
@@ -438,8 +438,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Descrição/Observações:</label>
-                    <textarea id="pedidoDescricao" placeholder="Descreva seus requisitos ou observações..."></textarea>
+                    <label>Descrição/Observaçµes:</label>
+                    <textarea id="pedidoDescricao" placeholder="Descreva seus requisitos ou observaçµes..."></textarea>
                 </div>
 
                 <div class="modal-footer">
@@ -510,7 +510,7 @@
                 if (produtos.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state" style="grid-column: 1 / -1;">
-                            <div class="empty-state-icon">🔍</div>
+                            <div class="empty-state-icon">ð</div>
                             <p>Nenhum produto encontrado com os filtros selecionados</p>
                         </div>
                     `;
@@ -520,7 +520,7 @@
                 let html = '';
                 produtos.forEach(produto => {
                     const estrelas = gerarEstrelas(produto.media_nota || 0);
-                    const tipo_icone = produto.tipo === 'produto' ? '📦' : '🔧';
+                    const tipo_icone = produto.tipo === 'produto' ? 'ð¦' : 'ð§';
 
                     html += `
                         <div class="card-produto">
@@ -529,12 +529,12 @@
                                 <div class="card-nome">${produto.nome}</div>
                             </div>
                             <div class="card-body">
-                                <div class="card-fornecedor">👤 ${produto.nome_estabelecimento}</div>
+                                <div class="card-fornecedor">ð¤ ${produto.nome_estabelecimento}</div>
                                 <div class="card-descricao">${produto.descricao || 'Sem descrição'}</div>
                                 <div class="card-preco">R$ ${parseFloat(produto.preco_venda).toFixed(2)}</div>
                                 <div class="card-rating">
                                     <span class="stars">${estrelas}</span>
-                                    <span>(${produto.total_avaliacoes || 0} avaliações)</span>
+                                    <span>(${produto.total_avaliacoes || 0} avaliaçµes)</span>
                                 </div>
                                 <div class="card-footer">
                                     <button class="button btn-secondary" onclick="verDetalhes(${produto.id})">Ver Detalhes</button>
@@ -580,7 +580,7 @@
             const estrelas = Math.round(nota);
             let html = '';
             for (let i = 0; i < 5; i++) {
-                html += i < estrelas ? '⭐' : '☆';
+                html += i < estrelas ? 'â­' : 'â';
             }
             return html;
         }
@@ -591,7 +591,7 @@
         }
 
         function abrirPedido(produtoId) {
-            // Aqui você buscaria os detalhes do produto e preencheria o formulário
+            // Aqui vocª buscaria os detalhes do produto e preencheria o formulário
             document.getElementById('pedidoProdutoId').value = produtoId;
             abrirModal('modalPedido');
         }

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -538,7 +538,7 @@
             <p>Serra da Liberdade</p>
         </div>
 
-        <!-- Botões Principais -->
+        <!-- Botµes Principais -->
         <div class="main-buttons">
             <button class="btn-main btn-qr" onclick="abrirScanner()">
                 <i class="fas fa-qrcode"></i>
@@ -641,13 +641,13 @@
         // Verificar autenticação ao carregar
         window.addEventListener('load', () => {
             // ========================================
-            // VALIDAÇÃO DE TOKEN DESABILITADA
+            // VALIDAO DE TOKEN DESABILITADA
             // ========================================
             // Para reativar a validação de token do dispositivo,
             // descomente a linha abaixo:
             // verificarAutenticacao();
             
-            // ACESSO LIBERADO SEM VALIDAÇÃO (TEMPORÁRIO)
+            // ACESSO LIBERADO SEM VALIDAO (TEMPORRIO)
             // Remove as linhas abaixo quando reativar a validação:
             dispositivoAutorizado = true;
             dispositivoId = 1;
@@ -761,10 +761,10 @@
             playSound('error');
         }
 
-        // Verificar se está autorizado antes de ações
+        // Verificar se está autorizado antes de açµes
         function verificarAutorizacao() {
             // ========================================
-            // VALIDAÇÃO DESABILITADA
+            // VALIDAO DESABILITADA
             // ========================================
             // Para reativar, descomente o bloco abaixo:
             /*
@@ -848,7 +848,7 @@
                 
             } catch (err) {
                 console.error('[SCANNER] Erro ao iniciar:', err);
-                alert('Erro ao acessar câmera. Verifique as permissões.');
+                alert('Erro ao acessar câmera. Verifique as permissµes.');
                 fecharScanner();
             }
         }

@@ -108,17 +108,17 @@
             </div>
             
             <div class="form-group">
-                <label>Localização</label>
+                <label>LocalizaÃ§Ã£o</label>
                 <input type="text" id="localizacao" value="Portaria Principal">
             </div>
             
             <div class="form-group">
-                <label>Responsável</label>
-                <input type="text" id="responsavel" value="Equipe de Segurança">
+                <label>ResponsÃ¡vel</label>
+                <input type="text" id="responsavel" value="Equipe de SeguranÃ§a">
             </div>
             
             <div class="form-group">
-                <label>Observação</label>
+                <label>ObservaÃ§Ã£o</label>
                 <textarea id="observacao" rows="3">Dispositivo de teste</textarea>
             </div>
             
@@ -140,7 +140,7 @@
                 observacao: document.getElementById('observacao').value
             };
             
-            document.getElementById('resultado').innerHTML = '<p>? Enviando requisição...</p>';
+            document.getElementById('resultado').innerHTML = '<p>? Enviando requisiÃ§Ã£o...</p>';
             
             console.log('?? Dados enviados:', dados);
             
@@ -172,7 +172,7 @@
                                 </div>
                                 <p><strong>ID:</strong> ${data.dados.id}</p>
                                 <p><strong>Nome:</strong> ${data.dados.nome_dispositivo}</p>
-                            ` : '<p style="color: #dc3545;"><strong>?? ATENÇÃO:</strong> Token não foi retornado!</p>'}
+                            ` : '<p style="color: #dc3545;"><strong>?? ATENÂ‡ÂƒO:</strong> Token nÃ£o foi retornado!</p>'}
                             
                             <h4>Resposta Completa:</h4>
                             <pre>${JSON.stringify(data, null, 2)}</pre>
@@ -195,7 +195,7 @@
                 console.error('? Erro:', error);
                 document.getElementById('resultado').innerHTML = `
                     <div class="resultado erro">
-                        <h3>? Erro de Conexão</h3>
+                        <h3>? Erro de ConexÃ£o</h3>
                         <p><strong>Erro:</strong> ${error.message}</p>
                         <p>Verifique o console do navegador para mais detalhes.</p>
                     </div>

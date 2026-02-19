@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🔵 FASE 3: Integração Piloto - dashboard.html</title>
+    <title>ðµ FASE 3: Integração Piloto - dashboard.html</title>
     <style>
         body {
             font-family: 'Courier New', monospace;
@@ -31,7 +31,7 @@
     </style>
 </head>
 <body>
-    <h1>🔵 FASE 3: Integração Piloto - Task dashboard.html</h1>
+    <h1>ðµ FASE 3: Integração Piloto - Task dashboard.html</h1>
     <div id="output"></div>
 
     <script src="js/session-manager-core.js"></script>
@@ -41,7 +41,7 @@
 
         function test(name, passed, details) {
             const cls = passed ? 'pass' : 'fail';
-            const status = passed ? '✅ OK' : '❌ FAIL';
+            const status = passed ? 'â OK' : 'â FAIL';
             const div = document.createElement('div');
             div.className = `test-section ${cls}`;
             div.innerHTML = `<div class="status">${status}: ${name}</div><small>${details}</small>`;
@@ -51,7 +51,7 @@
         }
 
         function runIntegrationTest() {
-            console.log('=== FASE 3: INTEGRAÇÃO PILOTO ===');
+            console.log('=== FASE 3: INTEGRAO PILOTO ===');
 
             // TEST 1: SessionManager existe e é acessível
             try {
@@ -84,7 +84,7 @@
                 } else {
                     const data = JSON.parse(stored);
                     const secure = !data.currentUser && !data.sessionExpireTime;
-                    test('localStorage seguro', secure, secure ? 'Sem dados sensíveis' : 'CONTÉM DADOS SENSÍVEIS!');
+                    test('localStorage seguro', secure, secure ? 'Sem dados sensíveis' : 'CONTM DADOS SENSVEIS!');
                 }
             } catch (e) {
                 test('localStorage seguro', false, `Erro: ${e.message}`);
@@ -135,15 +135,15 @@
             const finalDiv = document.createElement('div');
             finalDiv.className = `test-section ${passCount === totalCount ? 'pass' : 'fail'}`;
             finalDiv.innerHTML = `
-                <h2>${passCount === totalCount ? '✅ FASE 3 OK' : '❌ FASE 3 COM FALHAS'}</h2>
+                <h2>${passCount === totalCount ? 'â FASE 3 OK' : 'â FASE 3 COM FALHAS'}</h2>
                 <p><strong>Testes: ${passCount}/${totalCount} passando</strong></p>
-                <p>Status: ${passCount === totalCount ? 'Página piloto validada ✅ Avançar para FASE 4' : 'Erros encontrados ❌ Corrigir antes de avançar'}</p>
+                <p>Status: ${passCount === totalCount ? 'Página piloto validada â Avançar para FASE 4' : 'Erros encontrados â Corrigir antes de avançar'}</p>
             `;
             out.appendChild(finalDiv);
 
             console.log(`\n=== RESULTADO FINAL ===`);
-            console.log(`✅ PASS: ${passCount}`);
-            console.log(`❌ FAIL: ${totalCount - passCount}`);
+            console.log(`â PASS: ${passCount}`);
+            console.log(`â FAIL: ${totalCount - passCount}`);
             console.log(`Total: ${totalCount}`);
         }
 

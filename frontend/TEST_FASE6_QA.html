@@ -115,18 +115,18 @@
 </head>
 <body>
     <div class="container">
-        <h1>📋 FASE 6: QA Pós-Migração (63 páginas com session-manager-core.js)</h1>
+        <h1>ð FASE 6: QA Pós-Migração (63 páginas com session-manager-core.js)</h1>
 
         <div class="metrics">
             <div class="metric-card">
                 <h3>Páginas Migradas</h3>
                 <div class="metric-value">63/63</div>
-                <small>✅ COMPLETO</small>
+                <small>â COMPLETO</small>
             </div>
             <div class="metric-card">
                 <h3>HTTP Requests</h3>
-                <div class="metric-value">↓ 83%</div>
-                <small>360 → 72 req/hora</small>
+                <div class="metric-value">â 83%</div>
+                <small>360 â 72 req/hora</small>
             </div>
             <div class="metric-card">
                 <h3>localStorage</h3>
@@ -144,7 +144,7 @@
         
         <div class="test-section">
             <h3>1. Verificação do Core.js</h3>
-            <button onclick="testarCoreLoading()">▶ Testar</button>
+            <button onclick="testarCoreLoading()">â¶ Testar</button>
             <div class="test-item">
                 <span class="status-pass" id="test1">AGUARDS</span>
                 <div class="test-description">Script session-manager-core.js carregado</div>
@@ -153,7 +153,7 @@
 
         <div class="test-section">
             <h3>2. localStorage Security</h3>
-            <button onclick="testarLocalStorage()">▶ Testar</button>
+            <button onclick="testarLocalStorage()">â¶ Testar</button>
             <div class="test-item">
                 <span class="status-pass" id="test2">AGUARDS</span>
                 <div class="test-description">localStorage contém apenas campos seguros</div>
@@ -163,7 +163,7 @@
 
         <div class="test-section">
             <h3>3. Event Listeners</h3>
-            <button onclick="testarEvents()">▶ Testar</button>
+            <button onclick="testarEvents()">â¶ Testar</button>
             <div class="test-item">
                 <span class="status-pass" id="test3">AGUARDS</span>
                 <div class="test-description">Eventos sessionRenewed e sessionExpired registrados</div>
@@ -172,7 +172,7 @@
 
         <div class="test-section">
             <h3>4. Network Connectivity</h3>
-            <button onclick="testarNetwork()">▶ Testar</button>
+            <button onclick="testarNetwork()">â¶ Testar</button>
             <div class="test-item">
                 <span class="status-pass" id="test4">AGUARDS</span>
                 <div class="test-description">Detecta online/offline e isOnline flag</div>
@@ -181,7 +181,7 @@
 
         <div class="test-section">
             <h3>5. Session State</h3>
-            <button onclick="testarSessionState()">▶ Testar</button>
+            <button onclick="testarSessionState()">â¶ Testar</button>
             <div class="console-output" id="session-output"></div>
             <div class="test-item">
                 <span class="status-pass" id="test5">AGUARDS</span>
@@ -206,18 +206,18 @@
                 <input type="checkbox"> 4. Botão "Sair" funciona e limpa session
             </label>
             <label>
-                <input type="checkbox"> 5. Múltiplas abas mantêm estado sincronizado
+                <input type="checkbox"> 5. Mºltiplas abas mantªm estado sincronizado
             </label>
             
             <h3>Network Performance</h3>
             <label>
-                <input type="checkbox"> 6. Network tab mostra ↓ 83% em requests (60 em vez de 360/hora)
+                <input type="checkbox"> 6. Network tab mostra â 83% em requests (60 em vez de 360/hora)
             </label>
             <label>
                 <input type="checkbox"> 7. Não há polling agressivo (check a cada 60s, não 10s)
             </label>
             <label>
-                <input type="checkbox"> 8. Requisições para /api/verificar_sessao_completa.php
+                <input type="checkbox"> 8. Requisiçµes para /api/verificar_sessao_completa.php
             </label>
             
             <h3>Offline Handling</h3>
@@ -236,7 +236,7 @@
                 <input type="checkbox"> 12. Contém APENAS: isAuthenticated (boolean), timestamp (number)
             </label>
             <label>
-                <input type="checkbox"> 13. NÃO contém: currentUser, sessionExpireTime, token, senha
+                <input type="checkbox"> 13. NO contém: currentUser, sessionExpireTime, token, senha
             </label>
             
             <h3>Error Handling</h3>
@@ -256,7 +256,7 @@
                     <ul>
                         <li>Polling: 10s interval</li>
                         <li>HTTP Requests: ~360/hora</li>
-                        <li>Logouts aleatórios: ≤ 85%</li>
+                        <li>Logouts aleatórios: â¤ 85%</li>
                         <li>localStorage: Sensível armazenado</li>
                     </ul>
                 </div>
@@ -264,7 +264,7 @@
                     <h4>DEPOIS (session-manager-core.js)</h4>
                     <ul>
                         <li>Verificação: 60s interval</li>
-                        <li>HTTP Requests: ~72/hora ✅</li>
+                        <li>HTTP Requests: ~72/hora â</li>
                         <li>Logouts aleatórios: 0%</li>
                         <li>localStorage: Apenas isAuth + time</li>
                     </ul>
@@ -278,8 +278,8 @@
             <p id="result-desc" style="color: #155724;"></p>
         </div>
 
-        <button onclick="executarTodosTestes()">🚀 Executar Testes Automáticos</button>
-        <button onclick="limparTestes()">🔄 Limpar Resultados</button>
+        <button onclick="executarTodosTestes()">ð Executar Testes Automáticos</button>
+        <button onclick="limparTestes()">ð Limpar Resultados</button>
     </div>
 
     <script>
@@ -291,14 +291,14 @@
             
             if (sessionManagerExists) {
                 status.className = 'status-pass';
-                status.textContent = '✅ PASS';
+                status.textContent = 'â PASS';
                 testResults['coreLoading'] = true;
-                addLog('✓ SessionManagerCore está disponível no escopo global');
+                addLog('â SessionManagerCore está disponível no escopo global');
             } else {
                 status.className = 'status-fail';
-                status.textContent = '❌ FAIL';
+                status.textContent = 'â FAIL';
                 testResults['coreLoading'] = false;
-                addLog('✗ SessionManagerCore NÃO está disponível');
+                addLog('â SessionManagerCore NO está disponível');
             }
         }
 
@@ -312,8 +312,8 @@
                 
                 if (!stored) {
                     status.className = 'status-warning';
-                    status.textContent = '⚠️  WARN';
-                    addLog('<span class="warning">⚠ localStorage vazio (usuário não autenticado?)</span>', output);
+                    status.textContent = 'â ï¸  WARN';
+                    addLog('<span class="warning">â  localStorage vazio (usuário não autenticado?)</span>', output);
                     testResults['localStorage'] = true;
                     return;
                 }
@@ -325,23 +325,23 @@
 
                 if (unsafeKeys.length === 0) {
                     status.className = 'status-pass';
-                    status.textContent = '✅ PASS';
+                    status.textContent = 'â PASS';
                     testResults['localStorage'] = true;
-                    addLog('<span class="success">✓ localStorage seguro</span>', output);
+                    addLog('<span class="success">â localStorage seguro</span>', output);
                     addLog(`Campos: ${keys.join(', ')}`, output);
                 } else {
                     status.className = 'status-fail';
-                    status.textContent = '❌ FAIL';
+                    status.textContent = 'â FAIL';
                     testResults['localStorage'] = false;
-                    addLog('<span class="error">✗ CAMPOS INSEGUROS ENCONTRADOS:</span>', output);
+                    addLog('<span class="error">â CAMPOS INSEGUROS ENCONTRADOS:</span>', output);
                     unsafeKeys.forEach(k => {
                         addLog(`  - ${k}: ${data[k]}`, output);
                     });
                 }
             } catch (e) {
                 status.className = 'status-fail';
-                status.textContent = '❌ ERROR';
-                addLog('<span class="error">✗ Erro ao ler localStorage: ' + e.message + '</span>', output);
+                status.textContent = 'â ERROR';
+                addLog('<span class="error">â Erro ao ler localStorage: ' + e.message + '</span>', output);
             }
         }
 
@@ -352,7 +352,7 @@
             
             if (!sessionManager) {
                 status.className = 'status-fail';
-                status.textContent = '❌ FAIL';
+                status.textContent = 'â FAIL';
                 return;
             }
 
@@ -364,13 +364,13 @@
 
             if (sessionManager.listenerCount && sessionManager.listenerCount('sessionRenewed') > 0) {
                 status.className = 'status-pass';
-                status.textContent = '✅ PASS';
+                status.textContent = 'â PASS';
                 testResults['events'] = true;
-                addLog('✓ Event listeners registrados corretamente');
+                addLog('â Event listeners registrados corretamente');
             } else {
                 status.className = 'status-warning';
-                status.textContent = '⚠️  WARN';
-                addLog('⚠ Event listeners presentes mas não testados');
+                status.textContent = 'â ï¸  WARN';
+                addLog('â  Event listeners presentes mas não testados');
             }
         }
 
@@ -379,7 +379,7 @@
             const isOnline = navigator.onLine;
             
             status.className = isOnline ? 'status-pass' : 'status-warning';
-            status.textContent = isOnline ? '✅ ONLINE' : '⚠️  OFFLINE';
+            status.textContent = isOnline ? 'â ONLINE' : 'â ï¸  OFFLINE';
             testResults['network'] = true;
             addLog('Status de rede: ' + (isOnline ? 'ONLINE' : 'OFFLINE'));
         }
@@ -393,8 +393,8 @@
             const sessionManager = window.sessionManager;
             if (!sessionManager) {
                 status.className = 'status-warning';
-                status.textContent = '⚠️  WARN';
-                addLog('<span class="warning">⚠ sessionManager não instanciado (usuário pode não estar logado)</span>', output);
+                status.textContent = 'â ï¸  WARN';
+                addLog('<span class="warning">â  sessionManager não instanciado (usuário pode não estar logado)</span>', output);
                 testResults['sessionState'] = true;
                 return;
             }
@@ -406,18 +406,18 @@
                     currentUser: sessionManager.currentUser?.email || 'N/A'
                 };
                 
-                addLog('<span class="success">✓ Estado da sessão:</span>', output);
+                addLog('<span class="success">â Estado da sessão:</span>', output);
                 addLog('  - isAuthenticated: ' + state.isAuthenticated, output);
                 addLog('  - isOnline: ' + state.isOnline, output);
                 addLog('  - Usuário: ' + state.currentUser, output);
                 
                 status.className = 'status-pass';
-                status.textContent = '✅ PASS';
+                status.textContent = 'â PASS';
                 testResults['sessionState'] = true;
             } catch (e) {
                 status.className = 'status-fail';
-                status.textContent = '❌ ERROR';
-                addLog('<span class="error">✗ Erro: ' + e.message + '</span>', output);
+                status.textContent = 'â ERROR';
+                addLog('<span class="error">â Erro: ' + e.message + '</span>', output);
             }
         }
 
@@ -440,7 +440,7 @@
             
             const allPass = passed === total;
             
-            title.textContent = allPass ? '✅ TODOS OS TESTES PASSARAM!' : `⚠️  ${passed}/${total} testes passaram`;
+            title.textContent = allPass ? 'â TODOS OS TESTES PASSARAM!' : `â ï¸  ${passed}/${total} testes passaram`;
             desc.textContent = allPass 
                 ? 'A migração foi bem-sucedida. Prossiga para validação manual.'
                 : 'Alguns testes falharam. Verifique os resultados acima.';

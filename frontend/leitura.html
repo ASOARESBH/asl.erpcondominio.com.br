@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -904,9 +904,9 @@
             const leituraAnterior = parseFloat(document.getElementById('ind_leitura_anterior').value) || 0;
             const leituraAtual = parseFloat(document.getElementById('ind_leitura_atual').value);
 
-            // ValidaÃ§Ã£o: Aceita leitura atual >= anterior OU quando anterior = 0 (primeira leitura)
+            // Valida§£o: Aceita leitura atual >= anterior OU quando anterior = 0 (primeira leitura)
             if (leituraAtual < leituraAnterior && leituraAnterior !== 0) {
-                mostrarAlerta(`Leitura atual (${leituraAtual}) nÃ£o pode ser menor que a leitura anterior (${leituraAnterior})`, 'error');
+                mostrarAlerta(`Leitura atual (${leituraAtual}) n£o pode ser menor que a leitura anterior (${leituraAnterior})`, 'error');
                 return;
             }
 

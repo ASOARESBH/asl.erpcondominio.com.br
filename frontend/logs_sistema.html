@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -474,7 +474,7 @@
             <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i>
                     Relatórios</a></li>
             <li class="nav-item"><a href="configuracao.html" class="nav-link active"><i class="fas fa-cog"></i>
-                    Configurações</a></li>
+                    Configuraçµes</a></li>
             <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i> Manutenção</a>
             </li>
             <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i>
@@ -485,7 +485,7 @@
     <main class="main-content">
         <header class="header">
             <h1><i class="fas fa-clipboard-list"></i> Logs do Sistema - Auditoria e Monitoramento</h1>
-            <p style="color: #64748b; margin-top: 0.5rem;">Visualize e analise todos os eventos, ações e erros
+            <p style="color: #64748b; margin-top: 0.5rem;">Visualize e analise todos os eventos, açµes e erros
                 registrados no sistema</p>
         </header>
 
@@ -614,7 +614,7 @@
             carregarLogs();
             carregarEstatisticas();
 
-            // Definir data padrão (últimos 30 dias)
+            // Definir data padrão (ºltimos 30 dias)
             const hoje = new Date();
             const trintaDiasAtras = new Date(hoje.getTime() - (30 * 24 * 60 * 60 * 1000));
             document.getElementById('filtroDataInicio').value = trintaDiasAtras.toISOString().split('T')[0];
@@ -855,7 +855,7 @@
 
             const diasInt = parseInt(dias);
             if (isNaN(diasInt) || diasInt < 30) {
-                mostrarAlerta('error', 'Número de dias inválido. Mínimo: 30 dias');
+                mostrarAlerta('error', 'Nºmero de dias inválido. Mínimo: 30 dias');
                 return;
             }
 

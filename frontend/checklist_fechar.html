@@ -17,7 +17,7 @@
             <h1>Serra da Liberdade</h1>
             <ul class="nav-menu">
                 <li class="nav-item"><a href="manutencao.html" class="nav-link active"><i class="fas fa-tools"></i>
-                        Manutenção</a></li>
+                        ManutenÃ§Ã£o</a></li>
             </ul>
         </nav>
         <main class="main-content">
@@ -36,11 +36,11 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Veículo</th>
+                            <th>VeÃ­culo</th>
                             <th>Operador</th>
                             <th>KM Inicial</th>
                             <th>Data Abertura</th>
-                            <th>Ações</th>
+                            <th>AÃ§Âµes</th>
                         </tr>
                     </thead>
                     <tbody id="corpoTabela"></tbody>
@@ -55,7 +55,7 @@
                         <div><label>Data/Hora Fechamento *</label><input type="datetime-local" id="dataHoraFechamento"
                                 required></div>
                     </div>
-                    <div><label>Observações Finais</label><textarea id="observacaoFechamento"></textarea></div>
+                    <div><label>ObservaÃ§Âµes Finais</label><textarea id="observacaoFechamento"></textarea></div>
                     <h3>Preencher Itens de Fechamento</h3>
                     <div id="itensChecklist"></div>
                     <button type="submit" class="btn-success"><i class="fas fa-check"></i> Finalizar Checklist</button>
@@ -111,9 +111,9 @@
             const container = document.getElementById('itensChecklist');
             container.innerHTML = itens.map((item, idx) => {
                 if (item.tipo_item === 'nivel') {
-                    return `<div class="checklist-item"><h4>${idx + 1}. ${item.nome_item} (Abertura: ${item.valor_abertura})</h4><div class="radio-group"><label><input type="radio" name="item_${item.categoria}" value="minimo" required> Mínimo</label><label><input type="radio" name="item_${item.categoria}" value="medio"> Médio</label><label><input type="radio" name="item_${item.categoria}" value="maximo"> Máximo</label></div></div>`;
+                    return `<div class="checklist-item"><h4>${idx + 1}. ${item.nome_item} (Abertura: ${item.valor_abertura})</h4><div class="radio-group"><label><input type="radio" name="item_${item.categoria}" value="minimo" required> MÃ­nimo</label><label><input type="radio" name="item_${item.categoria}" value="medio"> MÃ©dio</label><label><input type="radio" name="item_${item.categoria}" value="maximo"> MÃ¡ximo</label></div></div>`;
                 } else {
-                    return `<div class="checklist-item"><h4>${idx + 1}. ${item.nome_item} (Abertura: ${item.valor_abertura})</h4><div class="radio-group"><label><input type="radio" name="item_${item.categoria}" value="sim" required> Sim</label><label><input type="radio" name="item_${item.categoria}" value="nao"> Não</label></div></div>`;
+                    return `<div class="checklist-item"><h4>${idx + 1}. ${item.nome_item} (Abertura: ${item.valor_abertura})</h4><div class="radio-group"><label><input type="radio" name="item_${item.categoria}" value="sim" required> Sim</label><label><input type="radio" name="item_${item.categoria}" value="nao"> NÃ£o</label></div></div>`;
                 }
             }).join('');
         }

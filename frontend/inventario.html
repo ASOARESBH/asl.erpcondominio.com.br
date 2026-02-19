@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -416,7 +416,7 @@
             <li class="nav-item"><a href="financeiro.html" class="nav-link"><i class="fas fa-money-bill-wave"></i>
                     Financeiro</a></li>
             <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i>
-                    Configurações</a></li>
+                    Configuraçµes</a></li>
             <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i> Manutenção</a>
             </li>
             <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i>
@@ -455,12 +455,12 @@
             <div class="search-section">
                 <div class="search-grid">
                     <div class="form-group">
-                        <label>Número Patrimônio</label>
+                        <label>Nºmero Patrimônio</label>
                         <input type="text" id="filtroNumeroPatrimonio" placeholder="Ex: PAT-001">
                     </div>
                     <div class="form-group">
                         <label>NF</label>
-                        <input type="text" id="filtroNF" placeholder="Número da NF">
+                        <input type="text" id="filtroNF" placeholder="Nºmero da NF">
                     </div>
                     <div class="form-group">
                         <label>Situação</label>
@@ -503,7 +503,7 @@
                 <input type="hidden" id="itemId">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Número Patrimônio *</label>
+                        <label>Nºmero Patrimônio *</label>
                         <input type="text" id="numeroPatrimonio" required placeholder="Ex: PAT-001">
                     </div>
                     <div class="form-group">
@@ -519,12 +519,12 @@
                         <input type="text" id="modelo" placeholder="Ex: Inspiron 15">
                     </div>
                     <div class="form-group">
-                        <label>Número de Série</label>
+                        <label>Nºmero de Série</label>
                         <input type="text" id="numeroSerie" placeholder="Ex: SN123456789">
                     </div>
                     <div class="form-group">
                         <label>NF</label>
-                        <input type="text" id="nf" placeholder="Número da Nota Fiscal">
+                        <input type="text" id="nf" placeholder="Nºmero da Nota Fiscal">
                     </div>
                     <div class="form-group">
                         <label>Data de Compra</label>
@@ -568,10 +568,10 @@
                     <textarea id="motivoBaixa" placeholder="Descreva o motivo da baixa do patrimônio"></textarea>
                 </div>
 
-                <!-- Observações -->
+                <!-- Observaçµes -->
                 <div class="form-group" style="margin-top: 1rem;">
-                    <label>Observações</label>
-                    <textarea id="observacoes" placeholder="Informações adicionais sobre o item"></textarea>
+                    <label>Observaçµes</label>
+                    <textarea id="observacoes" placeholder="Informaçµes adicionais sobre o item"></textarea>
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
@@ -601,7 +601,7 @@
                             <th>Valor</th>
                             <th>Status</th>
                             <th>Responsável</th>
-                            <th>Ações</th>
+                            <th>Açµes</th>
                         </tr>
                     </thead>
                     <tbody id="tabelaInventario">
@@ -894,7 +894,7 @@
             }
         });
         // ========== LOGOUT REMOVIDO - Centralizado em SessionManagerCore via sidebar-controller.js ==========
-        // Logout agora é único ponto de entrada: sidebar-controller.js ? SessionManagerCore.getInstance().logout()
+        // Logout agora é ºnico ponto de entrada: sidebar-controller.js ? SessionManagerCore.getInstance().logout()
     </script>
 
     <!-- Proteção de Login -->
@@ -908,7 +908,7 @@
 
             const CONFIG = {
                 apiUrl: '../api/api_usuario_logado.php',
-                // ? CORRIGIDO: Removido updateInterval de 1s — usar SessionManager Singleton
+                // ? CORRIGIDO: Removido updateInterval de 1s â usar SessionManager Singleton
                 warningThreshold: 300,
                 autoRenewThreshold: 600,
                 enableAutoRenew: true

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -532,7 +532,7 @@
             </div>
             <div class="stat-card">
                 <h3 id="stat-validacoes">0</h3>
-                <p>Validações Hoje</p>
+                <p>Validaçµes Hoje</p>
             </div>
             <div class="stat-card">
                 <h3 id="stat-sucesso">0</h3>
@@ -557,10 +557,10 @@
                         <th>Token</th>
                         <th>Localização</th>
                         <th>Responsável</th>
-                        <th>Último Acesso</th>
+                        <th>ltimo Acesso</th>
                         <th>Total Acessos</th>
                         <th>Status</th>
-                        <th>Ações</th>
+                        <th>Açµes</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -577,7 +577,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modal-title">?? Novo Dispositivo</h2>
-                <button class="btn-close" onclick="fecharModal()">×</button>
+                <button class="btn-close" onclick="fecharModal()"></button>
             </div>
 
             <form id="form-dispositivo">
@@ -617,7 +617,7 @@
 
                 <div class="form-group">
                     <label>Observação</label>
-                    <textarea id="observacao" placeholder="Informações adicionais sobre o dispositivo"></textarea>
+                    <textarea id="observacao" placeholder="Informaçµes adicionais sobre o dispositivo"></textarea>
                 </div>
 
                 <div class="form-actions">
@@ -637,7 +637,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>?? Dispositivo Cadastrado com Sucesso!</h2>
-                <button class="btn-close" onclick="fecharModalToken()">×</button>
+                <button class="btn-close" onclick="fecharModalToken()"></button>
             </div>
 
             <div class="token-display">
@@ -645,7 +645,7 @@
                 <div class="token-value" id="generated-token">-</div>
                 <p class="token-info">
                     ?? <strong>IMPORTANTE:</strong> Anote este token em local seguro!<br>
-                    Você precisará digitá-lo no dispositivo para configurá-lo.<br>
+                    Vocª precisará digitá-lo no dispositivo para configurá-lo.<br>
                     Este token não será exibido novamente.
                 </p>
                 <button class="btn-copy" onclick="copiarToken()">
@@ -822,7 +822,7 @@
         function copiarToken() {
             const token = document.getElementById('generated-token').textContent;
             navigator.clipboard.writeText(token).then(() => {
-                mostrarAlerta('success', 'Token copiado para a área de transferência!');
+                mostrarAlerta('success', 'Token copiado para a área de transferªncia!');
             });
         }
 

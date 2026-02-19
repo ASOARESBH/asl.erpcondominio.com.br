@@ -307,7 +307,7 @@
         <div class="step-indicator">
             <div class="step-item active" id="indicator-1">
                 <div class="step-number">1</div>
-                <div class="step-label">ValidaÁ„o</div>
+                <div class="step-label">Valida√ß√£o</div>
             </div>
             <div class="step-item" id="indicator-2">
                 <div class="step-number">2</div>
@@ -315,11 +315,11 @@
             </div>
             <div class="step-item" id="indicator-3">
                 <div class="step-number">3</div>
-                <div class="step-label">ConfirmaÁ„o</div>
+                <div class="step-label">Confirma√ß√£o</div>
             </div>
         </div>
         
-        <!-- PASSO 1: ValidaÁ„o do Token -->
+        <!-- PASSO 1: Valida√ß√£o do Token -->
         <div class="step active" id="step-1">
             <div class="loading">
                 <div class="spinner"></div>
@@ -330,17 +330,17 @@
         <!-- PASSO 2: Captura de Face -->
         <div class="step" id="step-2">
             <div class="info-box">
-                <h3>?? InstruÁıes para Captura</h3>
+                <h3>?? Instru√ß¬µes para Captura</h3>
                 <p>
-                    ï Posicione seu rosto dentro do contorno<br>
-                    ï Mantenha boa iluminaÁ„o<br>
-                    ï Olhe diretamente para a c‚mera<br>
-                    ï Aguarde a detecÁ„o autom·tica
+                    ¬ï Posicione seu rosto dentro do contorno<br>
+                    ¬ï Mantenha boa ilumina√ß√£o<br>
+                    ¬ï Olhe diretamente para a c√¢mera<br>
+                    ¬ï Aguarde a detec√ß√£o autom√°tica
                 </p>
             </div>
             
             <div class="visitor-info" id="visitor-info">
-                <!-- Ser· preenchido via JavaScript -->
+                <!-- Ser√° preenchido via JavaScript -->
             </div>
             
             <div id="status" class="status detecting" style="display: none;">
@@ -354,7 +354,7 @@
             </div>
             
             <button class="btn btn-primary" id="btn-iniciar-camera">
-                ?? Iniciar C‚mera
+                ?? Iniciar C√¢mera
             </button>
             
             <button class="btn btn-success" id="btn-capturar" style="display: none;" disabled>
@@ -368,22 +368,22 @@
             
             <div class="alert alert-success">
                 <h3 style="margin-bottom: 10px;">Face ID Cadastrado com Sucesso!</h3>
-                <p>Seu reconhecimento facial foi registrado e j· est· ativo para acesso.</p>
+                <p>Seu reconhecimento facial foi registrado e j√° est√° ativo para acesso.</p>
             </div>
             
             <div class="visitor-info" id="visitor-info-final">
-                <!-- Ser· preenchido via JavaScript -->
+                <!-- Ser√° preenchido via JavaScript -->
             </div>
             
             <p style="text-align: center; color: #666; margin-top: 20px;">
-                VocÍ pode fechar esta p·gina agora.
+                Voc¬™ pode fechar esta p√°gina agora.
             </p>
         </div>
     </div>
     
     <script>
         // ========================================
-        // VARI¡VEIS GLOBAIS
+        // VARI¬ÅVEIS GLOBAIS
         // ========================================
         let token = '';
         let visitanteData = null;
@@ -409,7 +409,7 @@
             token = obterToken();
             
             if (!token) {
-                mostrarErro('Link inv·lido. Token n„o encontrado.');
+                mostrarErro('Link inv√°lido. Token n√£o encontrado.');
                 return;
             }
             
@@ -466,7 +466,7 @@
                 }
             });
             
-            // Preencher informaÁıes do visitante
+            // Preencher informa√ß¬µes do visitante
             if (numero === 2 && visitanteData) {
                 document.getElementById('visitor-info').innerHTML = `
                     <p><strong>Visitante:</strong> ${visitanteData.visitante_nome}</p>
@@ -502,7 +502,7 @@
         }
         
         // ========================================
-        // INICIAR C¬MERA
+        // INICIAR C¬ÇMERA
         // ========================================
         async function iniciarCamera() {
             try {
@@ -510,7 +510,7 @@
                 
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'user', // C‚mera frontal
+                        facingMode: 'user', // C√¢mera frontal
                         width: { ideal: 640 },
                         height: { ideal: 480 }
                     }
@@ -518,7 +518,7 @@
                 
                 video.srcObject = stream;
                 
-                // Aguardar vÌdeo carregar
+                // Aguardar v√≠deo carregar
                 await new Promise(resolve => {
                     video.onloadedmetadata = () => {
                         resolve();
@@ -529,20 +529,20 @@
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 
-                console.log('[CAMERA] C‚mera iniciada');
+                console.log('[CAMERA] C√¢mera iniciada');
                 
-                // Esconder bot„o de iniciar
+                // Esconder bot√£o de iniciar
                 document.getElementById('btn-iniciar-camera').style.display = 'none';
                 
                 // Mostrar status
                 document.getElementById('status').style.display = 'block';
                 
-                // Iniciar detecÁ„o
+                // Iniciar detec√ß√£o
                 detectarFace();
                 
             } catch (error) {
                 console.error('[CAMERA] Erro:', error);
-                alert('Erro ao acessar c‚mera. Verifique as permissıes.');
+                alert('Erro ao acessar c√¢mera. Verifique as permiss¬µes.');
             }
         }
         
@@ -559,7 +559,7 @@
                 .withFaceDescriptor();
             
             if (deteccao) {
-                // Desenhar detecÁ„o no canvas
+                // Desenhar detec√ß√£o no canvas
                 const dims = faceapi.matchDimensions(canvas, video, true);
                 const resizedDetection = faceapi.resizeResults(deteccao, dims);
                 
@@ -580,7 +580,7 @@
                     btnCapturar.disabled = false;
                 }
             } else {
-                // Face n„o detectada
+                // Face n√£o detectada
                 if (faceDetected) {
                     console.log('[FACE-API] Rosto perdido');
                     faceDetected = false;
@@ -595,7 +595,7 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
             
-            // Continuar detecÁ„o
+            // Continuar detec√ß√£o
             requestAnimationFrame(detectarFace);
         }
         
@@ -610,7 +610,7 @@
             
             console.log('[FACE-API] Capturando Face ID...');
             
-            // Desabilitar bot„o
+            // Desabilitar bot√£o
             const btnCapturar = document.getElementById('btn-capturar');
             btnCapturar.disabled = true;
             btnCapturar.textContent = '? Enviando...';
@@ -642,7 +642,7 @@
                 if (result.sucesso) {
                     console.log('[FACE-API] Face ID cadastrado com sucesso');
                     
-                    // Parar c‚mera
+                    // Parar c√¢mera
                     if (stream) {
                         stream.getTracks().forEach(track => track.stop());
                     }
@@ -663,10 +663,10 @@
         }
         
         // ========================================
-        // INICIALIZA«√O
+        // INICIALIZA¬á¬ÉO
         // ========================================
         window.addEventListener('DOMContentLoaded', async () => {
-            console.log('[INIT] Iniciando aplicaÁ„o...');
+            console.log('[INIT] Iniciando aplica√ß√£o...');
             
             // Obter elementos
             video = document.getElementById('video');

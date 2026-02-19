@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -363,7 +363,7 @@
                 <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i>
                         Relatórios</a></li>
                 <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i>
-                        Configurações</a></li>
+                        Configuraçµes</a></li>
                 <li class="nav-item"><a href="manutencao.html" class="nav-link active"><i class="fas fa-tools"></i>
                         Manutenção</a></li>
                 <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i>
@@ -384,9 +384,9 @@
 
             <div id="alertaMsg"></div>
 
-            <!-- Informações do Checklist -->
+            <!-- Informaçµes do Checklist -->
             <div class="info-box" id="infoChecklist">
-                <h3><i class="fas fa-car"></i> Carregando informações...</h3>
+                <h3><i class="fas fa-car"></i> Carregando informaçµes...</h3>
             </div>
 
             <!-- Formulário de Itens -->
@@ -397,7 +397,7 @@
                     <h3><i class="fas fa-oil-can"></i> Itens com Níveis</h3>
 
                     <div class="checklist-item">
-                        <h4>1. Nível do Óleo do Motor</h4>
+                        <h4>1. Nível do leo do Motor</h4>
                         <div class="radio-group">
                             <div class="radio-option">
                                 <input type="radio" id="oleo_min" name="nivel_oleo" value="minimo" required>
@@ -418,7 +418,7 @@
                     </div>
 
                     <div class="checklist-item">
-                        <h4>2. Nível da Água do Radiador</h4>
+                        <h4>2. Nível da gua do Radiador</h4>
                         <div class="radio-group">
                             <div class="radio-option">
                                 <input type="radio" id="agua_min" name="nivel_agua" value="minimo" required>
@@ -605,7 +605,7 @@
                     </div>
 
                     <div class="checklist-item">
-                        <h4>12. Extintor de Incêndio (válido e no local)?</h4>
+                        <h4>12. Extintor de Incªndio (válido e no local)?</h4>
                         <div class="radio-group">
                             <div class="radio-option">
                                 <input type="radio" id="extintor_sim" name="extintor" value="sim" required>
@@ -688,8 +688,8 @@
             e.preventDefault();
 
             const itens = [
-                { tipo_item: 'nivel', nome_item: 'Nível do Óleo', categoria: 'nivel_oleo', valor_abertura: document.querySelector('input[name="nivel_oleo"]:checked').value },
-                { tipo_item: 'nivel', nome_item: 'Nível da Água', categoria: 'nivel_agua', valor_abertura: document.querySelector('input[name="nivel_agua"]:checked').value },
+                { tipo_item: 'nivel', nome_item: 'Nível do leo', categoria: 'nivel_oleo', valor_abertura: document.querySelector('input[name="nivel_oleo"]:checked').value },
+                { tipo_item: 'nivel', nome_item: 'Nível da gua', categoria: 'nivel_agua', valor_abertura: document.querySelector('input[name="nivel_agua"]:checked').value },
                 { tipo_item: 'nivel', nome_item: 'Pneu Dianteiro Esquerdo', categoria: 'pneu_dianteiro_esq', valor_abertura: document.querySelector('input[name="pneu_dianteiro_esq"]:checked').value },
                 { tipo_item: 'nivel', nome_item: 'Pneu Dianteiro Direito', categoria: 'pneu_dianteiro_dir', valor_abertura: document.querySelector('input[name="pneu_dianteiro_dir"]:checked').value },
                 { tipo_item: 'nivel', nome_item: 'Pneu Traseiro Esquerdo', categoria: 'pneu_traseiro_esq', valor_abertura: document.querySelector('input[name="pneu_traseiro_esq"]:checked').value },
@@ -699,7 +699,7 @@
                 { tipo_item: 'funcional', nome_item: 'Luzes de Freio', categoria: 'luzes_freio', valor_abertura: document.querySelector('input[name="luzes_freio"]:checked').value },
                 { tipo_item: 'funcional', nome_item: 'Cintos de Segurança', categoria: 'cintos', valor_abertura: document.querySelector('input[name="cintos"]:checked').value },
                 { tipo_item: 'funcional', nome_item: 'Limpadores de Para-brisa', categoria: 'limpadores', valor_abertura: document.querySelector('input[name="limpadores"]:checked').value },
-                { tipo_item: 'funcional', nome_item: 'Extintor de Incêndio', categoria: 'extintor', valor_abertura: document.querySelector('input[name="extintor"]:checked').value }
+                { tipo_item: 'funcional', nome_item: 'Extintor de Incªndio', categoria: 'extintor', valor_abertura: document.querySelector('input[name="extintor"]:checked').value }
             ];
 
             const formData = new FormData();

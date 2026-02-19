@@ -333,7 +333,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📋 Meus Pedidos</h1>
+            <h1>ð Meus Pedidos</h1>
             <p>Gerencie os pedidos dos moradores</p>
         </div>
 
@@ -366,7 +366,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Detalhes do Pedido</h2>
-                <button class="modal-close" onclick="fecharModal('modalDetalhes')">✕</button>
+                <button class="modal-close" onclick="fecharModal('modalDetalhes')">â</button>
             </div>
 
             <div id="detalhesPedido"></div>
@@ -384,7 +384,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Recusar Pedido</h2>
-                <button class="modal-close" onclick="fecharModal('modalRecusar')">✕</button>
+                <button class="modal-close" onclick="fecharModal('modalRecusar')">â</button>
             </div>
 
             <form id="formRecusar" onsubmit="confirmarRecusa(event)">
@@ -412,7 +412,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Avaliar Pedido</h2>
-                <button class="modal-close" onclick="fecharModal('modalAvaliar')">✕</button>
+                <button class="modal-close" onclick="fecharModal('modalAvaliar')">â</button>
             </div>
 
             <form id="formAvaliacao" onsubmit="salvarAvaliacao(event)">
@@ -421,11 +421,11 @@
                 <div class="form-group">
                     <label>Nota (1-5 estrelas) *</label>
                     <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <label><input type="radio" name="nota" value="1"> ⭐</label>
-                        <label><input type="radio" name="nota" value="2"> ⭐⭐</label>
-                        <label><input type="radio" name="nota" value="3"> ⭐⭐⭐</label>
-                        <label><input type="radio" name="nota" value="4"> ⭐⭐⭐⭐</label>
-                        <label><input type="radio" name="nota" value="5"> ⭐⭐⭐⭐⭐</label>
+                        <label><input type="radio" name="nota" value="1"> â­</label>
+                        <label><input type="radio" name="nota" value="2"> â­â­</label>
+                        <label><input type="radio" name="nota" value="3"> â­â­â­</label>
+                        <label><input type="radio" name="nota" value="4"> â­â­â­â­</label>
+                        <label><input type="radio" name="nota" value="5"> â­â­â­â­â­</label>
                     </div>
                 </div>
 
@@ -499,7 +499,7 @@
                 if (pedidos.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-icon">📋</div>
+                            <div class="empty-state-icon">ð</div>
                             <p>Nenhum pedido encontrado</p>
                         </div>
                     `;
@@ -507,7 +507,7 @@
                 }
 
                 let html = '<table><thead><tr>';
-                html += '<th>ID</th><th>Morador</th><th>Produto</th><th>Valor</th><th>Status</th><th>Data</th><th>Ações</th>';
+                html += '<th>ID</th><th>Morador</th><th>Produto</th><th>Valor</th><th>Status</th><th>Data</th><th>Açµes</th>';
                 html += '</tr></thead><tbody>';
 
                 pedidos.forEach(pedido => {
@@ -549,7 +549,7 @@
         }
 
         async function verDetalhePedido(pedidoId) {
-            // Aqui você poderia carregar detalhes do pedido
+            // Aqui vocª poderia carregar detalhes do pedido
             mostrarAlerta('Detalhes do pedido #' + pedidoId, 'info');
         }
 
