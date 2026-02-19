@@ -1,0 +1,121 @@
+﻿<!-- Page Metadata -->
+<div id="page-metadata" data-title="Registro Manual" data-icon="fa-clipboard-list" style="display:none;"></div>
+
+<div class="page-wrapper page-registro">
+    <div class="page-header">
+        <h1>Registro Manual</h1>
+        <p>Lancamento manual de entradas e saidas de acesso</p>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <div class="page-card">
+        <h2>Registrar Acesso</h2>
+
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <strong>Registro Manual:</strong> use para visitantes, prestadores ou morador sem leitura automatica.
+        </div>
+
+        <div id="veiculoEncontrado" class="veiculo-encontrado" style="display:none;"></div>
+
+        <form id="registroForm">
+            <input type="hidden" id="moradorId">
+            <input type="hidden" id="veiculoId">
+
+            <div class="form-grid">
+                <div>
+                    <label>Data e Hora *</label>
+                    <input type="datetime-local" id="dataHoraRegistro" required>
+                </div>
+                <div>
+                    <label>Placa *</label>
+                    <input type="text" id="placaRegistro" maxlength="8" required placeholder="ABC1D23">
+                </div>
+                <div>
+                    <label>Tipo *</label>
+                    <select id="tipoRegistro" required>
+                        <option value="">Selecione...</option>
+                        <option value="Morador">Morador</option>
+                        <option value="Visitante">Visitante</option>
+                        <option value="Prestador">Prestador</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div>
+                    <label>Modelo</label>
+                    <input type="text" id="modeloRegistro" placeholder="Ex: Corolla">
+                </div>
+                <div>
+                    <label>Cor</label>
+                    <input type="text" id="corRegistro" placeholder="Ex: Prata">
+                </div>
+                <div>
+                    <label>Observacao</label>
+                    <input type="text" id="observacaoRegistro" placeholder="Observacoes adicionais">
+                </div>
+            </div>
+
+            <div id="extraCampos" class="form-grid" style="display:none;">
+                <div>
+                    <label>Nome do Visitante/Prestador</label>
+                    <input type="text" id="nomeVisitanteRegistro" placeholder="Nome completo">
+                </div>
+                <div>
+                    <label>Unidade de Destino</label>
+                    <input type="text" id="unidadeDestinoRegistro" placeholder="Ex: Gleba 93">
+                </div>
+                <div>
+                    <label>Dias de Permanencia</label>
+                    <input type="number" id="diasPermanenciaRegistro" min="1" placeholder="Ex: 1">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary-modern" id="btnSalvarRegistro">
+                    <i class="fas fa-save"></i> Registrar Acesso
+                </button>
+                <button type="button" class="btn-secondary-modern" id="btnLimparRegistro">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="page-card">
+        <h2>Registros Recentes</h2>
+
+        <div class="search-box">
+            <input type="text" id="buscaRegistro" placeholder="Pesquisar por placa, nome, tipo, status ou unidade...">
+            <button class="btn-primary-modern" type="button" id="btnBuscarRegistro">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+        </div>
+
+        <div id="loadingRegistros" class="loading" style="display:none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Carregando registros...</p>
+        </div>
+
+        <div class="table-container">
+            <table id="tabelaRegistros">
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Placa</th>
+                        <th>Modelo</th>
+                        <th>Cor</th>
+                        <th>Tipo</th>
+                        <th>Nome</th>
+                        <th>Unidade</th>
+                        <th>Status</th>
+                        <th>Acoes</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>

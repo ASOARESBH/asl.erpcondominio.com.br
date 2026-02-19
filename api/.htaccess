@@ -1,0 +1,21 @@
+# API .htaccess
+Options -Indexes
+
+# Permitir CORS
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header set Access-Control-Allow-Credentials "true"
+
+# Não mostrar erros PHP para o usuário
+php_flag display_errors off
+php_value error_reporting E_ALL
+php_flag log_errors on
+
+# Header de conteúdo JSON por padrão
+Header set Content-Type "application/json; charset=utf-8"
+
+# Tratar requisições OPTIONS para CORS (sintaxe correcta)
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} ^OPTIONS$
+RewriteRule ^ - [L]

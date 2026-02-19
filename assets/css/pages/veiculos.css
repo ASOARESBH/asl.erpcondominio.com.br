@@ -1,0 +1,308 @@
+﻿/*
+|--------------------------------------------------------------------------
+| PAGE-SPECIFIC STYLES ONLY - VEICULOS
+|--------------------------------------------------------------------------
+| Allowed:
+| - Internal layouts
+| - Form styles
+| - Table styles
+| - Buttons and page interactions
+| Forbidden:
+| - Redefining .page-wrapper, .page-header, .page-card, .sidebar, .main-content
+|--------------------------------------------------------------------------
+*/
+
+.page-veiculos .page-header {
+    margin-bottom: 30px;
+}
+
+.page-veiculos .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.page-veiculos label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 8px;
+}
+
+.page-veiculos input,
+.page-veiculos select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #1e293b;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.page-veiculos input:focus,
+.page-veiculos select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.page-veiculos .form-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.page-veiculos .dependentes-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.page-veiculos .btn-dependentes {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.page-veiculos .dependentes-status {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.page-veiculos .dependentes-panel {
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 1.5rem;
+}
+
+.page-veiculos .dependentes-panel h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #1e3a8a;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.page-veiculos .vinculo-options {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.page-veiculos .vinculo-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #334155;
+}
+
+.page-veiculos .dependente-select-wrap {
+    margin-top: 12px;
+}
+
+.page-veiculos .btn-primary-modern {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.page-veiculos .btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+    filter: brightness(1.1);
+}
+
+.page-veiculos .btn-primary-modern:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.page-veiculos .btn-secondary-modern {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 12px 20px;
+    color: #334155;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-veiculos .btn-secondary-modern:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.page-veiculos .search-box {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+    background: #f1f5f9;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.page-veiculos .search-box input {
+    flex: 1;
+    background: #ffffff;
+}
+
+.page-veiculos .table-container {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.page-veiculos table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.page-veiculos thead {
+    background: linear-gradient(90deg, #1e3a8a, #2563eb);
+}
+
+.page-veiculos th {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 15px 20px;
+    text-align: left;
+}
+
+.page-veiculos td {
+    padding: 16px 20px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 14px;
+}
+
+.page-veiculos tbody tr {
+    transition: background 0.2s ease;
+}
+
+.page-veiculos tbody tr:hover {
+    background: rgba(37, 99, 235, 0.04);
+}
+
+.page-veiculos tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.page-veiculos .plate-badge {
+    display: inline-block;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.page-veiculos .tag-code {
+    display: inline-block;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+.page-veiculos .action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 6px;
+}
+
+.page-veiculos .action-btn i {
+    font-size: 14px;
+}
+
+.page-veiculos .action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+.page-veiculos .action-btn.edit:hover {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+}
+
+.page-veiculos .action-btn.delete:hover {
+    background: #fef2f2;
+    color: #ef4444;
+    border-color: #fecaca;
+}
+
+.page-veiculos .empty-state {
+    text-align: center;
+    opacity: 0.7;
+    padding: 2rem;
+}
+
+.page-veiculos .loading {
+    padding: 30px;
+    text-align: center;
+    color: #3b82f6;
+}
+
+.page-veiculos .loading i {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+    .page-veiculos .search-box {
+        flex-direction: column;
+    }
+
+    .page-veiculos .dependentes-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .page-veiculos th,
+    .page-veiculos td {
+        padding: 12px;
+        font-size: 12px;
+    }
+}

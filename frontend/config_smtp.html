@@ -1,0 +1,297 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração SMTP - Sistema</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; }
+        .container { display: flex; min-height: 100vh; }
+        .sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 2rem 0; overflow-y: auto; z-index: 1000; transition: transform 0.3s; }
+        .sidebar h1 { color: #fff; font-size: 1.3rem; text-align: center; margin-bottom: 2rem; }
+        .nav-menu { list-style: none; padding: 1rem; }
+        .nav-item { margin-bottom: 0.5rem; }
+        .nav-link { display: flex; align-items: center; padding: 0.75rem 1rem; color: #cbd5e1; text-decoration: none; border-radius: 8px; transition: all 0.2s; }
+        .nav-link:hover, .nav-link.active { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .nav-link i { margin-right: 0.75rem; width: 20px; }
+        .menu-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: #1e293b; color: #fff; border: none; padding: 0.75rem; border-radius: 8px; cursor: pointer; }
+        .main-content { margin-left: 260px; padding: 2rem; width: 100%; transition: margin-left 0.3s; }
+        .header { background: #fff; padding: 1.5rem 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+        .config-submenu { background: #fff; padding: 1rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+        .config-submenu ul { list-style: none; display: flex; gap: 1rem; flex-wrap: wrap; }
+        .config-submenu a { display: inline-block; padding: 0.75rem 1.5rem; background: #f1f5f9; color: #334155; text-decoration: none; border-radius: 8px; transition: 0.2s; }
+        .config-submenu a:hover, .config-submenu a.active { background: #3b82f6; color: #fff; }
+        .section { background: #fff; padding: 2rem; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+        .section h2 { margin-bottom: 1.5rem; color: #1e293b; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #334155; }
+        input, select, textarea { width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 8px; font-family: inherit; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        textarea { min-height: 200px; font-family: monospace; }
+        button { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; padding: 0.6rem 1.5rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; margin-right: 0.5rem; }
+        button:hover { opacity: 0.9; }
+        .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .alert-success { background: #dcfce7; color: #166534; border: 1px solid #22c55e; }
+        .alert-error { background: #fee2e2; color: #b91c1c; border: 1px solid #f87171; }
+        .info-box { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .code-block { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; overflow-x: auto; }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.active { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .main-content { margin-left: 0; padding: 1rem; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <script src="js/session-manager-core.js"></script>
+</head>
+<body>
+    <button class="menu-toggle" onclick="toggleMenu()">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <div class="main-container">
+        <nav class="sidebar" id="sidebar">
+            <h1>Serra da Liberdade</h1>
+            <ul class="nav-menu">
+                <li class="nav-item"><a href="dashboard.html" class="nav-link"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                <li class="nav-item"><a href="moradores.html" class="nav-link"><i class="fas fa-users"></i> Moradores</a></li>
+                <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i> Veículos</a></li>
+                <li class="nav-item"><a href="layout-base.html?page=visitantes" class="nav-link"><i class="fas fa-user-friends"></i> Visitantes</a></li>
+                <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i class="fas fa-clipboard-list"></i> Registro Manual</a></li>
+                <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i class="fas fa-door-open"></i> Controle de Acesso</a></li>
+                <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i> Relatórios</a></li>
+                <li class="nav-item"><a href="configuracao.html" class="nav-link active"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i> Manutenção</a></li>
+                <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i> Administrativo</a></li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <header class="header">
+                <h1><i class="fas fa-envelope"></i> Configuração de E-mail (SMTP)</h1>
+            </header>
+
+            <nav class="config-submenu">
+                <ul>
+                    <li><a href="configuracao.html"><i class="fas fa-arrow-left"></i> Voltar</a></li>
+                    <li><a href="config_smtp.html" class="active"><i class="fas fa-envelope"></i> SMTP</a></li>
+                    <li><a href="config_email_template.html"><i class="fas fa-file-alt"></i> Templates de E-mail</a></li>
+                </ul>
+            </nav>
+
+            <div id="alertMsg"></div>
+
+            <div class="section">
+                <h2><i class="fas fa-server"></i> Configurações do Servidor SMTP</h2>
+                
+                <div class="info-box">
+                    <p><i class="fas fa-info-circle"></i> <strong>Importante:</strong> Configure corretamente o servidor SMTP para que o sistema possa enviar e-mails de recuperação de senha aos moradores.</p>
+                </div>
+
+                <form id="formSMTP">
+                    <div class="form-grid">
+                        <div>
+                            <label for="smtp_host">Servidor SMTP *</label>
+                            <input type="text" id="smtp_host" name="smtp_host" placeholder="smtp.gmail.com" required>
+                        </div>
+                        <div>
+                            <label for="smtp_port">Porta *</label>
+                            <input type="number" id="smtp_port" name="smtp_port" placeholder="587" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label for="smtp_usuario">Usuário/E-mail *</label>
+                            <input type="email" id="smtp_usuario" name="smtp_usuario" placeholder="seu-email@gmail.com" required>
+                        </div>
+                        <div>
+                            <label for="smtp_senha">Senha/Token *</label>
+                            <input type="password" id="smtp_senha" name="smtp_senha" placeholder="Senha ou senha de app" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label for="smtp_de_email">E-mail Remetente *</label>
+                            <input type="email" id="smtp_de_email" name="smtp_de_email" placeholder="noreply@serraliberdade.com.br" required>
+                        </div>
+                        <div>
+                            <label for="smtp_de_nome">Nome Remetente *</label>
+                            <input type="text" id="smtp_de_nome" name="smtp_de_nome" placeholder="Serra da Liberdade" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div>
+                            <label for="smtp_seguranca">Segurança *</label>
+                            <select id="smtp_seguranca" name="smtp_seguranca" required>
+                                <option value="tls">TLS (Recomendado)</option>
+                                <option value="ssl">SSL</option>
+                                <option value="none">Nenhuma</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="smtp_ativo">Status</label>
+                            <select id="smtp_ativo" name="smtp_ativo">
+                                <option value="1">Ativo</option>
+                                <option value="0">Inativo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <button type="submit" class="btn-success"><i class="fas fa-save"></i> Salvar Configurações</button>
+                        <button type="button" onclick="testarSMTP()" class="btn-warning"><i class="fas fa-paper-plane"></i> Testar Envio</button>
+                        <button type="button" onclick="carregarConfig()"><i class="fas fa-sync"></i> Recarregar</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="section">
+                <h2><i class="fas fa-question-circle"></i> Como Configurar</h2>
+                
+                <h3 style="color: #667eea; margin: 1rem 0;">Gmail</h3>
+                <div class="warning-box">
+                    <p><strong>?? Atenção:</strong> O Gmail requer uma "Senha de App" ao invés da senha normal.</p>
+                </div>
+                <ol style="margin-left: 1.5rem; line-height: 2;">
+                    <li>Acesse: <a href="https://myaccount.google.com/security" target="_blank">https://myaccount.google.com/security</a></li>
+                    <li>Ative a "Verificação em duas etapas"</li>
+                    <li>Vá em "Senhas de app"</li>
+                    <li>Crie uma senha de app para "E-mail"</li>
+                    <li>Use essa senha no campo "Senha/Token"</li>
+                </ol>
+                <div class="code-block">
+Servidor: smtp.gmail.com<br>
+Porta: 587<br>
+Segurança: TLS<br>
+Usuário: seu-email@gmail.com<br>
+Senha: [senha de app de 16 dígitos]
+                </div>
+
+                <h3 style="color: #667eea; margin: 2rem 0 1rem 0;">Outlook/Hotmail</h3>
+                <div class="code-block">
+Servidor: smtp-mail.outlook.com<br>
+Porta: 587<br>
+Segurança: TLS<br>
+Usuário: seu-email@outlook.com<br>
+Senha: [sua senha normal]
+                </div>
+
+                <h3 style="color: #667eea; margin: 2rem 0 1rem 0;">Outros Provedores</h3>
+                <p style="margin: 1rem 0;">Consulte a documentação do seu provedor de e-mail para obter as configurações SMTP corretas.</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Carregar configurações ao abrir a página
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarConfig();
+        });
+
+        // Carregar configurações SMTP
+        function carregarConfig() {
+            fetch('../api/api_smtp.php?acao=buscar')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.sucesso && data.dados) {
+                        document.getElementById('smtp_host').value = data.dados.smtp_host || '';
+                        document.getElementById('smtp_port').value = data.dados.smtp_port || 587;
+                        document.getElementById('smtp_usuario').value = data.dados.smtp_usuario || '';
+                        document.getElementById('smtp_senha').value = data.dados.smtp_senha || '';
+                        document.getElementById('smtp_de_email').value = data.dados.smtp_de_email || '';
+                        document.getElementById('smtp_de_nome').value = data.dados.smtp_de_nome || '';
+                        document.getElementById('smtp_seguranca').value = data.dados.smtp_seguranca || 'tls';
+                        document.getElementById('smtp_ativo').value = data.dados.smtp_ativo || '0';
+                    }
+                })
+                .catch(error => console.error('Erro:', error));
+        }
+
+        // Salvar configurações
+        document.getElementById('formSMTP').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            formData.append('acao', 'salvar');
+            
+            fetch('../api/api_smtp.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.sucesso) {
+                    mostrarSucesso('Configurações salvas com sucesso!');
+                } else {
+                    mostrarErro(data.mensagem || 'Erro ao salvar configurações');
+                }
+            })
+            .catch(error => {
+                mostrarErro('Erro ao salvar configurações');
+                console.error('Erro:', error);
+            });
+        });
+
+        // Testar envio de e-mail
+        function testarSMTP() {
+            const email = prompt('Digite um e-mail para teste:');
+            if (!email) return;
+            
+            fetch('../api/api_smtp.php?acao=testar&email=' + encodeURIComponent(email))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.sucesso) {
+                        mostrarSucesso('E-mail de teste enviado com sucesso!');
+                    } else {
+                        mostrarErro(data.mensagem || 'Erro ao enviar e-mail de teste');
+                    }
+                })
+                .catch(error => {
+                    mostrarErro('Erro ao enviar e-mail de teste');
+                    console.error('Erro:', error);
+                });
+        }
+
+        // Funções auxiliares
+        function mostrarSucesso(msg) {
+            const div = document.getElementById('alertMsg');
+            div.innerHTML = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> ${msg}</div>`;
+            setTimeout(() => div.innerHTML = '', 5000);
+        }
+
+        function mostrarErro(msg) {
+            const div = document.getElementById('alertMsg');
+            div.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${msg}</div>`;
+            setTimeout(() => div.innerHTML = '', 5000);
+        }
+
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(e) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.menu-toggle');
+            if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+    </script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/user-display.js"></script>
+</body>
+</html>
+
+
+
+
+

@@ -1,0 +1,92 @@
+﻿<!-- Page Metadata -->
+<div id="page-metadata" data-title="Visitantes" data-icon="fa-user-friends" style="display:none;"></div>
+
+<!-- Modern Page Wrapper -->
+<div class="page-wrapper page-visitantes">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>Visitantes</h1>
+        <p>Registro e historico de visitas do condominio</p>
+    </div>
+
+    <div class="page-card">
+        <h2>Cadastro de Acesso de Visitante</h2>
+        <form id="visitanteForm">
+            <input type="hidden" id="acessoId" value="">
+
+            <div class="form-grid">
+                <div>
+                    <label>Nome Completo *</label>
+                    <input type="text" id="nomeVisitante" required placeholder="Ex: Maria Souza">
+                </div>
+                <div>
+                    <label>Documento *</label>
+                    <input type="text" id="documento" required placeholder="RG ou CPF">
+                </div>
+                <div>
+                    <label>Unidade Visitada *</label>
+                    <input type="text" id="unidadeVisitada" required placeholder="Ex: Bloco B - 304">
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div>
+                    <label>Data Entrada *</label>
+                    <input type="date" id="dataEntrada" required>
+                </div>
+                <div>
+                    <label>Data Saida *</label>
+                    <input type="date" id="dataSaida" required>
+                </div>
+                <div>
+                    <label>Placa do Veiculo</label>
+                    <input type="text" id="veiculoVisitante" placeholder="Ex: ABC1D23">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary-modern" id="btnSalvarVisitante">
+                    <i class="fas fa-save"></i> Salvar Acesso
+                </button>
+                <button type="button" class="btn-secondary-modern" id="btnCancelarEdicao" style="display:none;">
+                    <i class="fas fa-times"></i> Cancelar Edicao
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="page-card">
+        <h2>Lista de Acessos de Visitantes</h2>
+
+        <div class="search-box">
+            <input type="text" id="searchVisitante" placeholder="Pesquisar por nome, documento, unidade ou placa...">
+            <button class="btn-primary-modern" type="button" id="btnBuscarVisitante">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+        </div>
+
+        <div id="loadingVisitantes" class="loading" style="display:none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Carregando dados...</p>
+        </div>
+
+        <div class="table-container">
+            <table id="tabelaVisitantes">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Documento</th>
+                        <th>Unidade</th>
+                        <th>Entrada</th>
+                        <th>Saida</th>
+                        <th>Acoes</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

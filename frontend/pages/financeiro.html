@@ -1,0 +1,94 @@
+﻿<!-- Page Metadata -->
+<div id="page-metadata" data-title="Financeiro" data-icon="fa-money-bill-wave" style="display:none;"></div>
+
+<div class="page-wrapper page-financeiro">
+    <div class="page-header">
+        <h1>Financeiro</h1>
+        <p>Gestao financeira, receitas e despesas do condominio</p>
+    </div>
+
+    <nav class="page-card financeiro-submenu" aria-label="Atalhos financeiros">
+        <a href="layout-base.html?page=financeiro" class="submenu-link active">
+            <i class="fas fa-home"></i> Inicio
+        </a>
+        <a href="contas_pagar.html" class="submenu-link">
+            <i class="fas fa-arrow-up"></i> Contas a Pagar
+        </a>
+        <a href="contas_receber.html" class="submenu-link">
+            <i class="fas fa-arrow-down"></i> Contas a Receber
+        </a>
+        <a href="planos_contas.html" class="submenu-link">
+            <i class="fas fa-list"></i> Planos de Contas
+        </a>
+    </nav>
+
+    <div class="stats-grid">
+        <div class="page-card kpi-card">
+            <div class="kpi-content">
+                <h3>Receitas do Mes</h3>
+                <div class="value receita">R$ 0,00</div>
+            </div>
+            <div class="kpi-icon receita"><i class="fas fa-arrow-up"></i></div>
+        </div>
+
+        <div class="page-card kpi-card">
+            <div class="kpi-content">
+                <h3>Despesas do Mes</h3>
+                <div class="value despesa">R$ 0,00</div>
+            </div>
+            <div class="kpi-icon despesa"><i class="fas fa-arrow-down"></i></div>
+        </div>
+
+        <div class="page-card kpi-card">
+            <div class="kpi-content">
+                <h3>Saldo Geral</h3>
+                <div class="value saldo">R$ 0,00</div>
+            </div>
+            <div class="kpi-icon saldo"><i class="fas fa-wallet"></i></div>
+        </div>
+    </div>
+
+    <div class="cards-grid">
+        <div class="page-card action-card">
+            <div class="action-icon red"><i class="fas fa-arrow-up"></i></div>
+            <h3>Contas a Pagar</h3>
+            <p>Gerencie todas as despesas do condominio. Registre contas a pagar, controle vencimentos, registre pagamentos parciais ou totais e acompanhe fluxo de caixa.</p>
+            <a href="contas_pagar.html" class="action-link">Acessar Contas a Pagar</a>
+        </div>
+
+        <div class="page-card action-card">
+            <div class="action-icon green"><i class="fas fa-arrow-down"></i></div>
+            <h3>Contas a Receber</h3>
+            <p>Gerencie todas as receitas do condominio. Registre contas a receber de moradores, controle vencimentos, registre recebimentos parciais ou totais e monitore inadimplencias.</p>
+            <a href="contas_receber.html" class="action-link">Acessar Contas a Receber</a>
+        </div>
+
+        <div class="page-card action-card">
+            <div class="action-icon blue"><i class="fas fa-list"></i></div>
+            <h3>Planos de Contas</h3>
+            <p>Cadastre e gerencie todos os planos de contas do condominio. Organize receitas, despesas, ativos e passivos. Defina categorias e natureza das contas para melhor controle financeiro.</p>
+            <a href="planos_contas.html" class="action-link">Acessar Planos de Contas</a>
+        </div>
+    </div>
+
+    <div class="page-card">
+        <h2>Lancamentos Recentes</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descricao</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" class="empty-table">Nenhum lancamento registrado</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
