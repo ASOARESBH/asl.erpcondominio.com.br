@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -66,7 +66,7 @@
                 <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i class="fas fa-clipboard-list"></i> Registro Manual</a></li>
                 <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i class="fas fa-door-open"></i> Controle de Acesso</a></li>
                 <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i> Relatórios</a></li>
-                <li class="nav-item"><a href="configuracao.html" class="nav-link active"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li class="nav-item"><a href="configuracao.html" class="nav-link active"><i class="fas fa-cog"></i> Configuraçµes</a></li>
                 <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i> Manutenção</a></li>
                 <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i> Administrativo</a></li>
             </ul>
@@ -88,7 +88,7 @@
             <div id="alertMsg"></div>
 
             <div class="section">
-                <h2><i class="fas fa-server"></i> Configurações do Servidor SMTP</h2>
+                <h2><i class="fas fa-server"></i> Configuraçµes do Servidor SMTP</h2>
                 
                 <div class="info-box">
                     <p><i class="fas fa-info-circle"></i> <strong>Importante:</strong> Configure corretamente o servidor SMTP para que o sistema possa enviar e-mails de recuperação de senha aos moradores.</p>
@@ -147,7 +147,7 @@
                     </div>
 
                     <div style="margin-top: 1.5rem;">
-                        <button type="submit" class="btn-success"><i class="fas fa-save"></i> Salvar Configurações</button>
+                        <button type="submit" class="btn-success"><i class="fas fa-save"></i> Salvar Configuraçµes</button>
                         <button type="button" onclick="testarSMTP()" class="btn-warning"><i class="fas fa-paper-plane"></i> Testar Envio</button>
                         <button type="button" onclick="carregarConfig()"><i class="fas fa-sync"></i> Recarregar</button>
                     </div>
@@ -186,18 +186,18 @@ Senha: [sua senha normal]
                 </div>
 
                 <h3 style="color: #667eea; margin: 2rem 0 1rem 0;">Outros Provedores</h3>
-                <p style="margin: 1rem 0;">Consulte a documentação do seu provedor de e-mail para obter as configurações SMTP corretas.</p>
+                <p style="margin: 1rem 0;">Consulte a documentação do seu provedor de e-mail para obter as configuraçµes SMTP corretas.</p>
             </div>
         </main>
     </div>
 
     <script>
-        // Carregar configurações ao abrir a página
+        // Carregar configuraçµes ao abrir a página
         document.addEventListener('DOMContentLoaded', () => {
             carregarConfig();
         });
 
-        // Carregar configurações SMTP
+        // Carregar configuraçµes SMTP
         function carregarConfig() {
             fetch('../api/api_smtp.php?acao=buscar')
                 .then(r => r.json())
@@ -216,7 +216,7 @@ Senha: [sua senha normal]
                 .catch(error => console.error('Erro:', error));
         }
 
-        // Salvar configurações
+        // Salvar configuraçµes
         document.getElementById('formSMTP').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -230,13 +230,13 @@ Senha: [sua senha normal]
             .then(r => r.json())
             .then(data => {
                 if (data.sucesso) {
-                    mostrarSucesso('Configurações salvas com sucesso!');
+                    mostrarSucesso('Configuraçµes salvas com sucesso!');
                 } else {
-                    mostrarErro(data.mensagem || 'Erro ao salvar configurações');
+                    mostrarErro(data.mensagem || 'Erro ao salvar configuraçµes');
                 }
             })
             .catch(error => {
-                mostrarErro('Erro ao salvar configurações');
+                mostrarErro('Erro ao salvar configuraçµes');
                 console.error('Erro:', error);
             });
         });
@@ -261,7 +261,7 @@ Senha: [sua senha normal]
                 });
         }
 
-        // Funções auxiliares
+        // Funçµes auxiliares
         function mostrarSucesso(msg) {
             const div = document.getElementById('alertMsg');
             div.innerHTML = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> ${msg}</div>`;

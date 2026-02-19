@@ -80,7 +80,7 @@
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Verificando sess„o...</div>
+        <div class="loading-text" id="loadingText">Verificando sess√£o...</div>
     </div>
 
     <!-- Header -->
@@ -100,19 +100,19 @@
         
         <div class="card">
             <h2><i class="fas fa-check-circle" style="color:#22c55e;"></i> Portal Carregado com Sucesso!</h2>
-            <p>Bem-vindo ao Portal do Morador do CondomÌnio Serra da Liberdade.</p>
-            <p>Seu portal est· funcionando corretamente. Em breve, vocÍ ter· acesso a:</p>
+            <p>Bem-vindo ao Portal do Morador do Condom√≠nio Serra da Liberdade.</p>
+            <p>Seu portal est√° funcionando corretamente. Em breve, voc¬™ ter√° acesso a:</p>
             <ul style="margin-top:1rem; margin-left:2rem; color:#64748b;">
-                <li>Gest„o de Perfil</li>
+                <li>Gest√£o de Perfil</li>
                 <li>Consulta de Hidrometro</li>
-                <li>Cadastro de VeÌculos</li>
+                <li>Cadastro de Ve√≠culos</li>
                 <li>Cadastro de Visitantes</li>
             </ul>
         </div>
     </div>
 
     <script>
-        // ========== VARI¡VEIS GLOBAIS ==========
+        // ========== VARI¬ÅVEIS GLOBAIS ==========
         let token = null;
         let moradorId = null;
         let moradorNome = null;
@@ -120,7 +120,7 @@
         let tentativasVerificacao = 0;
         const MAX_TENTATIVAS = 3;
 
-        // ========== INICIALIZA«√O ==========
+        // ========== INICIALIZA¬á¬ÉO ==========
         (function() {
             console.log('?? Iniciando portal...');
             console.log('?? URL:', window.location.href);
@@ -137,20 +137,20 @@
             // Verificar se tem token
             if (!token || !moradorId) {
                 console.log('? Sem token ou morador_id');
-                redirecionarParaLogin('Sess„o n„o encontrada. FaÁa login novamente.');
+                redirecionarParaLogin('Sess√£o n√£o encontrada. Fa√ßa login novamente.');
                 return;
             }
             
-            // Verificar sess„o no servidor
+            // Verificar sess√£o no servidor
             verificarSessao();
         })();
 
-        // ========== VERIFICAR SESS√O ==========
+        // ========== VERIFICAR SESS¬ÉO ==========
         function verificarSessao() {
             tentativasVerificacao++;
-            console.log(`?? Verificando sess„o (tentativa ${tentativasVerificacao}/${MAX_TENTATIVAS})...`);
+            console.log(`?? Verificando sess√£o (tentativa ${tentativasVerificacao}/${MAX_TENTATIVAS})...`);
             
-            document.getElementById('loadingText').textContent = `Verificando sess„o... (${tentativasVerificacao}/${MAX_TENTATIVAS})`;
+            document.getElementById('loadingText').textContent = `Verificando sess√£o... (${tentativasVerificacao}/${MAX_TENTATIVAS})`;
             
             fetch('../api/api_portal.php?action=verificar_sessao', {
                 method: 'GET',
@@ -164,10 +164,10 @@
                 console.log('?? Status Text:', response.statusText);
                 console.log('?? Headers:', response.headers);
                 
-                // Se n„o for 200, tentar ler como texto para ver o erro
+                // Se n√£o for 200, tentar ler como texto para ver o erro
                 if (!response.ok) {
                     return response.text().then(text => {
-                        console.error('? Resposta n„o-OK:', text);
+                        console.error('? Resposta n√£o-OK:', text);
                         throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
                     });
                 }
@@ -178,29 +178,29 @@
                 console.log('?? Resposta da API:', data);
                 
                 if (data.sucesso) {
-                    console.log('? Sess„o v·lida!');
+                    console.log('? Sess√£o v√°lida!');
                     sessaoVerificada = true;
                     inicializarPortal();
                 } else {
-                    console.log('? Sess„o inv·lida:', data.mensagem);
-                    redirecionarParaLogin(data.mensagem || 'Sess„o expirada');
+                    console.log('? Sess√£o inv√°lida:', data.mensagem);
+                    redirecionarParaLogin(data.mensagem || 'Sess√£o expirada');
                 }
             })
             .catch(error => {
-                console.error('? Erro ao verificar sess„o:', error);
+                console.error('? Erro ao verificar sess√£o:', error);
                 console.error('? Stack:', error.stack);
                 
-                // Tentar novamente se n„o atingiu o m·ximo
+                // Tentar novamente se n√£o atingiu o m√°ximo
                 if (tentativasVerificacao < MAX_TENTATIVAS) {
                     console.log(`? Tentando novamente em 2 segundos...`);
                     setTimeout(verificarSessao, 2000);
                 } else {
-                    console.error('? M·ximo de tentativas atingido');
+                    console.error('? M√°ximo de tentativas atingido');
                     document.getElementById('loadingText').textContent = 'Erro ao conectar com o servidor';
                     
                     // Mostrar erro detalhado
                     setTimeout(() => {
-                        if (confirm('Erro ao verificar sess„o. Deseja ver os detalhes no console?')) {
+                        if (confirm('Erro ao verificar sess√£o. Deseja ver os detalhes no console?')) {
                             console.error('=== DETALHES DO ERRO ===');
                             console.error('Token:', token);
                             console.error('Morador ID:', moradorId);
@@ -221,11 +221,11 @@
             setTimeout(() => {
                 document.getElementById('loadingScreen').classList.add('hide');
                 
-                // Mostrar conte˙do
+                // Mostrar conte¬∫do
                 document.getElementById('mainHeader').style.display = 'block';
                 document.getElementById('mainContainer').style.display = 'block';
                 
-                // Atualizar nome do usu·rio
+                // Atualizar nome do usu√°rio
                 document.getElementById('nomeUsuario').textContent = moradorNome || 'Morador';
                 
                 console.log('? Portal inicializado com sucesso!');
@@ -292,14 +292,14 @@
             }, 5000);
         }
 
-        // ========== PREVENIR NAVEGA«√O SEM SESS√O ==========
+        // ========== PREVENIR NAVEGA¬á¬ÉO SEM SESS¬ÉO ==========
         window.addEventListener('beforeunload', function() {
             if (!sessaoVerificada) {
                 localStorage.clear();
             }
         });
 
-        // ========== DEBUG: Expor funÁıes globalmente ==========
+        // ========== DEBUG: Expor fun√ß¬µes globalmente ==========
         window.debugPortal = {
             token: () => token,
             moradorId: () => moradorId,
@@ -313,9 +313,9 @@
             })
         };
         
-        console.log('?? Debug disponÌvel em: window.debugPortal');
+        console.log('?? Debug dispon√≠vel em: window.debugPortal');
     </script>
-    <!-- ProteÁ„o de Login -->
+    <!-- Prote√ß√£o de Login -->
     <script src="js/auth-guard.js"></script>
     <script src="js/user-display.js"></script>
 </body>

@@ -158,7 +158,7 @@
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="spinner"></div>
-        <div class="loading-text" id="loadingText">Verificando sessão...</div>
+        <div class="loading-text" id="loadingText">Verificando sessÃ£o...</div>
     </div>
 
     <!-- Header -->
@@ -191,7 +191,7 @@
                 <i class="fas fa-box"></i> Protocolos
             </button>
             <button class="tab" onclick="abrirAba('hidrometro')">
-                <i class="fas fa-tint"></i> Hidrômetro
+                <i class="fas fa-tint"></i> HidrÃ´metro
             </button>
         </div>
         
@@ -297,7 +297,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="visitanteObs">Observação</label>
+                        <label for="visitanteObs">ObservaÃ§Ã£o</label>
                         <textarea id="visitanteObs" rows="3"></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">
@@ -318,7 +318,7 @@
             <div class="card">
                 <h2><i class="fas fa-qrcode"></i> Gerar QR Code para Visitante</h2>
                 <p style="color: #64748b; margin-bottom: 1.5rem;">
-                    <i class="fas fa-info-circle"></i> <strong>Importante:</strong> Um visitante só pode ter um acesso ativo por vez em todo o sistema.
+                    <i class="fas fa-info-circle"></i> <strong>Importante:</strong> Um visitante sÃ³ pode ter um acesso ativo por vez em todo o sistema.
                 </p>
                 
                 <form id="formAcesso" onsubmit="salvarAcesso(event)">
@@ -333,12 +333,12 @@
                             <label for="acessoTipo">Tipo *</label>
                             <select id="acessoTipo" required>
                                 <option value="visitante">Visitante</option>
-                                <option value="prestador">Prestador de Serviço</option>
+                                <option value="prestador">Prestador de ServiÃ§o</option>
                             </select>
                         </div>
                     </div>
                     
-                    <h3 style="margin-top: 1rem; margin-bottom: 0.75rem; font-size: 1rem; color: #475569;"><i class="fas fa-car"></i> Dados do Veículo</h3>
+                    <h3 style="margin-top: 1rem; margin-bottom: 0.75rem; font-size: 1rem; color: #475569;"><i class="fas fa-car"></i> Dados do VeÃ­culo</h3>
                     <div class="form-grid form-grid-3">
                         <div>
                             <label for="acessoPlaca">Placa</label>
@@ -354,7 +354,7 @@
                         </div>
                     </div>
                     
-                    <h3 style="margin-top: 1rem; margin-bottom: 0.75rem; font-size: 1rem; color: #475569;"><i class="fas fa-calendar"></i> Período</h3>
+                    <h3 style="margin-top: 1rem; margin-bottom: 0.75rem; font-size: 1rem; color: #475569;"><i class="fas fa-calendar"></i> PerÃ­odo</h3>
                     <div class="form-grid">
                         <div>
                             <label for="acessoDataInicial">Data Inicial *</label>
@@ -368,7 +368,7 @@
                     
                     <div id="acessoDias" style="display:none; text-align:center; padding:1rem; background:#f1f5f9; border-radius:8px; margin:1rem 0;">
                         <div style="font-size:2rem; font-weight:bold; color:#3b82f6;" id="acessoDiasNumero">0</div>
-                        <div style="color:#64748b;">dias de permanência</div>
+                        <div style="color:#64748b;">dias de permanÂªncia</div>
                     </div>
                     
                     <h3 style="margin-top: 1rem; margin-bottom: 0.75rem; font-size: 1rem; color: #475569;"><i class="fas fa-door-open"></i> Tipo de Acesso *</h3>
@@ -427,22 +427,22 @@
             </div>
         </div>
         
-        <!-- ABA: HIDRÔMETRO -->
+        <!-- ABA: HIDRÂ”METRO -->
         <div id="hidrometro" class="tab-content">
             <div class="card">
-                <h2><i class="fas fa-tachometer-alt"></i> Dados do Hidrômetro</h2>
+                <h2><i class="fas fa-tachometer-alt"></i> Dados do HidrÃ´metro</h2>
                 <div id="dadosHidrometro"></div>
             </div>
             
             <div class="card">
-                <h2><i class="fas fa-history"></i> Histórico de Leituras</h2>
+                <h2><i class="fas fa-history"></i> HistÃ³rico de Leituras</h2>
                 <div id="historicoLeituras"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // ========== VARIÁVEIS GLOBAIS ==========
+        // ========== VARIÂVEIS GLOBAIS ==========
         let token = null;
         let moradorId = null;
         let moradorNome = null;
@@ -451,7 +451,7 @@
         const MAX_TENTATIVAS = 3;
         let abaAtual = 'perfil';
 
-        // ========== INICIALIZAÇÃO ==========
+        // ========== INICIALIZAÂ‡ÂƒO ==========
         (function() {
             console.log('?? Iniciando portal...');
             
@@ -464,19 +464,19 @@
             
             if (!token || !moradorId) {
                 console.log('? Sem token ou morador_id');
-                redirecionarParaLogin('Sessão não encontrada. Faça login novamente.');
+                redirecionarParaLogin('SessÃ£o nÃ£o encontrada. FaÃ§a login novamente.');
                 return;
             }
             
             verificarSessao();
         })();
 
-        // ========== VERIFICAR SESSÃO ==========
+        // ========== VERIFICAR SESSÂƒO ==========
         function verificarSessao() {
             tentativasVerificacao++;
-            console.log(`?? Verificando sessão (tentativa ${tentativasVerificacao}/${MAX_TENTATIVAS})...`);
+            console.log(`?? Verificando sessÃ£o (tentativa ${tentativasVerificacao}/${MAX_TENTATIVAS})...`);
             
-            document.getElementById('loadingText').textContent = `Verificando sessão... (${tentativasVerificacao}/${MAX_TENTATIVAS})`;
+            document.getElementById('loadingText').textContent = `Verificando sessÃ£o... (${tentativasVerificacao}/${MAX_TENTATIVAS})`;
             
             fetch('../api/api_portal.php?action=verificar_sessao', {
                 method: 'GET',
@@ -488,16 +488,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.sucesso) {
-                    console.log('? Sessão válida!');
+                    console.log('? SessÃ£o vÃ¡lida!');
                     sessaoVerificada = true;
                     inicializarPortal();
                 } else {
-                    console.log('? Sessão inválida:', data.mensagem);
-                    redirecionarParaLogin(data.mensagem || 'Sessão expirada');
+                    console.log('? SessÃ£o invÃ¡lida:', data.mensagem);
+                    redirecionarParaLogin(data.mensagem || 'SessÃ£o expirada');
                 }
             })
             .catch(error => {
-                console.error('? Erro ao verificar sessão:', error);
+                console.error('? Erro ao verificar sessÃ£o:', error);
                 if (tentativasVerificacao < MAX_TENTATIVAS) {
                     setTimeout(verificarSessao, 2000);
                 } else {
@@ -644,12 +644,12 @@
             const senhaConfirmar = document.getElementById('senhaConfirmar').value;
             
             if (senhaNova !== senhaConfirmar) {
-                mostrarAlerta('As senhas não coincidem', 'error');
+                mostrarAlerta('As senhas nÃ£o coincidem', 'error');
                 return;
             }
             
             if (senhaNova.length < 6) {
-                mostrarAlerta('A senha deve ter no mínimo 6 caracteres', 'error');
+                mostrarAlerta('A senha deve ter no mÃ­nimo 6 caracteres', 'error');
                 return;
             }
             
@@ -704,7 +704,7 @@
                 }
                 
                 if (data.sucesso && data.dados.length > 0) {
-                    let html = '<table><thead><tr><th>Nome</th><th>Documento</th><th>Telefone</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+                    let html = '<table><thead><tr><th>Nome</th><th>Documento</th><th>Telefone</th><th>Status</th><th>AÃ§Âµes</th></tr></thead><tbody>';
                     
                     data.dados.forEach(visitante => {
                         html += `
@@ -797,7 +797,7 @@
         // ACESSOS
         // ========================================
         
-        // Calcular dias de permanência
+        // Calcular dias de permanÂªncia
         document.getElementById('acessoDataInicial')?.addEventListener('change', calcularDiasAcesso);
         document.getElementById('acessoDataFinal')?.addEventListener('change', calcularDiasAcesso);
         
@@ -817,7 +817,7 @@
                     document.getElementById('acessoDias').style.display = 'block';
                 } else {
                     document.getElementById('acessoDias').style.display = 'none';
-                    mostrarAlerta('Data final deve ser maior ou igual à data inicial', 'error');
+                    mostrarAlerta('Data final deve ser maior ou igual Â  data inicial', 'error');
                 }
             }
         }
@@ -851,7 +851,7 @@
             const tipoAcesso = document.querySelector('[name="acessoTipoAcesso"]:checked')?.value;
             
             if (!visitanteId || !dataInicial || !dataFinal || !tipoAcesso) {
-                mostrarAlerta('Preencha todos os campos obrigatórios', 'error');
+                mostrarAlerta('Preencha todos os campos obrigatÃ³rios', 'error');
                 return;
             }
             
@@ -909,7 +909,7 @@
                 const container = document.getElementById('listaAcessos');
                 
                 if (data.sucesso && data.dados.length > 0) {
-                    let html = '<table><thead><tr><th>Visitante</th><th>Período</th><th>Tipo</th><th>Veículo</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+                    let html = '<table><thead><tr><th>Visitante</th><th>PerÃ­odo</th><th>Tipo</th><th>VeÃ­culo</th><th>Status</th><th>AÃ§Âµes</th></tr></thead><tbody>';
                     
                     data.dados.forEach(acesso => {
                         const dataInicial = new Date(acesso.data_inicial).toLocaleDateString('pt-BR');
@@ -981,7 +981,7 @@
         }
 
         // ========================================
-        // HIDRÔMETRO
+        // HIDRÂ”METRO
         // ========================================
         
         let dadosHidrometro = null;
@@ -996,20 +996,20 @@
                     const { todos_hidrometros, hidrometro_ativo, leituras } = data.dados;
                     const hidrometros = todos_hidrometros || [];
                     
-                    // Dados do hidrômetro ativo
+                    // Dados do hidrÃ´metro ativo
                     if (hidrometro_ativo) {
                         let htmlHidro = `
                             <div class="info-grid">
                                 <div class="info-item">
-                                    <div class="info-label"><i class="fas fa-microchip"></i> Número do Hidrômetro</div>
+                                    <div class="info-label"><i class="fas fa-microchip"></i> NÂºmero do HidrÃ´metro</div>
                                     <div class="info-value">${hidrometro_ativo.numero_hidrometro || 'N/A'}</div>
                                 </div>
                                 <div class="info-item">
-                                    <div class="info-label"><i class="fas fa-lock"></i> Número do Lacre</div>
+                                    <div class="info-label"><i class="fas fa-lock"></i> NÂºmero do Lacre</div>
                                     <div class="info-value">${hidrometro_ativo.numero_lacre || 'N/A'}</div>
                                 </div>
                                 <div class="info-item">
-                                    <div class="info-label"><i class="fas fa-calendar"></i> Data da Troca/Instalação</div>
+                                    <div class="info-label"><i class="fas fa-calendar"></i> Data da Troca/InstalaÃ§Ã£o</div>
                                     <div class="info-value">${hidrometro_ativo.data_instalacao || 'N/A'}</div>
                                 </div>
                                 <div class="info-item">
@@ -1019,19 +1019,19 @@
                             </div>
                         `;
                         
-                        // Mostrar hidrômetros anteriores se houver
+                        // Mostrar hidrÃ´metros anteriores se houver
                         if (hidrometros.length > 1) {
                             htmlHidro += '<div style="margin-top: 1.5rem; padding: 1rem; background: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 8px;">';
-                            htmlHidro += '<small style="color: #0369a1;"><i class="fas fa-info-circle"></i> <strong>Histórico:</strong> Você possui ' + (hidrometros.length - 1) + ' hidrômetro(s) anterior(es) com leituras registradas.</small>';
+                            htmlHidro += '<small style="color: #0369a1;"><i class="fas fa-info-circle"></i> <strong>HistÃ³rico:</strong> VocÂª possui ' + (hidrometros.length - 1) + ' hidrÃ´metro(s) anterior(es) com leituras registradas.</small>';
                             htmlHidro += '</div>';
                         }
                         
                         document.getElementById('dadosHidrometro').innerHTML = htmlHidro;
                     } else {
-                        document.getElementById('dadosHidrometro').innerHTML = '<div class="empty-state"><i class="fas fa-tint"></i><p>Nenhum hidrômetro ativo encontrado</p></div>';
+                        document.getElementById('dadosHidrometro').innerHTML = '<div class="empty-state"><i class="fas fa-tint"></i><p>Nenhum hidrÃ´metro ativo encontrado</p></div>';
                     }
                     
-                    // Histórico de leituras
+                    // HistÃ³rico de leituras
                     if (leituras.length > 0) {
                         let htmlLeituras = `
                             <div style="overflow-x: auto;">
@@ -1039,12 +1039,12 @@
                                 <thead>
                                     <tr>
                                         <th>Data da Leitura</th>
-                                        <th>Hidrômetro (Número)</th>
-                                        <th>Leitura Anterior (m³)</th>
-                                        <th>Leitura Atual (m³)</th>
-                                        <th>Consumo (m³)</th>
+                                        <th>HidrÃ´metro (NÂºmero)</th>
+                                        <th>Leitura Anterior (mÂ³)</th>
+                                        <th>Leitura Atual (mÂ³)</th>
+                                        <th>Consumo (mÂ³)</th>
                                         <th>Valor a Pagar</th>
-                                        <th>Status do Hidrômetro</th>
+                                        <th>Status do HidrÃ´metro</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1088,7 +1088,7 @@
             })
             .catch(error => {
                 console.error('Erro:', error);
-                mostrarAlerta('Erro ao carregar dados do hidrômetro', 'error');
+                mostrarAlerta('Erro ao carregar dados do hidrÃ´metro', 'error');
             });
         }
         
@@ -1135,8 +1135,8 @@
                                     <div class="info-row" style="display: flex; align-items: start; gap: 0.5rem;">
                                         <i class="fas fa-box" style="color: #3b82f6; margin-top: 0.25rem; width: 20px;"></i>
                                         <div style="flex: 1;">
-                                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Descrição</div>
-                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.descricao_mercadoria || 'Não informado'}</div>
+                                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">DescriÃ§Ã£o</div>
+                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.descricao_mercadoria || 'NÃ£o informado'}</div>
                                         </div>
                                     </div>
                                     
@@ -1144,7 +1144,7 @@
                                     <div class="info-row" style="display: flex; align-items: start; gap: 0.5rem;">
                                         <i class="fas fa-barcode" style="color: #3b82f6; margin-top: 0.25rem; width: 20px;"></i>
                                         <div style="flex: 1;">
-                                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Código NF</div>
+                                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">CÃ³digo NF</div>
                                             <div style="font-weight: 500; color: #1e293b;">${protocolo.codigo_nf}</div>
                                         </div>
                                     </div>
@@ -1162,7 +1162,7 @@
                                         <i class="fas fa-user" style="color: #3b82f6; margin-top: 0.25rem; width: 20px;"></i>
                                         <div style="flex: 1;">
                                             <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Recebido por (Portaria)</div>
-                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.recebedor_portaria || 'Não informado'}</div>
+                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.recebedor_portaria || 'NÃ£o informado'}</div>
                                         </div>
                                     </div>
                                     
@@ -1171,7 +1171,7 @@
                                         <i class="fas fa-check-circle" style="color: #10b981; margin-top: 0.25rem; width: 20px;"></i>
                                         <div style="flex: 1;">
                                             <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Entregue em</div>
-                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.data_hora_entrega || 'Não informado'}</div>
+                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.data_hora_entrega || 'NÃ£o informado'}</div>
                                         </div>
                                     </div>
                                     
@@ -1179,7 +1179,7 @@
                                         <i class="fas fa-user-check" style="color: #10b981; margin-top: 0.25rem; width: 20px;"></i>
                                         <div style="flex: 1;">
                                             <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Recebido por (Morador)</div>
-                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.nome_recebedor_morador || 'Não informado'}</div>
+                                            <div style="font-weight: 500; color: #1e293b;">${protocolo.nome_recebedor_morador || 'NÃ£o informado'}</div>
                                         </div>
                                     </div>
                                     ` : ''}
@@ -1201,7 +1201,7 @@
         }
         
         function filtrarProtocolos(filtro) {
-            // Atualizar botões ativos
+            // Atualizar botÂµes ativos
             document.querySelectorAll('.btn-filtro').forEach(btn => btn.classList.remove('active'));
             
             if (filtro === '') {

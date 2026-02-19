@@ -341,14 +341,14 @@
         </div>
 
         <div class="login-footer">
-            <p><i class="fas fa-info-circle"></i> Primeira vez? Use seu CPF e a senha padr„o: <strong>123456</strong>
+            <p><i class="fas fa-info-circle"></i> Primeira vez? Use seu CPF e a senha padr√£o: <strong>123456</strong>
             </p>
-            <p style="margin-top: 0.5rem;">Altere sua senha apÛs o primeiro acesso</p>
+            <p style="margin-top: 0.5rem;">Altere sua senha ap√≥s o primeiro acesso</p>
         </div>
     </div>
 
     <script>
-        // M·scara de CPF
+        // M√°scara de CPF
         document.getElementById('cpf').addEventListener('input', function (e) {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length <= 11) {
@@ -363,19 +363,19 @@
         const btnLogin = document.getElementById('btnLogin');
         const alertBox = document.getElementById('alertBox');
 
-        // FunÁ„o para exibir alertas
+        // Fun√ß√£o para exibir alertas
         function mostrarAlerta(mensagem, tipo) {
             alertBox.innerHTML = `<i class="fas fa-${tipo === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${mensagem}`;
             alertBox.className = `alert alert-${tipo}`;
             alertBox.style.display = 'block';
 
-            // Auto-esconder apÛs 5 segundos
+            // Auto-esconder ap√≥s 5 segundos
             setTimeout(() => {
                 alertBox.style.display = 'none';
             }, 5000);
         }
 
-        // Manipular envio do formul·rio
+        // Manipular envio do formul√°rio
         loginForm.addEventListener('submit', function (e) {
             e.preventDefault();
 
@@ -384,18 +384,18 @@
 
             // Validar CPF
             if (cpf.length !== 11) {
-                mostrarAlerta('CPF inv·lido. Digite 11 dÌgitos.', 'error');
+                mostrarAlerta('CPF inv√°lido. Digite 11 d√≠gitos.', 'error');
                 return;
             }
 
-            // Desabilitar bot„o e mostrar loading
+            // Desabilitar bot√£o e mostrar loading
             btnLogin.disabled = true;
             btnLogin.innerHTML = '<span class="spinner"></span> Autenticando...';
 
-            // Coletar dados do formul·rio
+            // Coletar dados do formul√°rio
             const formData = new FormData(loginForm);
 
-            // Enviar requisiÁ„o
+            // Enviar requisi√ß√£o
             fetch('../api/validar_login_morador.php', {
                 method: 'POST',
                 body: formData
@@ -419,11 +419,11 @@
                             console.log('? Morador ID:', data.dados.morador_id);
                         }
 
-                        // Marcar sess„o como verificada
+                        // Marcar sess√£o como verificada
                         sessionStorage.setItem('sessao_verificada', 'true');
                         sessionStorage.setItem('tentativas_verificacao', '0');
 
-                        // Redirecionar apÛs 500ms
+                        // Redirecionar ap√≥s 500ms
                         setTimeout(() => {
                             window.location.replace('portal.html');
                         }, 500);
@@ -442,25 +442,25 @@
         });
 
         function esqueceuSenha() {
-            mostrarAlerta('Entre em contato com a administraÁ„o do condomÌnio para redefinir sua senha.', 'error');
+            mostrarAlerta('Entre em contato com a administra√ß√£o do condom√≠nio para redefinir sua senha.', 'error');
         }
 
-        // Verificar se h· mensagem de erro na URL
+        // Verificar se h√° mensagem de erro na URL
         const urlParams = new URLSearchParams(window.location.search);
         const erro = urlParams.get('erro');
 
         if (erro === '1') {
             mostrarAlerta('CPF ou senha incorretos!', 'error');
         } else if (erro === '2') {
-            mostrarAlerta('Morador inativo. Entre em contato com a administraÁ„o.', 'error');
+            mostrarAlerta('Morador inativo. Entre em contato com a administra√ß√£o.', 'error');
         } else if (erro === '3') {
             mostrarAlerta('Preencha todos os campos!', 'error');
         } else if (erro === '4') {
-            mostrarAlerta('Sess„o expirada. FaÁa login novamente.', 'error');
+            mostrarAlerta('Sess√£o expirada. Fa√ßa login novamente.', 'error');
         }
     </script>
 
-    <!-- ProteÁ„o de Login -->
+    <!-- Prote√ß√£o de Login -->
     <script src="js/auth-guard.js"></script>
     <script src="js/user-display.js"></script>
     <script src="js/visual-identity.js"></script>

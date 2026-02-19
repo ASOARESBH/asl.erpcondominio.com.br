@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -85,7 +85,7 @@
                 <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i class="fas fa-clipboard-list"></i> Registro Manual</a></li>
                 <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i class="fas fa-door-open"></i> Controle de Acesso</a></li>
                 <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i> Relatórios</a></li>
-                <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i> Configurações</a></li>
+                <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i> Configuraçµes</a></li>
                 <li class="nav-item"><a href="manutencao.html" class="nav-link active"><i class="fas fa-tools"></i> Manutenção</a></li>
                 <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i> Administrativo</a></li>
             
@@ -132,11 +132,11 @@
                         </select>
                     </div>
                     <div>
-                        <label for="filtro_numero">Número do Hidrômetro</label>
+                        <label for="filtro_numero">Nºmero do Hidrômetro</label>
                         <input type="text" id="filtro_numero" placeholder="Ex: H123456">
                     </div>
                     <div>
-                        <label for="filtro_lacre">Número do Lacre</label>
+                        <label for="filtro_lacre">Nºmero do Lacre</label>
                         <input type="text" id="filtro_lacre" placeholder="Ex: L789012">
                     </div>
                 </div>
@@ -217,7 +217,7 @@
     </div>
 
     <script>
-        // ===== CONFIGURAÇÃO DE API =====
+        // ===== CONFIGURAO DE API =====
         const API_BASE = '../api/';  // ? Path base centralizado
 
         /**
@@ -225,7 +225,7 @@
          * Evita "Unexpected token '<'" ao parsear HTML/erro como JSON
          * 
          * @param {string} endpoint - Nome do arquivo PHP (ex: 'api_leituras.php')
-         * @param {Object} options - Opções adicionais (method, body, etc)
+         * @param {Object} options - Opçµes adicionais (method, body, etc)
          * @returns {Promise<Object>} Os dados retornados pelo servidor
          * @throws {Error} Com mensagem legível do erro
          */
@@ -245,7 +245,7 @@
                 throw new Error(`Erro de conexão (${endpoint}): ${networkError.message}`);
             }
 
-            // ? CRÍTICO: Validar HTTP status ANTES de parsear JSON
+            // ? CRTICO: Validar HTTP status ANTES de parsear JSON
             if (!response.ok) {
                 let errorMessage = `Erro ${response.status} (${endpoint})`;
                 try {
@@ -277,12 +277,12 @@
             setDatasPadrao();
         });
 
-        // Funções de Menu
+        // Funçµes de Menu
         function toggleMenu() {
             document.getElementById('sidebar').classList.toggle('active');
         }
 
-        // Funções de Alerta
+        // Funçµes de Alerta
         function mostrarAlerta(mensagem, tipo = 'success') {
             const container = document.getElementById('alertContainer');
             const alert = document.createElement('div');
@@ -327,7 +327,7 @@
             }
         }
 
-        // Definir Datas Padrão (último mês)
+        // Definir Datas Padrão (ºltimo mªs)
         function setDatasPadrao() {
             const hoje = new Date();
             const umMesAtras = new Date();
@@ -359,7 +359,7 @@
                 if (data.sucesso) {
                     dadosRelatorio = data.dados;
                     
-                    // Filtrar por número e lacre (frontend)
+                    // Filtrar por nºmero e lacre (frontend)
                     const numero = document.getElementById('filtro_numero').value.trim().toUpperCase();
                     const lacre = document.getElementById('filtro_lacre').value.trim().toUpperCase();
                     

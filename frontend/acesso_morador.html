@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>¡rea do Morador - Sistema de Controle de Acesso</title>
+    <title>¬Årea do Morador - Sistema de Controle de Acesso</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -248,7 +248,7 @@
             font-size: 0.9rem;
         }
         
-        /* NotificaÁıes */
+        /* Notifica√ß¬µes */
         .notificacao-item {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -441,7 +441,7 @@
 <body>
     <header class="header">
         <div class="header-left">
-            <h1><i class="fas fa-home"></i> ¡rea do Morador</h1>
+            <h1><i class="fas fa-home"></i> ¬Årea do Morador</h1>
             <p>Serra da Liberdade</p>
         </div>
         <div class="header-right">
@@ -462,16 +462,16 @@
                 <i class="fas fa-user-edit"></i> Meu Cadastro
             </button>
             <button class="tab" onclick="showTab('veiculos')">
-                <i class="fas fa-car"></i> Meus VeÌculos
+                <i class="fas fa-car"></i> Meus Ve√≠culos
             </button>
             <button class="tab" onclick="showTab('protocolos')">
                 <i class="fas fa-box"></i> Meus Protocolos
             </button>
             <button class="tab" onclick="showTab('hidrometro')">
-                <i class="fas fa-tint"></i> HidrÙmetro
+                <i class="fas fa-tint"></i> Hidr√¥metro
             </button>
             <button class="tab" onclick="showTab('notificacoes')">
-                <i class="fas fa-bell"></i> NotificaÁıes
+                <i class="fas fa-bell"></i> Notifica√ß¬µes
             </button>
         </div>
         
@@ -508,16 +508,16 @@
                         </div>
                     </div>
                     <button type="submit" id="btnSalvarCadastro">
-                        <i class="fas fa-save"></i> Salvar AlteraÁıes
+                        <i class="fas fa-save"></i> Salvar Altera√ß¬µes
                     </button>
                 </form>
             </div>
         </div>
         
-        <!-- Tab: Meus VeÌculos -->
+        <!-- Tab: Meus Ve√≠culos -->
         <div id="tabVeiculos" class="tab-content">
             <div class="card">
-                <h2><i class="fas fa-plus-circle"></i> <span id="tituloFormVeiculo">Cadastrar Novo VeÌculo</span></h2>
+                <h2><i class="fas fa-plus-circle"></i> <span id="tituloFormVeiculo">Cadastrar Novo Ve√≠culo</span></h2>
                 <div id="alertVeiculo" class="alert"></div>
                 <form id="formVeiculo">
                     <input type="hidden" id="veiculoId">
@@ -537,7 +537,7 @@
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <button type="submit" id="btnSalvarVeiculo">
-                            <i class="fas fa-save"></i> Salvar VeÌculo
+                            <i class="fas fa-save"></i> Salvar Ve√≠culo
                         </button>
                         <button type="button" class="btn-cancel" id="btnCancelarVeiculo" style="display: none;" onclick="cancelarEdicaoVeiculo()">
                             <i class="fas fa-times"></i> Cancelar
@@ -547,10 +547,10 @@
             </div>
             
             <div class="card">
-                <h2><i class="fas fa-list"></i> Lista de VeÌculos</h2>
+                <h2><i class="fas fa-list"></i> Lista de Ve√≠culos</h2>
                 <div class="loading" id="loadingVeiculos">
                     <div class="spinner"></div>
-                    <p>Carregando veÌculos...</p>
+                    <p>Carregando ve√≠culos...</p>
                 </div>
                 <div id="veiculosContainer"></div>
             </div>
@@ -578,10 +578,10 @@
             </div>
         </div>
         
-        <!-- Tab: HidrÙmetro -->
+        <!-- Tab: Hidr√¥metro -->
         <div id="tabHidrometro" class="tab-content">
             <div class="card">
-                <h2><i class="fas fa-tint"></i> Dados do HidrÙmetro</h2>
+                <h2><i class="fas fa-tint"></i> Dados do Hidr√¥metro</h2>
                 <div class="loading" id="loadingHidrometro">
                     <div class="spinner"></div>
                     <p>Carregando dados...</p>
@@ -589,42 +589,42 @@
                 <div id="hidrometroInfo" style="display: none;">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>N˙mero do HidrÙmetro</label>
+                            <label>N¬∫mero do Hidr√¥metro</label>
                             <input type="text" id="numeroHidrometro" disabled>
                         </div>
                         <div class="form-group">
-                            <label>N˙mero do Lacre</label>
+                            <label>N¬∫mero do Lacre</label>
                             <input type="text" id="numeroLacre" disabled>
                         </div>
                         <div class="form-group">
-                            <label>⁄ltima Leitura (m≥)</label>
+                            <label>¬öltima Leitura (m¬≥)</label>
                             <input type="text" id="ultimaLeitura" disabled>
                         </div>
                         <div class="form-group">
-                            <label>Data de InstalaÁ„o</label>
+                            <label>Data de Instala√ß√£o</label>
                             <input type="text" id="dataInstalacao" disabled>
                         </div>
                     </div>
                 </div>
                 <div id="hidrometroVazio" class="empty-state" style="display: none;">
                     <i class="fas fa-tint"></i>
-                    <p>Nenhum hidrÙmetro cadastrado para sua unidade</p>
+                    <p>Nenhum hidr√¥metro cadastrado para sua unidade</p>
                 </div>
             </div>
             
             <div class="card" id="cardLeituras" style="display: none;">
-                <h2><i class="fas fa-chart-line"></i> HistÛrico de Leituras</h2>
+                <h2><i class="fas fa-chart-line"></i> Hist√≥rico de Leituras</h2>
                 <div id="leiturasContainer"></div>
             </div>
         </div>
         
-        <!-- Tab: NotificaÁıes -->
+        <!-- Tab: Notifica√ß¬µes -->
         <div id="tabNotificacoes" class="tab-content">
             <div class="card">
-                <h2><i class="fas fa-bell"></i> NotificaÁıes e Avisos</h2>
+                <h2><i class="fas fa-bell"></i> Notifica√ß¬µes e Avisos</h2>
                 <div class="loading" id="loadingNotificacoes">
                     <div class="spinner"></div>
-                    <p>Carregando notificaÁıes...</p>
+                    <p>Carregando notifica√ß¬µes...</p>
                 </div>
                 <div id="notificacoesContainer"></div>
             </div>
@@ -641,7 +641,7 @@
             aplicarMascaras();
         });
         
-        // Verificar sess„o
+        // Verificar sess√£o
         function verificarSessao() {
             fetch('../api/api_morador_dados.php')
                 .then(response => response.json())
@@ -651,13 +651,13 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Erro ao verificar sess„o:', error);
+                    console.error('Erro ao verificar sess√£o:', error);
                 });
         }
         
-        // Aplicar m·scaras
+        // Aplicar m√°scaras
         function aplicarMascaras() {
-            // M·scara de CPF
+            // M√°scara de CPF
             document.getElementById('cpf').addEventListener('input', function(e) {
                 let valor = e.target.value.replace(/\D/g, '');
                 if (valor.length <= 11) {
@@ -668,7 +668,7 @@
                 e.target.value = valor;
             });
             
-            // M·scara de telefone
+            // M√°scara de telefone
             ['telefone', 'celular'].forEach(campo => {
                 document.getElementById(campo).addEventListener('input', function(e) {
                     let valor = e.target.value.replace(/\D/g, '');
@@ -756,17 +756,17 @@
                     mostrarAlerta('alertCadastro', data.mensagem, 'error');
                 }
                 btnSalvar.disabled = false;
-                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar AlteraÁıes';
+                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Altera√ß¬µes';
             })
             .catch(error => {
                 console.error('Erro:', error);
                 mostrarAlerta('alertCadastro', 'Erro ao salvar dados', 'error');
                 btnSalvar.disabled = false;
-                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar AlteraÁıes';
+                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Altera√ß¬µes';
             });
         });
         
-        // Carregar veÌculos
+        // Carregar ve√≠culos
         function carregarVeiculos() {
             document.getElementById('loadingVeiculos').classList.add('active');
             
@@ -779,9 +779,9 @@
                         const container = document.getElementById('veiculosContainer');
                         
                         if (data.dados.length === 0) {
-                            container.innerHTML = '<div class="empty-state"><i class="fas fa-car"></i><p>Nenhum veÌculo cadastrado</p></div>';
+                            container.innerHTML = '<div class="empty-state"><i class="fas fa-car"></i><p>Nenhum ve√≠culo cadastrado</p></div>';
                         } else {
-                            let html = '<table><thead><tr><th>Placa</th><th>Modelo</th><th>Cor</th><th>TAG</th><th>AÁıes</th></tr></thead><tbody>';
+                            let html = '<table><thead><tr><th>Placa</th><th>Modelo</th><th>Cor</th><th>TAG</th><th>A√ß¬µes</th></tr></thead><tbody>';
                             
                             data.dados.forEach(veiculo => {
                                 html += `
@@ -812,11 +812,11 @@
                 .catch(error => {
                     console.error('Erro:', error);
                     document.getElementById('loadingVeiculos').classList.remove('active');
-                    mostrarAlerta('alertVeiculo', 'Erro ao carregar veÌculos', 'error');
+                    mostrarAlerta('alertVeiculo', 'Erro ao carregar ve√≠culos', 'error');
                 });
         }
         
-        // Salvar veÌculo
+        // Salvar ve√≠culo
         document.getElementById('formVeiculo').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -851,38 +851,38 @@
                     mostrarAlerta('alertVeiculo', data.mensagem, 'error');
                 }
                 btnSalvar.disabled = false;
-                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar VeÌculo';
+                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Ve√≠culo';
             })
             .catch(error => {
                 console.error('Erro:', error);
-                mostrarAlerta('alertVeiculo', 'Erro ao salvar veÌculo', 'error');
+                mostrarAlerta('alertVeiculo', 'Erro ao salvar ve√≠culo', 'error');
                 btnSalvar.disabled = false;
-                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar VeÌculo';
+                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Ve√≠culo';
             });
         });
         
-        // Editar veÌculo
+        // Editar ve√≠culo
         function editarVeiculo(id, placa, modelo, cor) {
             editandoVeiculoId = id;
             document.getElementById('placa').value = placa;
             document.getElementById('modelo').value = modelo;
             document.getElementById('cor').value = cor;
-            document.getElementById('tituloFormVeiculo').textContent = 'Editar VeÌculo';
+            document.getElementById('tituloFormVeiculo').textContent = 'Editar Ve√≠culo';
             document.getElementById('btnCancelarVeiculo').style.display = 'inline-flex';
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
-        // Cancelar ediÁ„o
+        // Cancelar edi√ß√£o
         function cancelarEdicaoVeiculo() {
             editandoVeiculoId = null;
             document.getElementById('formVeiculo').reset();
-            document.getElementById('tituloFormVeiculo').textContent = 'Cadastrar Novo VeÌculo';
+            document.getElementById('tituloFormVeiculo').textContent = 'Cadastrar Novo Ve√≠culo';
             document.getElementById('btnCancelarVeiculo').style.display = 'none';
         }
         
-        // Excluir veÌculo
+        // Excluir ve√≠culo
         function excluirVeiculo(id, placa) {
-            if (!confirm(`Deseja realmente excluir o veÌculo ${placa}?`)) {
+            if (!confirm(`Deseja realmente excluir o ve√≠culo ${placa}?`)) {
                 return;
             }
             
@@ -902,7 +902,7 @@
             })
             .catch(error => {
                 console.error('Erro:', error);
-                mostrarAlerta('alertVeiculo', 'Erro ao excluir veÌculo', 'error');
+                mostrarAlerta('alertVeiculo', 'Erro ao excluir ve√≠culo', 'error');
             });
         }
         
@@ -924,7 +924,7 @@
                         if (data.dados.length === 0) {
                             container.innerHTML = '<div class="empty-state"><i class="fas fa-box"></i><p>Nenhum protocolo encontrado</p></div>';
                         } else {
-                            let html = '<table><thead><tr><th>ID</th><th>DescriÁ„o</th><th>CÛdigo NF</th><th>Recebido em</th><th>Recebedor</th><th>Status</th><th>Entregue em</th></tr></thead><tbody>';
+                            let html = '<table><thead><tr><th>ID</th><th>Descri√ß√£o</th><th>C√≥digo NF</th><th>Recebido em</th><th>Recebedor</th><th>Status</th><th>Entregue em</th></tr></thead><tbody>';
                             
                             data.dados.forEach(protocolo => {
                                 const statusClass = protocolo.status === 'pendente' ? 'badge-pendente' : 'badge-entregue';
@@ -957,7 +957,7 @@
                 });
         }
         
-        // Carregar hidrÙmetro
+        // Carregar hidr√¥metro
         function carregarHidrometro() {
             document.getElementById('loadingHidrometro').classList.add('active');
             document.getElementById('hidrometroInfo').style.display = 'none';
@@ -973,16 +973,16 @@
                         const hidrometro = data.dados.hidrometro;
                         const leituras = data.dados.leituras;
                         
-                        // Exibir dados do hidrÙmetro
+                        // Exibir dados do hidr√¥metro
                         document.getElementById('numeroHidrometro').value = hidrometro.numero_hidrometro || '-';
                         document.getElementById('numeroLacre').value = hidrometro.numero_lacre || '-';
-                        document.getElementById('ultimaLeitura').value = hidrometro.ultima_leitura ? hidrometro.ultima_leitura + ' m≥' : '-';
+                        document.getElementById('ultimaLeitura').value = hidrometro.ultima_leitura ? hidrometro.ultima_leitura + ' m¬≥' : '-';
                         document.getElementById('dataInstalacao').value = hidrometro.data_instalacao || '-';
                         document.getElementById('hidrometroInfo').style.display = 'block';
                         
-                        // Exibir histÛrico de leituras
+                        // Exibir hist√≥rico de leituras
                         if (leituras && leituras.length > 0) {
-                            let html = '<table><thead><tr><th>Data</th><th>Leitura Anterior (m≥)</th><th>Leitura Atual (m≥)</th><th>Consumo (m≥)</th><th>Valor (R$)</th></tr></thead><tbody>';
+                            let html = '<table><thead><tr><th>Data</th><th>Leitura Anterior (m¬≥)</th><th>Leitura Atual (m¬≥)</th><th>Consumo (m¬≥)</th><th>Valor (R$)</th></tr></thead><tbody>';
                             
                             leituras.forEach(leitura => {
                                 html += `
@@ -1014,7 +1014,7 @@
                 });
         }
         
-        // Carregar notificaÁıes
+        // Carregar notifica√ß¬µes
         function carregarNotificacoes() {
             document.getElementById('loadingNotificacoes').classList.add('active');
             
@@ -1027,7 +1027,7 @@
                         const container = document.getElementById('notificacoesContainer');
                         
                         if (data.dados.length === 0) {
-                            container.innerHTML = '<div class="empty-state"><i class="fas fa-bell"></i><p>Nenhuma notificaÁ„o disponÌvel</p></div>';
+                            container.innerHTML = '<div class="empty-state"><i class="fas fa-bell"></i><p>Nenhuma notifica√ß√£o dispon√≠vel</p></div>';
                         } else {
                             let html = '';
                             
@@ -1064,13 +1064,13 @@
                             container.innerHTML = html;
                         }
                     } else {
-                        document.getElementById('notificacoesContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar notificaÁıes</p></div>';
+                        document.getElementById('notificacoesContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar notifica√ß¬µes</p></div>';
                     }
                 })
                 .catch(error => {
                     console.error('Erro:', error);
                     document.getElementById('loadingNotificacoes').classList.remove('active');
-                    document.getElementById('notificacoesContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar notificaÁıes</p></div>';
+                    document.getElementById('notificacoesContainer').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar notifica√ß¬µes</p></div>';
                 });
         }
         
@@ -1098,7 +1098,7 @@
         function visualizarAnexo(id) {
             window.open(`visualizar_anexo.php?id=${id}`, '_blank');
             
-            // Recarregar notificaÁıes apÛs 1 segundo para atualizar status
+            // Recarregar notifica√ß¬µes ap√≥s 1 segundo para atualizar status
             setTimeout(() => {
                 carregarNotificacoes();
             }, 1000);
@@ -1108,7 +1108,7 @@
         function baixarAnexo(id) {
             window.open(`api_morador_notificacoes.php?download=${id}`, '_blank');
             
-            // Recarregar notificaÁıes apÛs 1 segundo para atualizar status
+            // Recarregar notifica√ß¬µes ap√≥s 1 segundo para atualizar status
             setTimeout(() => {
                 carregarNotificacoes();
             }, 1000);

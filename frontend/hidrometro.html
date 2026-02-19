@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -483,7 +483,7 @@
                 <li class="nav-item"><a href="financeiro.html" class="nav-link"><i class="fas fa-money-bill-wave"></i>
                         Financeiro</a></li>
                 <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i>
-                        Configurações</a></li>
+                        Configuraçµes</a></li>
                 <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i>
                         Manutenção</a></li>
                 <li class="nav-item"><a href="administrativo.html" class="nav-link"><i class="fas fa-briefcase"></i>
@@ -529,11 +529,11 @@
                             </select>
                         </div>
                         <div>
-                            <label for="numero_hidrometro">Número do Hidrômetro *</label>
+                            <label for="numero_hidrometro">Nºmero do Hidrômetro *</label>
                             <input type="text" id="numero_hidrometro" placeholder="Ex: H123456" required>
                         </div>
                         <div>
-                            <label for="numero_lacre">Número do Lacre</label>
+                            <label for="numero_lacre">Nºmero do Lacre</label>
                             <input type="text" id="numero_lacre" placeholder="Ex: L789012">
                         </div>
                         <div>
@@ -552,7 +552,7 @@
                 <h2><i class="fas fa-search"></i> Buscar Hidrômetros</h2>
                 <div class="form-grid">
                     <div>
-                        <label for="busca">Buscar por Número, Unidade ou Morador</label>
+                        <label for="busca">Buscar por Nºmero, Unidade ou Morador</label>
                         <input type="text" id="busca" placeholder="Digite para buscar...">
                     </div>
                     <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
@@ -580,9 +580,9 @@
                                 <th>Nº Hidrômetro</th>
                                 <th>Nº Lacre</th>
                                 <th>Data Instalação</th>
-                                <th>Última Leitura</th>
+                                <th>ltima Leitura</th>
                                 <th>Status</th>
-                                <th>Ações</th>
+                                <th>Açµes</th>
                             </tr>
                         </thead>
                         <tbody id="listaHidrometros">
@@ -604,7 +604,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="fas fa-edit"></i> Editar Hidrômetro</h3>
-                <button class="modal-close" onclick="fecharModal('modalEditar')">×</button>
+                <button class="modal-close" onclick="fecharModal('modalEditar')"></button>
             </div>
             <form id="formEditar">
                 <input type="hidden" id="edit_id">
@@ -622,11 +622,11 @@
                         </select>
                     </div>
                     <div>
-                        <label for="edit_numero_hidrometro">Número do Hidrômetro *</label>
+                        <label for="edit_numero_hidrometro">Nºmero do Hidrômetro *</label>
                         <input type="text" id="edit_numero_hidrometro" required>
                     </div>
                     <div>
-                        <label for="edit_numero_lacre">Número do Lacre</label>
+                        <label for="edit_numero_lacre">Nºmero do Lacre</label>
                         <input type="text" id="edit_numero_lacre">
                     </div>
                     <div>
@@ -649,7 +649,7 @@
                         histórico.</small>
                 </div>
                 <div style="margin-top: 1.5rem;">
-                    <button type="submit" class="btn-success"><i class="fas fa-save"></i> Salvar Alterações</button>
+                    <button type="submit" class="btn-success"><i class="fas fa-save"></i> Salvar Alteraçµes</button>
                     <button type="button" class="btn-secondary" onclick="fecharModal('modalEditar')"><i
                             class="fas fa-times"></i> Cancelar</button>
                 </div>
@@ -661,8 +661,8 @@
     <div class="modal" id="modalHistorico">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-history"></i> Histórico de Alterações</h3>
-                <button class="modal-close" onclick="fecharModal('modalHistorico')">×</button>
+                <h3><i class="fas fa-history"></i> Histórico de Alteraçµes</h3>
+                <button class="modal-close" onclick="fecharModal('modalHistorico')"></button>
             </div>
             <div id="historicoContent">
                 <div class="loading active">
@@ -692,7 +692,7 @@
             document.getElementById('formEditar').addEventListener('submit', atualizarHidrometro);
         });
 
-        // Funções de Menu
+        // Funçµes de Menu
         function toggleMenu() {
             document.getElementById('sidebar').classList.toggle('active');
         }
@@ -705,7 +705,7 @@
             }
         });
 
-        // Funções de Alerta
+        // Funçµes de Alerta
         function mostrarAlerta(mensagem, tipo = 'success') {
             const container = document.getElementById('alertContainer');
             const alert = document.createElement('div');
@@ -716,7 +716,7 @@
             container.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Funções de Modal
+        // Funçµes de Modal
         function abrirModal(id) {
             document.getElementById(id).classList.add('active');
         }

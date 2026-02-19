@@ -316,12 +316,12 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1>📦 Meus Produtos/Serviços</h1>
+                <h1>ð¦ Meus Produtos/Serviços</h1>
                 <p>Gerencie seus produtos e serviços</p>
             </div>
             <div class="header-actions">
                 <button class="button btn-primary" onclick="abrirModalCriarProduto()">
-                    ➕ Novo Produto/Serviço
+                    â Novo Produto/Serviço
                 </button>
             </div>
         </div>
@@ -341,7 +341,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalProdutoTitulo">Novo Produto/Serviço</h2>
-                <button class="modal-close" onclick="fecharModal('modalProduto')">✕</button>
+                <button class="modal-close" onclick="fecharModal('modalProduto')">â</button>
             </div>
 
             <form id="formProduto" onsubmit="salvarProduto(event)">
@@ -377,7 +377,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Observações</label>
+                    <label>Observaçµes</label>
                     <textarea id="produtoObservacao"></textarea>
                 </div>
 
@@ -502,7 +502,7 @@
                 if (produtos.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
-                            <div class="empty-state-icon">📦</div>
+                            <div class="empty-state-icon">ð¦</div>
                             <p>Nenhum produto/serviço cadastrado ainda</p>
                         </div>
                     `;
@@ -510,7 +510,7 @@
                 }
 
                 let html = '<table><thead><tr>';
-                html += '<th>Código</th><th>Nome</th><th>Tipo</th><th>Preço</th><th>Quantidade</th><th>Status</th><th>Ações</th>';
+                html += '<th>Código</th><th>Nome</th><th>Tipo</th><th>Preço</th><th>Quantidade</th><th>Status</th><th>Açµes</th>';
                 html += '</tr></thead><tbody>';
 
                 produtos.forEach(produto => {
@@ -520,7 +520,7 @@
                     html += `<tr>
                         <td>${produto.codigo_sequencial}</td>
                         <td>${produto.nome}</td>
-                        <td>${produto.tipo === 'produto' ? '📦 Produto' : '🔧 Serviço'}</td>
+                        <td>${produto.tipo === 'produto' ? 'ð¦ Produto' : 'ð§ Serviço'}</td>
                         <td>R$ ${parseFloat(produto.preco_venda).toFixed(2)}</td>
                         <td>${produto.quantidade_disponivel}</td>
                         <td><span class="status-badge ${statusClass}">${statusTexto}</span></td>

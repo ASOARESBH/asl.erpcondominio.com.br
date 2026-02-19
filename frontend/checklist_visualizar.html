@@ -24,7 +24,7 @@
         <nav class="sidebar no-print" id="sidebar">
             <h1>Serra da Liberdade</h1>
             <ul class="nav-menu">
-                <li class="nav-item"><a href="manutencao.html" class="nav-link active"><i class="fas fa-tools"></i> Manutenção</a></li>
+                <li class="nav-item"><a href="manutencao.html" class="nav-link active"><i class="fas fa-tools"></i> ManutenÃ§Ã£o</a></li>
             </ul>
         </nav>
         <main class="main-content">
@@ -34,7 +34,7 @@
             <div class="section">
                 <div class="print-header">
                     <h1>CHECKLIST VEICULAR</h1>
-                    <p>Condomínio Serra da Liberdade</p>
+                    <p>CondomÃ­nio Serra da Liberdade</p>
                 </div>
                 <div id="conteudoChecklist">
                     <p>Carregando...</p>
@@ -47,7 +47,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const id = urlParams.get('id');
             if (!id) {
-                alert('ID não informado');
+                alert('ID nÃ£o informado');
                 window.location.href = 'checklist_veicular.html';
                 return;
             }
@@ -68,7 +68,7 @@
             const kmPercorrido = checklist.km_final ? (checklist.km_final - checklist.km_inicial) : '-';
             container.innerHTML = `
                 <div class="info-grid">
-                    <div class="info-item"><strong>Veículo:</strong> ${checklist.placa} - ${checklist.veiculo_modelo}</div>
+                    <div class="info-item"><strong>VeÃ­culo:</strong> ${checklist.placa} - ${checklist.veiculo_modelo}</div>
                     <div class="info-item"><strong>Operador:</strong> ${checklist.operador_nome}</div>
                     <div class="info-item"><strong>KM Inicial:</strong> ${checklist.km_inicial} km</div>
                     <div class="info-item"><strong>KM Final:</strong> ${checklist.km_final || '-'} km</div>
@@ -77,8 +77,8 @@
                     <div class="info-item"><strong>Data Abertura:</strong> ${new Date(checklist.data_hora_abertura).toLocaleString('pt-BR')}</div>
                     <div class="info-item"><strong>Data Fechamento:</strong> ${checklist.data_hora_fechamento ? new Date(checklist.data_hora_fechamento).toLocaleString('pt-BR') : '-'}</div>
                 </div>
-                ${checklist.observacao_abertura ? `<div class="info-item"><strong>Observações Iniciais:</strong><br>${checklist.observacao_abertura}</div>` : ''}
-                ${checklist.observacao_fechamento ? `<div class="info-item"><strong>Observações Finais:</strong><br>${checklist.observacao_fechamento}</div>` : ''}
+                ${checklist.observacao_abertura ? `<div class="info-item"><strong>ObservaÃ§Âµes Iniciais:</strong><br>${checklist.observacao_abertura}</div>` : ''}
+                ${checklist.observacao_fechamento ? `<div class="info-item"><strong>ObservaÃ§Âµes Finais:</strong><br>${checklist.observacao_fechamento}</div>` : ''}
                 <h3>Itens Verificados</h3>
                 <table class="items-table">
                     <thead><tr><th>Item</th><th>Abertura</th><th>Fechamento</th></tr></thead>

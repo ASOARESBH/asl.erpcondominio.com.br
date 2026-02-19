@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+ï»¿<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GestÃ£o de Estoque - Serra da Liberdade</title>
+    <title>Gest£o de Estoque - Serra da Liberdade</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -449,7 +449,7 @@
             }
         }
     </style>
-    <!-- âœ… FASE 4: Session Manager Core v2.0 -->
+    <!-- âÅâ¦ FASE 4: Session Manager Core v2.0 -->
     <script src="js/session-manager-core.js"></script>
 </head>
 
@@ -470,7 +470,7 @@
                 </div>
                 <div class="session-info">
                     <div class="session-item">
-                        <div class="session-label">Tempo de SessÃ£o</div>
+                        <div class="session-label">Tempo de Sess£o</div>
                         <div class="session-value session-timer" id="sessionTimer">00:00:00</div>
                     </div>
                     <div class="session-item">
@@ -485,7 +485,7 @@
                         Dashboard</a></li>
                 <li class="nav-item"><a href="moradores.html" class="nav-link"><i class="fas fa-users"></i>
                         Moradores</a></li>
-                <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i> VeÃ­culos</a>
+                <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i> Ve­culos</a>
                 </li>
                 <li class="nav-item"><a href="layout-base.html?page=visitantes" class="nav-link"><i class="fas fa-user-friends"></i>
                         Visitantes</a></li>
@@ -494,13 +494,13 @@
                 <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i class="fas fa-door-open"></i> Controle de
                         Acesso</a></li>
                 <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i>
-                        RelatÃ³rios</a></li>
+                        Relat³rios</a></li>
                 <li class="nav-item"><a href="financeiro.html" class="nav-link"><i class="fas fa-money-bill-wave"></i>
                         Financeiro</a></li>
                 <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i>
-                        ConfiguraÃ§Ãµes</a></li>
+                        Configura§µes</a></li>
                 <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i>
-                        ManutenÃ§Ã£o</a></li>
+                        Manuten§£o</a></li>
                 <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i>
                         Administrativo</a></li>
                 <li class="nav-item"
@@ -514,15 +514,15 @@
         </nav>
         <main class="main-content">
             <header class="header">
-                <h1><i class="fas fa-boxes"></i> GestÃ£o de Estoque</h1>
+                <h1><i class="fas fa-boxes"></i> Gest£o de Estoque</h1>
             </header>
 
             <nav class="submenu">
-                <li><a href="administrativa.html"><i class="fas fa-home"></i> InÃ­cio</a></li>
+                <li><a href="administrativa.html"><i class="fas fa-home"></i> In­cio</a></li>
                 <a href="estoque.html" class="active"><i class="fas fa-boxes"></i> Produtos</a>
                 <a href="entrada_estoque.html"><i class="fas fa-arrow-down"></i> Entrada</a>
-                <a href="saida_estoque.html"><i class="fas fa-arrow-up"></i> SaÃ­da</a>
-                <a href="relatorio_estoque.html"><i class="fas fa-chart-bar"></i> RelatÃ³rios</a>
+                <a href="saida_estoque.html"><i class="fas fa-arrow-up"></i> Sa­da</a>
+                <a href="relatorio_estoque.html"><i class="fas fa-chart-bar"></i> Relat³rios</a>
             </nav>
 
             <div id="alertContainer"></div>
@@ -560,7 +560,7 @@
                 </div>
             </div>
 
-            <!-- FormulÃ¡rio de Cadastro/EdiÃ§Ã£o -->
+            <!-- Formul¡rio de Cadastro/Edi§£o -->
             <section class="section">
                 <h2 class="section-title"><i class="fas fa-plus-circle"></i> <span id="formTitle">Cadastrar
                         Produto</span></h2>
@@ -591,7 +591,7 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="preco_unitario">PreÃ§o UnitÃ¡rio (R$) *</label>
+                            <label for="preco_unitario">Pre§o Unit¡rio (R$) *</label>
                             <input type="number" id="preco_unitario" step="0.01" min="0" required>
                         </div>
                         <div class="form-group">
@@ -599,16 +599,16 @@
                             <input type="number" id="quantidade_estoque" step="0.01" min="0" required>
                         </div>
                         <div class="form-group">
-                            <label for="estoque_minimo">Estoque MÃ­nimo</label>
+                            <label for="estoque_minimo">Estoque M­nimo</label>
                             <input type="number" id="estoque_minimo" step="0.01" min="0">
                         </div>
                         <div class="form-group">
-                            <label for="estoque_maximo">Estoque MÃ¡ximo</label>
+                            <label for="estoque_maximo">Estoque M¡ximo</label>
                             <input type="number" id="estoque_maximo" step="0.01" min="0">
                         </div>
                         <div class="form-group">
-                            <label for="localizacao">LocalizaÃ§Ã£o</label>
-                            <input type="text" id="localizacao" placeholder="Ex: DepÃ³sito A - Prateleira 1">
+                            <label for="localizacao">Localiza§£o</label>
+                            <input type="text" id="localizacao" placeholder="Ex: Dep³sito A - Prateleira 1">
                         </div>
                         <div class="form-group">
                             <label for="fornecedor">Fornecedor</label>
@@ -616,7 +616,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="descricao">DescriÃ§Ã£o</label>
+                        <label for="descricao">Descri§£o</label>
                         <textarea id="descricao"></textarea>
                     </div>
                     <div class="btn-group">
@@ -632,7 +632,7 @@
             <section class="section">
                 <h2 class="section-title"><i class="fas fa-search"></i> Buscar Produtos</h2>
                 <div class="search-box">
-                    <input type="text" id="busca" placeholder="Buscar por nome, cÃ³digo ou descriÃ§Ã£o...">
+                    <input type="text" id="busca" placeholder="Buscar por nome, c³digo ou descri§£o...">
                     <select id="filtroCategoria">
                         <option value="">Todas as categorias</option>
                     </select>
@@ -654,15 +654,15 @@
                     <table id="produtosTable">
                         <thead>
                             <tr>
-                                <th>CÃ³digo</th>
+                                <th>C³digo</th>
                                 <th>Nome</th>
                                 <th>Categoria</th>
                                 <th>Unidade</th>
-                                <th>PreÃ§o Unit.</th>
+                                <th>Pre§o Unit.</th>
                                 <th>Estoque</th>
                                 <th>Valor Total</th>
                                 <th>Status</th>
-                                <th>AÃ§Ãµes</th>
+                                <th>A§µes</th>
                             </tr>
                         </thead>
                         <tbody id="produtosTableBody">
@@ -860,7 +860,7 @@
                     document.getElementById('formTitle').textContent = 'Editar Produto';
                     editando = true;
 
-                    // Scroll para o formulÃ¡rio
+                    // Scroll para o formul¡rio
                     document.getElementById('produtoForm').scrollIntoView({ behavior: 'smooth' });
                 }
             } catch (error) {
@@ -893,7 +893,7 @@
             }
         }
 
-        // Limpar formulÃ¡rio
+        // Limpar formul¡rio
         function limparFormulario() {
             document.getElementById('produtoForm').reset();
             document.getElementById('produtoId').value = '';
@@ -926,14 +926,14 @@
             carregarProdutos();
         });
         // ========== LOGOUT REMOVIDO - Centralizado em SessionManagerCore via sidebar-controller.js ==========
-        // Logout agora Ã© Ãºnico ponto de entrada: sidebar-controller.js â†’ SessionManagerCore.getInstance().logout()
+        // Logout agora © ºnico ponto de entrada: sidebar-controller.js ââ â SessionManagerCore.getInstance().logout()
     </script>
 
-    <!-- ProteÃ§Ã£o de Login -->
+    <!-- Prote§£o de Login -->
     <script src="js/auth-guard.js"></script>
     <script src="js/user-display.js"></script>
 
-    <!-- Script para exibir usuÃ¡rio logado em tempo real -->
+    <!-- Script para exibir usu¡rio logado em tempo real -->
     <script>
         (function () {
             'use strict';
@@ -948,10 +948,10 @@
 
             /**
              * Inicializar o script
-             * âœ… CORRIGIDO: Usar SessionManager Singleton em vez de polling agressivo
+             * âÅâ¦ CORRIGIDO: Usar SessionManager Singleton em vez de polling agressivo
              */
             function inicializar() {
-                console.log('ðŸ”§ Dashboard User Display inicializado');
+                console.log('°Å¸â§ Dashboard User Display inicializado');
 
                 // Usar SessionManager Singleton em vez de fazer polling
                 const sessionMgr = SessionManagerCore.getInstance();
@@ -967,11 +967,11 @@
                 document.addEventListener('visibilitychange', handleVisibilidadeChange);
                 window.addEventListener('beforeunload', limpar);
 
-                console.log('âœ… Dashboard User Display pronto');
+                console.log('âÅâ¦ Dashboard User Display pronto');
             }
 
             /**
-             * Carregar dados do usuÃ¡rio logado
+             * Carregar dados do usu¡rio logado
              */
             function carregarDadosUsuario() {
                 fetch(CONFIG.apiUrl, {
@@ -993,11 +993,11 @@
                             handleSessaoExpirada();
                         }
                     })
-                    .catch(error => console.warn('Erro ao carregar dados da sessÃ£o:', error));
+                    .catch(error => console.warn('Erro ao carregar dados da sess£o:', error));
             }
 
             /**
-             * Atualizar exibiÃ§Ã£o na interface
+             * Atualizar exibi§£o na interface
              */
             function atualizarExibicao(data) {
                 const usuario = data && data.usuario ? data.usuario : null;
@@ -1009,7 +1009,7 @@
             }
 
             /**
-             * Atualizar perfil do usuÃ¡rio
+             * Atualizar perfil do usu¡rio
              */
             function atualizarPerfilUsuario(usuario) {
                 const section = document.getElementById('userProfileSection');
@@ -1030,13 +1030,13 @@
                 const emailEl = document.getElementById('userEmail');
 
                 if (avatarEl) avatarEl.textContent = inicial;
-                if (nameEl) nameEl.textContent = nome || 'UsuÃ¡rio';
-                if (funcEl) funcEl.textContent = usuario.funcao || usuario.permissao || 'UsuÃ¡rio';
+                if (nameEl) nameEl.textContent = nome || 'Usu¡rio';
+                if (funcEl) funcEl.textContent = usuario.funcao || usuario.permissao || 'Usu¡rio';
                 if (emailEl) emailEl.textContent = usuario.email || '-';
             }
 
             /**
-             * Atualizar tempo de sessÃ£o
+             * Atualizar tempo de sess£o
              */
             function atualizarTempoSessao(sessao) {
                 const tempoElement = document.getElementById('sessionTimer');
@@ -1080,16 +1080,16 @@
              */
             function verificarAvisos(tempoRestante) {
                 if (tempoRestante < CONFIG.warningThreshold && tempoRestante > CONFIG.warningThreshold - 60) {
-                    mostrarNotificacao('warning', 'Sua sessÃ£o expirarÃ¡ em 5 minutos');
+                    mostrarNotificacao('warning', 'Sua sess£o expirar¡ em 5 minutos');
                 }
 
                 if (tempoRestante < 60 && tempoRestante > 50) {
-                    mostrarNotificacao('critical', 'Sua sessÃ£o expirarÃ¡ em menos de 1 minuto!');
+                    mostrarNotificacao('critical', 'Sua sess£o expirar¡ em menos de 1 minuto!');
                 }
             }
 
             /**
-             * Mostrar notificaÃ§Ã£o
+             * Mostrar notifica§£o
              */
             function mostrarNotificacao(tipo, mensagem) {
                 if (document.querySelector(`[data-notif-sessao="${tipo}"]`)) {
@@ -1123,7 +1123,7 @@
             }
 
             /**
-             * Renovar sessÃ£o automaticamente
+             * Renovar sess£o automaticamente
              */
             function renovarSessaoAutomaticamente() {
                 fetch(CONFIG.apiUrl + '?acao=renovar', {
@@ -1134,15 +1134,15 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.sucesso) {
-                            console.log('âœ… SessÃ£o renovada automaticamente');
+                            console.log('âÅâ¦ Sess£o renovada automaticamente');
                             carregarDadosUsuario();
                         }
                     })
-                    .catch(error => console.warn('Erro ao renovar sessÃ£o:', error));
+                    .catch(error => console.warn('Erro ao renovar sess£o:', error));
             }
 
             /**
-             * Lidar com mudanÃ§a de visibilidade
+             * Lidar com mudan§a de visibilidade
              */
             function handleVisibilidadeChange() {
                 if (document.hidden) {
@@ -1154,10 +1154,10 @@
             }
 
             /**
-             * Lidar com sessÃ£o expirada
+             * Lidar com sess£o expirada
              */
             function handleSessaoExpirada() {
-                console.warn('âš ï¸ SessÃ£o expirada ou invÃ¡lida');
+                console.warn('âÅ¡ ï¸ Sess£o expirada ou inv¡lida');
             }
 
             /**

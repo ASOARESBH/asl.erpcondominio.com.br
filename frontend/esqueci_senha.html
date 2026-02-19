@@ -48,7 +48,7 @@
             <div id="alertBox" class="alert"></div>
             
             <div class="info-box">
-                <i class="fas fa-info-circle"></i> Digite seu CPF cadastrado. Enviaremos um link de recuperação para o e-mail associado à sua conta.
+                <i class="fas fa-info-circle"></i> Digite seu CPF cadastrado. Enviaremos um link de recuperaÃ§Ã£o para o e-mail associado Â  sua conta.
             </div>
             
             <form id="formRecuperar">
@@ -61,7 +61,7 @@
                 </div>
                 
                 <button type="submit" id="btnEnviar">
-                    <i class="fas fa-paper-plane"></i> Enviar Link de Recuperação
+                    <i class="fas fa-paper-plane"></i> Enviar Link de RecuperaÃ§Ã£o
                 </button>
             </form>
             
@@ -74,7 +74,7 @@
     </div>
 
     <script>
-        // Máscara de CPF
+        // MÃ¡scara de CPF
         document.getElementById('cpf').addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length <= 11) {
@@ -85,7 +85,7 @@
             }
         });
 
-        // Enviar solicitação
+        // Enviar solicitaÃ§Ã£o
         document.getElementById('formRecuperar').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -99,20 +99,20 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.sucesso) {
-                        mostrarSucesso(data.mensagem || 'Link de recuperação enviado para o e-mail cadastrado!');
+                        mostrarSucesso(data.mensagem || 'Link de recuperaÃ§Ã£o enviado para o e-mail cadastrado!');
                         setTimeout(() => {
                             window.location.href = 'login_morador.html';
                         }, 3000);
                     } else {
-                        mostrarErro(data.mensagem || 'Erro ao enviar link de recuperação');
+                        mostrarErro(data.mensagem || 'Erro ao enviar link de recuperaÃ§Ã£o');
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Link de Recuperação';
+                        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Link de RecuperaÃ§Ã£o';
                     }
                 })
                 .catch(error => {
-                    mostrarErro('Erro ao processar solicitação');
+                    mostrarErro('Erro ao processar solicitaÃ§Ã£o');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Link de Recuperação';
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Link de RecuperaÃ§Ã£o';
                 });
         });
 
