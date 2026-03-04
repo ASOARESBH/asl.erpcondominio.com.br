@@ -56,17 +56,49 @@
             margin-bottom: 2rem;
         }
 
-        .login-header .logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
-            border-radius: 50%;
+        /* ============================================
+           LOGO QUADRADA - FORMATO PROFISSIONAL
+           Sem círculo, quadrado com cantos suaves
+           ============================================ */
+        .logo-box {
+            width: 120px;
+            height: 120px;
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 1rem;
-            font-size: 2.5rem;
-            color: var(--color-background-primary);
+            margin: 0 auto 1.2rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .logo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+            display: block;
+        }
+
+        /* Shimmer de loading enquanto a logo carrega */
+        .logo-box.loading {
+            background: linear-gradient(90deg, #f0f4f8 25%, #e2e8f0 50%, #f0f4f8 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Ícone fallback quando não há logo */
+        .logo-box .logo-fallback-icon {
+            font-size: 3rem;
+            color: var(--color-primary-600);
         }
 
         .login-header h1 {
@@ -160,13 +192,8 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-
-            to {
-                opacity: 1;
-            }
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
 
         .alert-error {
@@ -192,7 +219,7 @@
             font-size: 0.85rem;
         }
 
-        /* Loading spinner */
+        /* Loading spinner do botão */
         .spinner {
             display: inline-block;
             width: 16px;
@@ -205,9 +232,7 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         /* Responsive */
@@ -219,6 +244,11 @@
             .login-header h1 {
                 font-size: 1.5rem;
             }
+
+            .logo-box {
+                width: 100px;
+                height: 100px;
+            }
         }
     </style>
 </head>
@@ -226,8 +256,14 @@
 <body>
     <div class="login-container">
         <div class="login-header">
-            <div class="logo">
-                <img id="loginLogo" alt="Logo do Sistema" style="max-width: 80%; max-height: 80%;">
+
+            <!-- Logo quadrada profissional -->
+            <div class="logo-box loading" id="logoBox">
+                <img id="loginLogo"
+                     alt="Logo da Empresa"
+                     style="display:none;"
+                     onload="LogoManager.onLoad()"
+                     onerror="LogoManager.onError()">
             </div>
 
             <p>Sistema de Controle de Acesso</p>
@@ -235,13 +271,14 @@
 
         <div id="alertBox" class="alert"></div>
 
-        <form id="loginForm" method="POST" action="api/validar_login.php">
+        <form id="loginForm">
             <div class="form-group">
                 <label for="email">E-mail</label>
                 <div class="input-wrapper">
                     <i class="fas fa-envelope"></i>
-                    <input type="email" id="email" name="email" placeholder="Digite seu e-mail" required
-                        autocomplete="email">
+                    <input type="email" id="email" name="email"
+                           placeholder="Digite seu e-mail"
+                           required autocomplete="email">
                 </div>
             </div>
 
@@ -249,8 +286,9 @@
                 <label for="senha">Senha</label>
                 <div class="input-wrapper">
                     <i class="fas fa-lock"></i>
-                    <input type="password" id="senha" name="senha" placeholder="Digite sua senha" required
-                        autocomplete="current-password">
+                    <input type="password" id="senha" name="senha"
+                           placeholder="Digite sua senha"
+                           required autocomplete="current-password">
                 </div>
             </div>
 
@@ -265,132 +303,183 @@
     </div>
 
     <script>
-        const loginForm = document.getElementById('loginForm');
-        const btnLogin = document.getElementById('btnLogin');
-        const alertBox = document.getElementById('alertBox');
+        /**
+         * LogoManager
+         * Gerencia o carregamento dinâmico da logo da empresa.
+         * Busca via endpoint público /api/get_logo_empresa.php
+         * Fallback: uploads/logo/logoerp.png (ERP Condomínios)
+         *
+         * Arquitetura: este arquivo está em /frontend/login.html
+         * Portanto, '../' aponta para a raiz do projeto.
+         */
+        const LogoManager = (function () {
+            const BASE_PATH   = '../';
+            const API_LOGO    = BASE_PATH + 'api/get_logo_empresa.php';
+            const FALLBACK    = BASE_PATH + 'uploads/logo/logoerp.png';
 
-        // Função para exibir alertas
+            const logoBox = document.getElementById('logoBox');
+            const logoImg = document.getElementById('loginLogo');
+
+            let fallbackAttempted = false;
+
+            function init() {
+                fetch(API_LOGO, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(function (res) {
+                    if (!res.ok) throw new Error('API indisponível');
+                    return res.json();
+                })
+                .then(function (data) {
+                    if (data && data.sucesso && data.logo_url) {
+                        // Normalizar URL: se for relativa, adicionar base path
+                        let url = data.logo_url;
+                        if (!url.startsWith('http') && !url.startsWith('/')) {
+                            url = BASE_PATH + url;
+                        }
+                        logoImg.src = url;
+                        logoImg.style.display = 'block';
+                    } else {
+                        _useFallback();
+                    }
+                })
+                .catch(function () {
+                    _useFallback();
+                });
+            }
+
+            function _useFallback() {
+                logoImg.src = FALLBACK;
+                logoImg.style.display = 'block';
+            }
+
+            function onLoad() {
+                // Remove shimmer ao carregar com sucesso
+                logoBox.classList.remove('loading');
+            }
+
+            function onError() {
+                logoBox.classList.remove('loading');
+                if (!fallbackAttempted) {
+                    fallbackAttempted = true;
+                    logoImg.src = FALLBACK;
+                } else {
+                    // Último recurso: ícone FontAwesome
+                    logoImg.style.display = 'none';
+                    logoBox.innerHTML = '<i class="fas fa-building logo-fallback-icon"></i>';
+                }
+            }
+
+            return { init: init, onLoad: onLoad, onError: onError };
+        })();
+
+        // ============================================
+        // LOGIN FORM
+        // ============================================
+        const loginForm = document.getElementById('loginForm');
+        const btnLogin  = document.getElementById('btnLogin');
+        const alertBox  = document.getElementById('alertBox');
+
         function mostrarAlerta(mensagem, tipo) {
-            alertBox.innerHTML = `<i class="fas fa-${tipo === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${mensagem}`;
+            const icon = tipo === 'error' ? 'exclamation-circle' : 'check-circle';
+            alertBox.innerHTML = `<i class="fas fa-${icon}"></i> ${mensagem}`;
             alertBox.className = `alert alert-${tipo}`;
             alertBox.style.display = 'block';
-
-            // Auto-esconder após 5 segundos
-            setTimeout(() => {
+            setTimeout(function () {
                 alertBox.style.display = 'none';
             }, 5000);
         }
 
-        // Manipular envio do formulário
         loginForm.addEventListener('submit', function (e) {
             e.preventDefault();
 
-            // Desabilitar botão e mostrar loading
             btnLogin.disabled = true;
             btnLogin.innerHTML = '<span class="spinner"></span> Autenticando...';
 
-            // Coletar dados do formulário
             const formData = new FormData(loginForm);
 
-            // Enviar requisição para API
+            // Arquivo está em /frontend/login.html → API em /api/validar_login.php
             fetch('../api/validar_login.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
             })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.sucesso) {
-                        mostrarAlerta(data.mensagem, 'success');
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.sucesso) {
+                    mostrarAlerta(data.mensagem, 'success');
 
-                        // Armazenar dados do usuário no localStorage
-                        if (data.dados && data.dados.nome) {
-                            localStorage.setItem('usuario_nome', data.dados.nome);
-                        }
-                        if (data.dados && data.dados.permissao) {
-                            localStorage.setItem('usuario_permissao', data.dados.permissao);
-                        }
-
-                        // Redirecionar após 500ms
-                        setTimeout(() => {
-                            window.location.href = 'layout-base.html?page=dashboard';
-                        }, 500);
-                    } else {
-                        mostrarAlerta(data.mensagem, 'error');
-                        btnLogin.disabled = false;
-                        btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+                    if (data.dados && data.dados.nome) {
+                        localStorage.setItem('usuario_nome', data.dados.nome);
                     }
-                })
-                .catch(error => {
-                    console.error('Erro:', error);
-                    mostrarAlerta('Erro ao processar login. Tente novamente.', 'error');
+                    if (data.dados && data.dados.permissao) {
+                        localStorage.setItem('usuario_permissao', data.dados.permissao);
+                    }
+
+                    // ✅ REDIRECIONAMENTO CORRETO
+                    // login.html está em /frontend/ → layout-base.html está no mesmo nível
+                    setTimeout(function () {
+                        window.location.href = 'layout-base.html?page=dashboard';
+                    }, 500);
+                } else {
+                    mostrarAlerta(data.mensagem, 'error');
                     btnLogin.disabled = false;
                     btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
-                });
+                }
+            })
+            .catch(function (error) {
+                console.error('[Login] Erro:', error);
+                mostrarAlerta('Erro ao processar login. Tente novamente.', 'error');
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+            });
         });
 
-        // Verificar se há mensagem de erro na URL (para fallback sem JavaScript)
-        const urlParams = new URLSearchParams(window.location.search);
-        const erro = urlParams.get('erro');
+        // ============================================
+        // MENSAGENS DE ERRO VIA URL PARAMS
+        // ============================================
+        (function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const erro = urlParams.get('erro');
+            const msgs = {
+                '1': 'E-mail ou senha incorretos!',
+                '2': 'Usuário inativo. Entre em contato com o administrador.',
+                '3': 'Preencha todos os campos!',
+                '4': 'Sessão expirada. Faça login novamente.'
+            };
+            if (msgs[erro]) mostrarAlerta(msgs[erro], 'error');
+        })();
 
-        if (erro === '1') {
-            mostrarAlerta('E-mail ou senha incorretos!', 'error');
-        } else if (erro === '2') {
-            mostrarAlerta('Usuário inativo. Entre em contato com o administrador.', 'error');
-        } else if (erro === '3') {
-            mostrarAlerta('Preencha todos os campos!', 'error');
-        } else if (erro === '4') {
-            mostrarAlerta('Sessão expirada. Faça login novamente.', 'error');
-        }
-
-        // Verificar se já está logado ao carregar a página
+        // ============================================
+        // VERIFICAR SESSÃO ATIVA AO CARREGAR
+        // ============================================
         document.addEventListener('DOMContentLoaded', function () {
+            // Inicializar logo
+            LogoManager.init();
+
+            // Verificar se já está autenticado
             fetch('../api/verificar_sessao.php', {
                 method: 'GET',
                 credentials: 'include'
             })
-                .then(response => {
-                    if (!response.ok) {
-                        // Não está logado
-                        return Promise.reject('Não autenticado');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data && data.sucesso) {
-                        // Já está logado, redireciona para dashboard
-                        window.location.href = 'layout-base.html?page=dashboard';
-                    }
-                })
-                .catch(() => {
-                    // Não está logado, mantém na página de login
-                });
-        });
-    </script>
-    <script src="js/visual-identity.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            // â CORREO: Usar caminhos relativos ao invés de APP_BASE_PATH
-            // Arquivo está em /frontend/login.html, então '../' vai para raiz
-            const basePath = '../';
-            
-            // Logo specific path
-            const logoPath = basePath + "uploads/logo/logo_1769740112.jpeg";
-            const logoImg = document.getElementById("loginLogo");
-
-            if (logoImg) {
-                logoImg.src = logoPath;
-                logoImg.onerror = function () {
-                    console.warn("Logo não encontrada, usando fallback.");
-                    // Fallback to a default asset if specific logo fails
-                    this.src = basePath + "uploads/logo/logo_padrao.png";
-                };
-            }
+            .then(function (response) {
+                if (!response.ok) return Promise.reject('Não autenticado');
+                return response.json();
+            })
+            .then(function (data) {
+                if (data && data.sucesso) {
+                    // ✅ REDIRECIONAMENTO CORRETO - mesmo nível de /frontend/
+                    window.location.href = 'layout-base.html?page=dashboard';
+                }
+            })
+            .catch(function () {
+                // Não autenticado — mantém na página de login
+            });
         });
     </script>
 </body>
