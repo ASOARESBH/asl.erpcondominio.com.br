@@ -47,7 +47,7 @@
                     // Fallback se o manager não estiver pronto
                     localStorage.clear();
                     sessionStorage.clear();
-                    window.location.href = 'login.html';
+                    window.location.href = window.location.origin + '/frontend/login.html';
                 }
             };
         }

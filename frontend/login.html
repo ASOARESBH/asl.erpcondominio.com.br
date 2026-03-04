@@ -313,9 +313,9 @@
          * Portanto, '../' aponta para a raiz do projeto.
          */
         const LogoManager = (function () {
-            const BASE_PATH   = '../';
-            const API_LOGO    = BASE_PATH + 'api/get_logo_empresa.php';
-            const FALLBACK    = BASE_PATH + 'uploads/logo/logoerp.png';
+            // ✅ URLs absolutas: eliminam qualquer ambiguidade de path relativo
+            const API_LOGO = window.location.origin + '/api/get_logo_empresa.php';
+            const FALLBACK = window.location.origin + '/uploads/logo/logoerp.png';
 
             const logoBox = document.getElementById('logoBox');
             const logoImg = document.getElementById('loginLogo');
@@ -334,10 +334,12 @@
                 })
                 .then(function (data) {
                     if (data && data.sucesso && data.logo_url) {
-                        // Normalizar URL: se for relativa, adicionar base path
+                        // Normalizar URL: se for relativa, usa origin como base
                         let url = data.logo_url;
                         if (!url.startsWith('http') && !url.startsWith('/')) {
-                            url = BASE_PATH + url;
+                            url = window.location.origin + '/' + url;
+                        } else if (url.startsWith('/')) {
+                            url = window.location.origin + url;
                         }
                         logoImg.src = url;
                         logoImg.style.display = 'block';
@@ -400,8 +402,8 @@
 
             const formData = new FormData(loginForm);
 
-            // Arquivo está em /frontend/login.html → API em /api/validar_login.php
-            fetch('../api/validar_login.php', {
+            // ✅ URL absoluta: elimina /frontend/frontend/ independente de onde o arquivo está
+            fetch(window.location.origin + '/api/validar_login.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
@@ -421,10 +423,9 @@
                         localStorage.setItem('usuario_permissao', data.dados.permissao);
                     }
 
-                    // ✅ REDIRECIONAMENTO CORRETO
-                    // login.html está em /frontend/ → layout-base.html está no mesmo nível
+                    // ✅ REDIRECIONAMENTO CORRETO - URL absoluta elimina /frontend/frontend/
                     setTimeout(function () {
-                        window.location.href = 'layout-base.html?page=dashboard';
+                        window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
                     }, 500);
                 } else {
                     mostrarAlerta(data.mensagem, 'error');
@@ -462,8 +463,8 @@
             // Inicializar logo
             LogoManager.init();
 
-            // Verificar se já está autenticado
-            fetch('../api/verificar_sessao.php', {
+            // Verificar se já está autenticado - URL absoluta
+            fetch(window.location.origin + '/api/verificar_sessao.php', {
                 method: 'GET',
                 credentials: 'include'
             })
@@ -473,8 +474,8 @@
             })
             .then(function (data) {
                 if (data && data.sucesso) {
-                    // ✅ REDIRECIONAMENTO CORRETO - mesmo nível de /frontend/
-                    window.location.href = 'layout-base.html?page=dashboard';
+                    // ✅ REDIRECIONAMENTO CORRETO - URL absoluta elimina /frontend/frontend/
+                    window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
                 }
             })
             .catch(function () {

@@ -1,6 +1,9 @@
 /**
  * Auth Guard
- * Protege páginas que requerem autenticação
+ * Protege páginas que requerem autenticação.
+ *
+ * ✅ PRINCÍPIO: Usa URLs absolutas (window.location.origin) para evitar
+ * ambiguidade de path relativo que causa /frontend/frontend/ ou similar.
  */
 (function () {
     'use strict';
@@ -10,12 +13,13 @@
     const path = window.location.pathname;
     const pageObj = path.split('/').pop();
 
-    // Se for página pública, não fazer nada (exceto se for login e já estiver logado?)
+    // Se for página pública, não fazer nada
     if (publicPages.includes(pageObj) || pageObj === '') {
         return;
     }
 
-    const API_URL = '../api/verificar_sessao_completa.php';
+    // ✅ URL absoluta: elimina ambiguidade de path relativo
+    const API_URL = window.location.origin + '/api/verificar_sessao_completa.php';
 
     // Verificar sessão
     fetch(API_URL, {
@@ -27,16 +31,15 @@
         .then(data => {
             if (!data.sucesso || !data.sessao_ativa) {
                 console.warn('⛔ Acesso negado. Redirecionando para login...');
-                localStorage.clear(); // Limpar cache
-                sessionStorage.clear(); // Limpar cache
-                window.location.replace('login.html'); // Usar replace, não href
+                localStorage.clear();
+                sessionStorage.clear();
+                // ✅ URL absoluta: elimina /frontend/frontend/
+                window.location.replace(window.location.origin + '/frontend/login.html');
             } else {
                 console.log('✅ Acesso autorizado');
             }
         })
         .catch(error => {
             console.error('Erro ao verificar autenticação:', error);
-            // Em caso de erro de rede, talvez não redirecionar imediatamente? 
-            // Mas por segurança, melhor redirecionar ou mostrar erro.
         });
 })();

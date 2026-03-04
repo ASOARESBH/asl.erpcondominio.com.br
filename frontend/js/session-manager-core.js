@@ -1,4 +1,4 @@
-﻿/**
+/**
  * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * SESSION MANAGER CORE v2.0 - ÃšNICO PONTO DE CONTROLE DE SESSÃƒO
  * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -393,7 +393,7 @@ class SessionManagerCore {
         // 5. Redirecionar com replace() para evitar histÃ³rico
         setTimeout(() => {
             console.log('[SessionManager] ðŸ”„ Redirecionando para login...');
-            window.location.replace('login.html'); // Usar replace, nÃ£o href
+            window.location.replace(window.location.origin + '/frontend/login.html'); // ✅ URL absoluta
         }, 300);
     }
 
@@ -703,8 +703,9 @@ class SessionManagerCore {
     }
 
     redirectToLogin() {
-        console.log('[SessionManager] ðŸ”„ Redirecionando para login...');
-        window.location.replace('login.html'); // Usar replace, nÃ£o href
+        console.log('[SessionManager] 🔄 Redirecionando para login...');
+        // ✅ URL absoluta: elimina ambiguidade de path relativo
+        window.location.replace(window.location.origin + '/frontend/login.html');
     }
 }
 

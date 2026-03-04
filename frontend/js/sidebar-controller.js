@@ -165,7 +165,7 @@ document.addEventListener('click', function (e) {
             const sessionManager = window.SessionManagerCore.getInstance();
             sessionManager.logout();
         } else {
-            window.location.href = 'login.html';
+            window.location.href = window.location.origin + '/frontend/login.html';
         }
     }
 

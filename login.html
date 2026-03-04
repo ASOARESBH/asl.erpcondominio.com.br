@@ -7,9 +7,9 @@
     <title>Login - Sistema de Controle de Acesso</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Design System CSS -->
-    <link rel="stylesheet" href="../assets/css/app.css">
+    <link rel="stylesheet" href="assets/css/app.css">
     <!-- Tema Azul (FASE 2) -->
-    <link rel="stylesheet" href="../assets/css/themes/theme-blue.css">
+    <link rel="stylesheet" href="assets/css/themes/theme-blue.css">
     <style>
         * {
             box-sizing: border-box;
@@ -359,16 +359,12 @@
             const logoFallback = document.getElementById('logoFallback');
 
             /**
-             * Determina o caminho base da API
-             * login.html está na raiz, API está em /api/
+             * Retorna a URL absoluta da API.
+             * Usa window.location.origin para garantir que nunca haja duplicação de path,
+             * independente de onde o arquivo está sendo servido.
              */
             function getApiBase() {
-                const path = window.location.pathname;
-                // Se estiver em /frontend/ ou subpasta, ajusta o caminho
-                if (path.includes('/frontend/')) {
-                    return '../api/';
-                }
-                return 'api/';
+                return window.location.origin + '/api/';
             }
 
             /**
@@ -510,7 +506,7 @@
 
             const formData = new FormData(loginForm);
 
-            fetch('../api/validar_login.php', {
+            fetch(window.location.origin + '/api/validar_login.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'
@@ -531,9 +527,9 @@
                         localStorage.setItem('usuario_permissao', data.dados.permissao);
                     }
 
-                    // Redirecionar após 500ms
+                    // ✅ REDIRECIONAMENTO CORRETO - URL absoluta elimina /frontend/frontend/
                     setTimeout(function() {
-                        window.location.href = './frontend/layout-base.html?page=dashboard';
+                        window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
                     }, 500);
                 } else {
                     mostrarAlerta(data.mensagem, 'error');
@@ -574,7 +570,7 @@
         // Redireciona se usuário já estiver logado
         // =====================================================
         document.addEventListener('DOMContentLoaded', function() {
-            fetch('../api/verificar_sessao.php', {
+            fetch(window.location.origin + '/api/verificar_sessao.php', {
                 method: 'GET',
                 credentials: 'include'
             })
@@ -584,8 +580,8 @@
             })
             .then(function(data) {
                 if (data && data.sucesso) {
-                    // Já está logado, redireciona para o dashboard
-                    window.location.href = './frontend/layout-base.html?page=dashboard';
+                    // ✅ REDIRECIONAMENTO CORRETO - URL absoluta elimina /frontend/frontend/
+                    window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
                 }
             })
             .catch(function() {

@@ -242,7 +242,7 @@
         // Aguardar e redirecionar
         console.log('🔄 Redirecionando para login...');
         setTimeout(() => {
-            window.location.href = 'login.html';
+            window.location.href = window.location.origin + '/frontend/login.html';
         }, 500);
     }
     

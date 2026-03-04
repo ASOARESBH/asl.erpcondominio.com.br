@@ -275,13 +275,13 @@
 
             // Aguardar 1 segundo e redirecionar
             setTimeout(() => {
-                window.location.href = 'login.html';
+                window.location.href = window.location.origin + '/frontend/login.html';
             }, 1000);
         } catch (error) {
             console.error('Erro no logout manual:', error);
             // Mesmo com erro, redirecionar
             setTimeout(() => {
-                window.location.href = 'login.html';
+                window.location.href = window.location.origin + '/frontend/login.html';
             }, 1000);
         }
     }
