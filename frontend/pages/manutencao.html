@@ -1,7 +1,7 @@
 <!-- Page Metadata -->
 <div id="page-metadata" data-title="Manutenção" data-icon="fa-tools" style="display:none;"></div>
 
-<!-- Modern Page Wrapper -->
+<!-- Page Wrapper -->
 <div class="page-wrapper page-manutencao">
 
     <!-- Page Header -->
@@ -10,40 +10,46 @@
         <p>Gestão de hidrômetros, abastecimento, estoque e ordens de serviço</p>
     </div>
 
-    <!-- Submenu (Tabs-like) -->
-    <div class="tabs">
-        <button class="tab-button active">
-            <i class="fas fa-home"></i> Início
-        </button>
-        <button class="tab-button">
-            <i class="fas fa-tint"></i> Hidrômetros
-        </button>
-        <button class="tab-button">
-            <i class="fas fa-gas-pump"></i> Abastecimento
-        </button>
-        <button class="tab-button">
-            <i class="fas fa-boxes"></i> Estoque
-        </button>
-    </div>
-
-    <!-- Content Card Grid -->
+    <!-- Cards de Módulos -->
     <div class="cards-grid">
-        <div class="page-card interactive">
+        <!-- Hidrômetros -->
+        <div class="page-card interactive" data-page="hidrometro" role="button" tabindex="0"
+            title="Acessar módulo de Hidrômetros">
             <div class="card-icon"><i class="fas fa-tint"></i></div>
             <h3>Hidrômetros</h3>
-            <p>Controle de leituras de água e consumo individualizado</p>
+            <p>Cadastro e gestão de hidrômetros por unidade e morador</p>
+            <div class="card-links">
+                <span class="card-link" data-page="hidrometro">
+                    <i class="fas fa-list"></i> Cadastro
+                </span>
+                <span class="card-link" data-page="leitura">
+                    <i class="fas fa-tachometer-alt"></i> Leituras
+                </span>
+                <span class="card-link" data-page="relatorios_hidrometro">
+                    <i class="fas fa-chart-bar"></i> Relatórios
+                </span>
+            </div>
         </div>
-        <div class="page-card interactive">
+
+        <!-- Abastecimento -->
+        <div class="page-card interactive" data-page="abastecimento" role="button" tabindex="0"
+            title="Acessar módulo de Abastecimento">
             <div class="card-icon"><i class="fas fa-gas-pump"></i></div>
             <h3>Abastecimento</h3>
             <p>Gestão de combustível e controle de bombas</p>
         </div>
-        <div class="page-card interactive">
+
+        <!-- Estoque -->
+        <div class="page-card interactive" data-page="estoque" role="button" tabindex="0"
+            title="Acessar módulo de Estoque">
             <div class="card-icon"><i class="fas fa-boxes"></i></div>
             <h3>Estoque</h3>
             <p>Controle de materiais, ferramentas e insumos</p>
         </div>
-        <div class="page-card interactive">
+
+        <!-- Ordens de Serviço -->
+        <div class="page-card interactive" data-page="ordens_servico" role="button" tabindex="0"
+            title="Acessar módulo de Ordens de Serviço">
             <div class="card-icon"><i class="fas fa-wrench"></i></div>
             <h3>Ordens de Serviço</h3>
             <p>Gestão de manutenções preventivas e corretivas</p>

@@ -22,7 +22,57 @@
             Financeiro</a></li>
     <li class="nav-item"><a href="#" data-page="configuracao" class="nav-link"><i class="fas fa-cog"></i>
             Configurações</a></li>
-    <li class="nav-item"><a href="#" data-page="manutencao" class="nav-link"><i class="fas fa-tools"></i> Manutenção</a>
+    <!-- ============================================================
+         MANUTENÇÃO — com submenu de Hidrômetros
+         ============================================================ -->
+    <li class="nav-item submenu-container">
+        <a href="#" class="nav-link submenu-toggle" data-toggle="submenu" data-target="submenu-manutencao">
+            <i class="fas fa-tools"></i> Manutenção
+            <i class="fas fa-chevron-down submenu-arrow" style="margin-left:auto;font-size:11px;transition:transform 0.2s;"></i>
+        </a>
+        <ul class="submenu-content" id="submenu-manutencao">
+            <li>
+                <a href="#" data-page="manutencao" class="nav-link nav-sublink">
+                    <i class="fas fa-home"></i> Visão Geral
+                </a>
+            </li>
+            <!-- Hidrômetros -->
+            <li class="nav-item submenu-container">
+                <a href="#" class="nav-link nav-sublink submenu-toggle" data-toggle="submenu" data-target="submenu-hidrometro">
+                    <i class="fas fa-tint"></i> Hidrômetros
+                    <i class="fas fa-chevron-right submenu-arrow" style="margin-left:auto;font-size:10px;transition:transform 0.2s;"></i>
+                </a>
+                <ul class="submenu-content submenu-level2" id="submenu-hidrometro">
+                    <li>
+                        <a href="#" data-page="hidrometro" class="nav-link nav-sublink nav-sublink-2">
+                            <i class="fas fa-list"></i> Cadastro
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="leitura" class="nav-link nav-sublink nav-sublink-2">
+                            <i class="fas fa-tachometer-alt"></i> Leituras
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="relatorios_hidrometro" class="nav-link nav-sublink nav-sublink-2">
+                            <i class="fas fa-chart-bar"></i> Relatórios
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <!-- Abastecimento -->
+            <li>
+                <a href="#" data-page="abastecimento" class="nav-link nav-sublink">
+                    <i class="fas fa-gas-pump"></i> Abastecimento
+                </a>
+            </li>
+            <!-- Estoque -->
+            <li>
+                <a href="#" data-page="estoque" class="nav-link nav-sublink">
+                    <i class="fas fa-boxes"></i> Estoque
+                </a>
+            </li>
+        </ul>
     </li>
     <li class="nav-item"><a href="#" data-page="administrativa" class="nav-link"><i class="fas fa-briefcase"></i>
             Administrativo</a></li>

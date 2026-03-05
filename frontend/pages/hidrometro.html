@@ -1,0 +1,251 @@
+<!-- Page Metadata -->
+<div id="page-metadata" data-title="Hidrômetros" data-icon="fa-tint" style="display:none;"></div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modals (fora do page-wrapper para z-index correto) -->
+<!-- Modal Editar -->
+<div class="modal-overlay page-hidrometro" id="modalEditar">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Editar Hidrômetro</h3>
+            <button class="modal-close" onclick="window.HidrometroPage.fecharModal('modalEditar')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="formEditar">
+                <input type="hidden" id="edit_id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit_unidade">Unidade *</label>
+                        <select id="edit_unidade" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_morador">Morador *</label>
+                        <select id="edit_morador" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_numero_hidrometro">Nº do Hidrômetro *</label>
+                        <input type="text" id="edit_numero_hidrometro" required placeholder="Ex: H123456">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_numero_lacre">Nº do Lacre</label>
+                        <input type="text" id="edit_numero_lacre" placeholder="Ex: L789012">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_data_instalacao">Data de Instalação *</label>
+                        <input type="datetime-local" id="edit_data_instalacao" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_ativo">Status *</label>
+                        <select id="edit_ativo" required>
+                            <option value="1">Ativo</option>
+                            <option value="0">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit_observacao">Motivo da Alteração *</label>
+                    <textarea id="edit_observacao" rows="3"
+                        placeholder="Descreva o motivo da alteração para registro no histórico..." required></textarea>
+                    <span class="form-hint">Obrigatório para auditoria e rastreabilidade.</span>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="window.HidrometroPage.fecharModal('modalEditar')">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button class="btn-primary" onclick="window.HidrometroPage.salvarEdicao()">
+                <i class="fas fa-save"></i> Salvar Alterações
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Histórico -->
+<div class="modal-overlay page-hidrometro" id="modalHistorico">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-history"></i> Histórico de Alterações</h3>
+            <button class="modal-close" onclick="window.HidrometroPage.fecharModal('modalHistorico')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="historicoContent">
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Carregando histórico...</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="window.HidrometroPage.fecharModal('modalHistorico')">
+                <i class="fas fa-times"></i> Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Page Wrapper -->
+<div class="page-wrapper page-hidrometro">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>Hidrômetros</h1>
+        <p>Cadastro e gestão de hidrômetros por unidade e morador</p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="stats-grid" id="kpiGrid">
+        <div class="page-card kpi-card compact">
+            <div class="kpi-icon blue"><i class="fas fa-tint"></i></div>
+            <div class="kpi-content">
+                <h3>Total Cadastrados</h3>
+                <div class="value" id="kpi_total">—</div>
+            </div>
+        </div>
+        <div class="page-card kpi-card compact">
+            <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+            <div class="kpi-content">
+                <h3>Ativos</h3>
+                <div class="value" id="kpi_ativos">—</div>
+            </div>
+        </div>
+        <div class="page-card kpi-card compact">
+            <div class="kpi-icon amber"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="kpi-content">
+                <h3>Inativos</h3>
+                <div class="value" id="kpi_inativos">—</div>
+            </div>
+        </div>
+        <div class="page-card kpi-card compact">
+            <div class="kpi-icon purple"><i class="fas fa-tachometer-alt"></i></div>
+            <div class="kpi-content">
+                <h3>Com Leitura</h3>
+                <div class="value" id="kpi_com_leitura">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-button active" data-tab="cadastro">
+            <i class="fas fa-plus-circle"></i> Cadastrar
+        </button>
+        <button class="tab-button" data-tab="lista">
+            <i class="fas fa-list"></i> Hidrômetros
+        </button>
+    </div>
+
+    <!-- TAB: CADASTRO -->
+    <div id="tab-cadastro" class="tab-content active">
+        <div class="page-card">
+            <h2><i class="fas fa-plus-circle" style="color:#2563eb;margin-right:8px;"></i>Novo Hidrômetro</h2>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Selecione primeiro a <strong>unidade</strong> para carregar os moradores disponíveis.</span>
+            </div>
+
+            <form id="formCadastro">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="cad_unidade">Unidade *</label>
+                        <select id="cad_unidade" required>
+                            <option value="">Selecione uma unidade...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cad_morador">Morador *</label>
+                        <select id="cad_morador" required disabled>
+                            <option value="">Primeiro selecione a unidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cad_numero">Nº do Hidrômetro *</label>
+                        <input type="text" id="cad_numero" placeholder="Ex: H123456" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cad_lacre">Nº do Lacre</label>
+                        <input type="text" id="cad_lacre" placeholder="Ex: L789012">
+                    </div>
+                    <div class="form-group">
+                        <label for="cad_data">Data e Hora de Instalação *</label>
+                        <input type="datetime-local" id="cad_data" required>
+                    </div>
+                </div>
+                <div class="btn-actions">
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Salvar Hidrômetro
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="window.HidrometroPage.limparCadastro()">
+                        <i class="fas fa-eraser"></i> Limpar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB: LISTA -->
+    <div id="tab-lista" class="tab-content">
+        <!-- Search -->
+        <div class="page-card compact">
+            <div class="search-box">
+                <div class="form-group">
+                    <label for="busca">Buscar por Nº, Unidade ou Morador</label>
+                    <input type="text" id="busca" placeholder="Digite para buscar..."
+                        onkeyup="window.HidrometroPage.buscarDebounce()">
+                </div>
+                <button class="btn-primary" onclick="window.HidrometroPage.buscar()">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+                <button class="btn-secondary" onclick="window.HidrometroPage.limparBusca()">
+                    <i class="fas fa-times"></i> Limpar
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="page-card">
+            <h2><i class="fas fa-list" style="color:#2563eb;margin-right:8px;"></i>Hidrômetros Cadastrados</h2>
+
+            <div class="loading-state" id="loadingLista" style="display:none;">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Carregando hidrômetros...</p>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Unidade</th>
+                            <th>Morador</th>
+                            <th>Nº Hidrômetro</th>
+                            <th>Nº Lacre</th>
+                            <th>Instalação</th>
+                            <th>Última Leitura</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaHidrometros">
+                        <tr class="empty-row">
+                            <td colspan="9">
+                                <i class="fas fa-tint"></i>
+                                <p>Nenhum hidrômetro encontrado</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

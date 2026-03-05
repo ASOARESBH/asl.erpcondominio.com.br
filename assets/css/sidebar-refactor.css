@@ -263,3 +263,86 @@
     background: #1d4ed8 !important;
     transform: translateY(-1px) !important;
 }
+
+/* ============================================
+   SUBMENU ANINHADO (MANUTENCAO / HIDROMETROS)
+   ============================================ */
+
+.submenu-container {
+    position: relative;
+}
+
+.submenu-toggle .submenu-arrow {
+    transition: transform 0.25s ease;
+}
+
+.submenu-toggle.active .submenu-arrow {
+    transform: rotate(90deg);
+}
+
+.submenu-content {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.submenu-content.show {
+    max-height: 600px;
+}
+
+.nav-sublink {
+    padding: 9px 16px 9px 36px !important;
+    font-size: 0.88rem !important;
+    color: #94a3b8 !important;
+    border-left: 2px solid transparent;
+    border-radius: 0 8px 8px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    transition: all 0.2s ease !important;
+    text-decoration: none;
+}
+
+.nav-sublink:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #e2e8f0 !important;
+    border-left-color: #3b82f6;
+}
+
+.nav-sublink.active {
+    background: rgba(37, 99, 235, 0.15) !important;
+    color: #93c5fd !important;
+    border-left-color: #2563eb;
+}
+
+.nav-sublink i {
+    width: 18px !important;
+    font-size: 0.85rem !important;
+    margin-right: 0 !important;
+}
+
+.nav-sublink-2 {
+    padding-left: 52px !important;
+    font-size: 0.83rem !important;
+    color: #64748b !important;
+}
+
+.nav-sublink-2:hover {
+    color: #cbd5e1 !important;
+}
+
+.nav-sublink-2.active {
+    color: #7dd3fc !important;
+}
+
+.submenu-level2 {
+    border-left: 1px dashed rgba(148, 163, 184, 0.2);
+    margin-left: 36px;
+}
+
+.submenu-level2.show {
+    max-height: 300px;
+}

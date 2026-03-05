@@ -61,3 +61,49 @@
 .page-manutencao .tabs {
     margin-bottom: 2rem;
 }
+/* ============================================
+   CARD LINKS DE SUBNAVEGAÇÃO
+   ============================================ */
+.page-manutencao .card-links {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.page-manutencao .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #bfdbfe;
+}
+
+.page-manutencao .card-link:hover {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+/* Ícone do card não aplica gradient quando está dentro de card-links */
+.page-manutencao .card-links i {
+    font-size: inherit;
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    -webkit-text-fill-color: unset;
+    color: inherit;
+    margin-bottom: 0;
+    display: inline;
+}
