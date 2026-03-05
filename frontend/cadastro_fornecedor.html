@@ -315,8 +315,8 @@ hr {
 
             <!-- Info Box -->
             <div class="info-box">
-                <strong>â¹ï¸ Importante</strong>
-                Após o cadastro, sua conta será analisada pelo administrador. Vocª receberá um e-mail de confirmação.
+                <strong><i class="fas fa-info-circle" style="color:#2563eb;"></i> Importante</strong>
+                Após o cadastro, sua conta será analisada pelo administrador. Você receberá um e-mail de confirmação.
             </div>
 
             <form id="formCadastro">
@@ -428,7 +428,7 @@ hr {
                     ></textarea>
                 </div>
 
-                <!-- Botµes -->
+                <!-- Botões -->
                 <div class="form-buttons">
                     <button type="submit" class="btn btn-primary" id="btnSubmit">
                         <i class="fas fa-check"></i> Cadastrar
@@ -447,7 +447,7 @@ hr {
 
     <script>
         // =====================================================
-        // CONFIGURAO
+        // CONFIGURAÇÃO
         // =====================================================
 
         const API_URL = '../api/api_fornecedores.php';
@@ -465,7 +465,7 @@ hr {
         const selectRamo = document.getElementById('ramo_atividade_id');
 
         // =====================================================
-        // FUNES AUXILIARES
+        // FUNÇÕES AUXILIARES
         // =====================================================
 
         function log(msg, data = null) {
@@ -566,7 +566,7 @@ hr {
         }
 
         // =====================================================
-        // VALIDAR FORMULRIO
+        // VALIDAR FORMULÁRIO
         // =====================================================
 
         function validarFormulario() {
@@ -616,7 +616,7 @@ hr {
         }
 
         // =====================================================
-        // ENVIAR FORMULRIO
+        // ENVIAR FORMULÁRIO
         // =====================================================
 
         formCadastro.addEventListener('submit', async (e) => {
