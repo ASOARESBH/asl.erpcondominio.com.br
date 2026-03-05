@@ -1,0 +1,72 @@
+/*
+|--------------------------------------------------------------------------
+| PAGE-SPECIFIC STYLES ONLY - RELATORIOS_HIDROMETRO
+|--------------------------------------------------------------------------
+| Esta página reutiliza a classe .page-hidrometro e herda o CSS de
+| hidrometro.css (carregado dinamicamente pelo router).
+|
+| Este arquivo existe para evitar 404 no router e para sobrescrever
+| apenas os elementos específicos da tela de relatórios.
+|--------------------------------------------------------------------------
+*/
+
+/* ============================================
+   FILTROS DE PESQUISA
+   ============================================ */
+.page-hidrometro .search-box.filtros-relatorio {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+/* ============================================
+   TABELA DE RESULTADOS
+   ============================================ */
+.page-hidrometro #listaRelatorio td:nth-child(8),
+.page-hidrometro #listaRelatorio td:nth-child(9) {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+/* Consumo alto (> 20 m³) */
+.page-hidrometro .consumo-alto {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* Consumo normal */
+.page-hidrometro .consumo-normal {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+/* ============================================
+   KPIs DE RELATÓRIO
+   ============================================ */
+.page-hidrometro #kpiRelatorio {
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   ESTADO VAZIO / INICIAL
+   ============================================ */
+.page-hidrometro .empty-row.initial td {
+    color: #94a3b8;
+}
+
+.page-hidrometro .empty-row.initial i {
+    color: #cbd5e1;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .page-hidrometro .search-box.filtros-relatorio {
+        grid-template-columns: 1fr;
+    }
+}

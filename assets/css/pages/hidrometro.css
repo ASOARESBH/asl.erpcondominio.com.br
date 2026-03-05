@@ -443,7 +443,8 @@
 /* ============================================
    MODAL
    ============================================ */
-.page-hidrometro .modal-overlay {
+/* Modal overlay: seletor de classe dupla (elemento tem ambas as classes) */
+.modal-overlay.page-hidrometro {
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.55);
@@ -456,7 +457,7 @@
     animation: hidroFadeIn 0.2s ease;
 }
 
-.page-hidrometro .modal-overlay.show {
+.modal-overlay.page-hidrometro.show {
     display: flex;
 }
 

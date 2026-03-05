@@ -19,16 +19,18 @@
 const API_HIDROMETROS  = window.location.origin + '/api/api_hidrometros.php';
 const API_UNIDADES     = window.location.origin + '/api/api_unidades.php';
 const API_MORADORES    = window.location.origin + '/api/api_moradores.php';
-
 // ============================================================
 // ESTADO DO MÓDULO
 // ============================================================
+
 let _state = {
-    hidrometros : [],
-    unidades    : [],
-    moradores   : [],
-    buscarTimer : null,
-    currentTab  : 'cadastro',
+    hidrometros    : [],
+    unidades       : [],
+    moradores      : [],
+    buscarTimer    : null,
+    currentTab     : 'cadastro',
+    // Referência ao handler para remoção no destroy()
+    _modalClickRef : null,
 };
 
 // ============================================================
@@ -43,6 +45,16 @@ export function init() {
     _setDataAtual();
     _carregarUnidades();
     _carregarHidrometros();
+
+    // Listener para fechar modal ao clicar fora — registrado aqui para
+    // poder ser removido no destroy() e evitar acúmulo de listeners
+    _state._modalClickRef = e => {
+        if (e.target.classList.contains('modal-overlay')) {
+            e.target.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    };
+    document.addEventListener('click', _state._modalClickRef);
 
     // Expõe API pública para onclick inline
     window.HidrometroPage = {
@@ -62,8 +74,14 @@ export function init() {
 export function destroy() {
     console.log('[Hidrometro] Destruindo módulo...');
     if (_state.buscarTimer) clearTimeout(_state.buscarTimer);
+    // Remove o listener de click fora do modal
+    if (_state._modalClickRef) {
+        document.removeEventListener('click', _state._modalClickRef);
+    }
+    // Garante que o body scroll seja restaurado
+    document.body.style.overflow = '';
     delete window.HidrometroPage;
-    _state = { hidrometros: [], unidades: [], moradores: [], buscarTimer: null, currentTab: 'cadastro' };
+    _state = { hidrometros: [], unidades: [], moradores: [], buscarTimer: null, currentTab: 'cadastro', _modalClickRef: null };
 }
 
 // ============================================================
@@ -564,13 +582,7 @@ function fecharModal(id) {
     }
 }
 
-// Fechar modal ao clicar fora
-document.addEventListener('click', e => {
-    if (e.target.classList.contains('modal-overlay')) {
-        e.target.classList.remove('show');
-        document.body.style.overflow = '';
-    }
-});
+// Listener de click fora do modal movido para init() — ver acima
 
 // ============================================================
 // API HELPER

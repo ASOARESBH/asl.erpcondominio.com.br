@@ -1,0 +1,59 @@
+/*
+|--------------------------------------------------------------------------
+| PAGE-SPECIFIC STYLES ONLY - LEITURA
+|--------------------------------------------------------------------------
+| Esta página reutiliza a classe .page-hidrometro e herda o CSS de
+| hidrometro.css (carregado dinamicamente pelo router).
+|
+| Este arquivo existe para evitar 404 no router e para sobrescrever
+| apenas os elementos específicos da tela de leituras.
+|--------------------------------------------------------------------------
+*/
+
+/* ============================================
+   LEITURA INDIVIDUAL — INFO BOX
+   ============================================ */
+.page-hidrometro #ind_info_hidrometro {
+    margin-bottom: 1.25rem;
+}
+
+/* ============================================
+   CALC PREVIEW
+   ============================================ */
+.page-hidrometro .calc-preview {
+    display: none;
+}
+
+.page-hidrometro .calc-preview.show {
+    display: block;
+}
+
+/* ============================================
+   LEITURA COLETIVA — TABELA
+   ============================================ */
+.page-hidrometro .coletiva-table tr.selecionado td {
+    background: rgba(37, 99, 235, 0.04);
+}
+
+/* ============================================
+   CONFIGURAÇÕES DE PERÍODO
+   ============================================ */
+.page-hidrometro .config-periodo-card {
+    max-width: 600px;
+}
+
+/* ============================================
+   KPIs DO HISTÓRICO
+   ============================================ */
+.page-hidrometro #kpiHistorico {
+    margin-bottom: 1.5rem;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    .page-hidrometro .coletiva-table input[type="number"] {
+        width: 90px;
+    }
+}
