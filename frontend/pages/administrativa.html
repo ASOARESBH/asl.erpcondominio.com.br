@@ -6,8 +6,10 @@
 
     <!-- Page Header -->
     <div class="page-header">
-        <h1>Módulos Administrativos</h1>
-        <p>Gerenciamento de protocolos, contratos, eventos e checklists</p>
+        <div class="page-header-content">
+            <h1><i class="fas fa-briefcase" style="color:#2563eb;margin-right:10px;"></i>Módulos Administrativos</h1>
+            <p>Gerenciamento de protocolos, contratos, eventos e checklists</p>
+        </div>
     </div>
 
     <!-- Submenu (Tabs-like) -->
@@ -15,38 +17,42 @@
         <button class="tab-button active">
             <i class="fas fa-home"></i> Início
         </button>
-        <button class="tab-button">
+        <button class="tab-button" data-page="protocolos">
             <i class="fas fa-box"></i> Protocolos
         </button>
-        <button class="tab-button">
+        <button class="tab-button" data-page="contratos">
             <i class="fas fa-file-contract"></i> Contratos
         </button>
-        <button class="tab-button">
+        <button class="tab-button" data-page="eventos">
             <i class="fas fa-calendar-alt"></i> Eventos
         </button>
     </div>
 
     <!-- Content Card Grid -->
     <div class="cards-grid">
-        <div class="page-card interactive">
+        <div class="page-card interactive" data-navigate="protocolos">
             <div class="card-icon"><i class="fas fa-box"></i></div>
             <h3>Protocolos</h3>
-            <p>Gerenciar processos e solicitações de moradores</p>
+            <p>Gerenciar recebimento e entrega de encomendas e mercadorias dos moradores</p>
+            <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive">
-            <div class="card-icon"><i class="fas fa-file-contract"></i></div>
+        <div class="page-card interactive" data-navigate="contratos">
+            <div class="card-icon" style="background:#f0fdf4;color:#16a34a;"><i class="fas fa-file-contract"></i></div>
             <h3>Contratos</h3>
-            <p>Controle de contratos, fornecedores e vigências</p>
+            <p>Controle de contratos com fornecedores, vigências e renovações</p>
+            <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive">
-            <div class="card-icon"><i class="fas fa-calendar-alt"></i></div>
+        <div class="page-card interactive" data-navigate="eventos">
+            <div class="card-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-calendar-alt"></i></div>
             <h3>Eventos</h3>
-            <p>Agendar e gerenciar eventos em áreas comuns</p>
+            <p>Agendar e gerenciar eventos em áreas comuns do condomínio</p>
+            <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive">
-            <div class="card-icon"><i class="fas fa-clipboard-list"></i></div>
+        <div class="page-card interactive" data-navigate="checklists">
+            <div class="card-icon" style="background:#fdf4ff;color:#9333ea;"><i class="fas fa-clipboard-list"></i></div>
             <h3>Checklists</h3>
-            <p>Listas de verificação para rondas e inspeções</p>
+            <p>Listas de verificação para rondas, inspeções e manutenções periódicas</p>
+            <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
     </div>
 
