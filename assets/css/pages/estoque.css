@@ -1,0 +1,276 @@
+/*
+|--------------------------------------------------------------------------
+| PAGE-SPECIFIC STYLES - GESTÃO DE ESTOQUE
+|--------------------------------------------------------------------------
+| CSS autossuficiente: o router carrega este arquivo para as páginas de estoque.
+| Convenção: prefixo -est em classes específicas para evitar conflitos.
+|--------------------------------------------------------------------------
+*/
+
+/* ============================================
+   PAGE HEADER
+   ============================================ */
+.page-header-est {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.page-header-content h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+.page-header-content p {
+    color: #64748b;
+    font-size: 14px;
+}
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ============================================
+   TABS NAVIGATION
+   ============================================ */
+.tabs-est {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+.tab-btn-est {
+    padding: 0.875rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    color: #64748b;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+.tab-btn-est i {
+    font-size: 15px;
+}
+.tab-btn-est:hover {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.04);
+    border-radius: 6px 6px 0 0;
+}
+.tab-btn-est.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    background: rgba(37, 99, 235, 0.06);
+    border-radius: 6px 6px 0 0;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+.card-est {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+.card-header-est {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: #f8fafc;
+}
+.card-header-est h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+.card-header-est h2 i {
+    color: #2563eb;
+    font-size: 15px;
+}
+
+.card-est > div:not(.card-header-est):not(.table-responsive-est) {
+    padding: 1.5rem;
+}
+
+/* ============================================
+   KPI GRID
+   ============================================ */
+.kpi-grid-est {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.kpi-card-est {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card-est:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.kpi-icon-est {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+.kpi-info-est {
+    display: flex;
+    flex-direction: column;
+}
+.kpi-value-est {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1;
+}
+.kpi-label-est {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+    margin-top: 4px;
+}
+
+/* KPI Colors */
+.kpi-blue-est .kpi-icon-est { background: #eff6ff; color: #2563eb; }
+.kpi-green-est .kpi-icon-est { background: #f0fdf4; color: #16a34a; }
+.kpi-yellow-est .kpi-icon-est { background: #fffbeb; color: #d97706; }
+.kpi-red-est .kpi-icon-est { background: #fef2f2; color: #ef4444; }
+
+/* ============================================
+   FORM STYLES
+   ============================================ */
+.form-grid-est {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+.form-group-est {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.form-group-est label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+.form-group-est input,
+.form-group-est select,
+.form-group-est textarea {
+    padding: 0.65rem 0.875rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1e293b;
+    background: #fff;
+    transition: all 0.2s;
+}
+.form-group-est input:focus,
+.form-group-est select:focus,
+.form-group-est textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* ============================================
+   TABLE STYLES
+   ============================================ */
+.table-responsive-est {
+    overflow-x: auto;
+    padding: 0 1.5rem 1.5rem;
+}
+.data-table-est {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+}
+.data-table-est thead th {
+    background: #f8fafc;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e2e8f0;
+}
+.data-table-est tbody td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #374151;
+}
+.data-table-est tbody tr:hover { background: #f8fafc; }
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge-est {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.badge-success-est { background: #dcfce7; color: #166534; }
+.badge-warning-est { background: #fef3c7; color: #92400e; }
+.badge-danger-est { background: #fee2e2; color: #991b1b; }
+.badge-info-est { background: #dbeafe; color: #1e40af; }
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn-est {
+    padding: 0.65rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    border: none;
+}
+.btn-primary-est { background: #2563eb; color: #fff; }
+.btn-primary-est:hover { background: #1d4ed8; }
+.btn-secondary-est { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.btn-secondary-est:hover { background: #e2e8f0; }
+.btn-success-est { background: #16a34a; color: #fff; }
+.btn-success-est:hover { background: #15803d; }
+.btn-danger-est { background: #ef4444; color: #fff; }
+.btn-danger-est:hover { background: #dc2626; }

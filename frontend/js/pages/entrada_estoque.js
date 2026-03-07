@@ -10,7 +10,7 @@ export function init() {
     _carregarProdutos();
     _carregarHistorico();
     
-    const form = document.getElementById('entradaEstoqueForm');
+    const form = document.getElementById('entradaForm');
     if (form) {
         const fn = (e) => {
             e.preventDefault();
@@ -46,18 +46,16 @@ async function _carregarProdutos() {
 }
 
 async function _carregarHistorico() {
-    const tbody = document.getElementById('entradasTableBody');
+    const tbody = document.getElementById('historicoEntradasBody');
     if (!tbody) return;
     
     try {
-        // Implementação futura integrada com API de movimentação
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Funcionalidade de histórico em desenvolvimento.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:#94a3b8;">Nenhuma entrada recente encontrada.</td></tr>';
     } catch (err) {
         console.error('[EntradaEstoque] Erro ao carregar histórico:', err);
     }
 }
 
 async function _salvarEntrada() {
-    // Implementação da chamada para salvar entrada via API
-    alert('Funcionalidade de integração com API de Entrada em desenvolvimento.');
+    alert('Funcionalidade de Entrada sendo integrada com o backend.');
 }

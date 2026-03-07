@@ -9,7 +9,7 @@ export function init() {
     console.log('[RelatorioEstoque] Inicializando...');
     _carregarCategorias();
     
-    const form = document.getElementById('relatorioEstoqueForm');
+    const form = document.getElementById('relatorioForm');
     if (form) {
         const fn = (e) => {
             e.preventDefault();
@@ -32,7 +32,7 @@ async function _carregarCategorias() {
     try {
         const res = await fetch('../api/api_estoque.php?action=categorias');
         const data = await res.json();
-        const select = document.getElementById('categoria_rel');
+        const select = document.getElementById('categoria');
         if (data.sucesso && select) {
             select.innerHTML = '<option value="">Todas as categorias</option>';
             data.dados.forEach(cat => {
@@ -45,5 +45,5 @@ async function _carregarCategorias() {
 }
 
 async function _gerarRelatorio() {
-    alert('Funcionalidade de geração de relatórios em desenvolvimento.');
+    alert('Funcionalidade de Relatório sendo integrada com o backend.');
 }

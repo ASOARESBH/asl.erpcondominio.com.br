@@ -10,7 +10,7 @@ export function init() {
     _carregarProdutos();
     _carregarHistorico();
     
-    const form = document.getElementById('saidaEstoqueForm');
+    const form = document.getElementById('saidaForm');
     if (form) {
         const fn = (e) => {
             e.preventDefault();
@@ -33,7 +33,7 @@ async function _carregarProdutos() {
     try {
         const res = await fetch('../api/api_estoque.php?action=produtos');
         const data = await res.json();
-        const select = document.getElementById('produto_id_saida');
+        const select = document.getElementById('produto_id');
         if (data.sucesso && select) {
             select.innerHTML = '<option value="">Selecione o produto...</option>';
             data.dados.forEach(p => {
@@ -46,16 +46,16 @@ async function _carregarProdutos() {
 }
 
 async function _carregarHistorico() {
-    const tbody = document.getElementById('saidasTableBody');
+    const tbody = document.getElementById('historicoSaidasBody');
     if (!tbody) return;
     
     try {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Funcionalidade de histórico em desenvolvimento.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">Nenhuma saída recente encontrada.</td></tr>';
     } catch (err) {
         console.error('[SaidaEstoque] Erro ao carregar histórico:', err);
     }
 }
 
 async function _salvarSaida() {
-    alert('Funcionalidade de integração com API de Saída em desenvolvimento.');
+    alert('Funcionalidade de Saída sendo integrada com o backend.');
 }

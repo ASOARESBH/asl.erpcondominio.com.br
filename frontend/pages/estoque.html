@@ -1,189 +1,183 @@
 <!-- Page Metadata for AppRouter -->
-<div id="page-metadata" data-title="Estoque" data-icon="fa-warehouse" style="display:none;"></div>
+<div id="page-metadata" data-title="Estoque" data-icon="fa-boxes" style="display:none;"></div>
 
 <!-- Modern Page Wrapper -->
 <div class="page-wrapper page-estoque">
 
     <!-- Page Header -->
-    <div class="page-header">
+    <div class="page-header-est">
         <div class="page-header-content">
-            <h1><i class="fas fa-warehouse" style="color:#2563eb;margin-right:10px;"></i>Gestão de Estoque</h1>
+            <h1><i class="fas fa-boxes" style="color:#2563eb;margin-right:10px;"></i>Gestão de Estoque</h1>
             <p>Controle de produtos, categorias, entradas, saídas e relatórios</p>
+        </div>
+        <div class="page-header-actions">
+            <!-- Botão opcional se necessário -->
         </div>
     </div>
 
     <!-- Submenu (Tabs) -->
-    <div class="tabs">
-        <button class="tab-button active" data-page="estoque">
+    <div class="tabs-est">
+        <button class="tab-btn-est active" data-page="estoque">
             <i class="fas fa-boxes"></i> Produtos
         </button>
-        <button class="tab-button" data-page="entrada_estoque">
+        <button class="tab-btn-est" data-page="entrada_estoque">
             <i class="fas fa-arrow-down"></i> Entrada
         </button>
-        <button class="tab-button" data-page="saida_estoque">
+        <button class="tab-btn-est" data-page="saida_estoque">
             <i class="fas fa-arrow-up"></i> Saída
         </button>
-        <button class="tab-button" data-page="relatorio_estoque">
+        <button class="tab-btn-est" data-page="relatorio_estoque">
             <i class="fas fa-chart-bar"></i> Relatórios
         </button>
     </div>
 
     <div id="alertContainer"></div>
 
-    <!-- Dashboard Cards (KPIs) -->
-    <div class="cards-grid-mini" style="margin-bottom: 2rem;">
-        <div class="page-card kpi-card">
-            <div class="card-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-boxes"></i></div>
-            <div class="kpi-content">
-                <span class="kpi-label">Total de Produtos</span>
-                <h3 id="totalProdutos">0</h3>
+    <!-- Dashboard Quick Stats -->
+    <div class="kpi-grid-est">
+        <div class="kpi-card-est kpi-blue-est">
+            <div class="kpi-icon-est"><i class="fas fa-box"></i></div>
+            <div class="kpi-info-est">
+                <span class="kpi-value-est" id="totalProdutos">0</span>
+                <span class="kpi-label-est">Total de Produtos</span>
             </div>
         </div>
-        <div class="page-card kpi-card">
-            <div class="card-icon" style="background:#f0fdf4;color:#16a34a;"><i class="fas fa-dollar-sign"></i></div>
-            <div class="kpi-content">
-                <span class="kpi-label">Valor Total</span>
-                <h3 id="valorTotal">R$ 0,00</h3>
+        <div class="kpi-card-est kpi-green-est">
+            <div class="kpi-icon-est"><i class="fas fa-dollar-sign"></i></div>
+            <div class="kpi-info-est">
+                <span class="kpi-value-est" id="valorTotal">R$ 0,00</span>
+                <span class="kpi-label-est">Valor Total</span>
             </div>
         </div>
-        <div class="page-card kpi-card">
-            <div class="card-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="kpi-content">
-                <span class="kpi-label">Estoque Baixo</span>
-                <h3 id="estoqueBaixo">0</h3>
+        <div class="kpi-card-est kpi-yellow-est">
+            <div class="kpi-icon-est"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="kpi-info-est">
+                <span class="kpi-value-est" id="estoqueBaixo">0</span>
+                <span class="kpi-label-est">Estoque Baixo</span>
             </div>
         </div>
-        <div class="page-card kpi-card">
-            <div class="card-icon" style="background:#fef2f2;color:#ef4444;"><i class="fas fa-times-circle"></i></div>
-            <div class="kpi-content">
-                <span class="kpi-label">Produtos Zerados</span>
-                <h3 id="estoqueZerado">0</h3>
+        <div class="kpi-card-est kpi-red-est">
+            <div class="kpi-icon-est"><i class="fas fa-times-circle"></i></div>
+            <div class="kpi-info-est">
+                <span class="kpi-value-est" id="estoqueZerado">0</span>
+                <span class="kpi-label-est">Produtos Zerados</span>
             </div>
         </div>
     </div>
 
-    <!-- Formulário de Cadastro/Edição -->
-    <div class="page-card" style="margin-bottom: 2rem;">
-        <div class="card-header-flex">
-            <h2 class="section-title"><i class="fas fa-plus-circle"></i> <span id="formTitle">Cadastrar Produto</span></h2>
+    <!-- Form de Cadastro / Edição -->
+    <div class="card-est">
+        <div class="card-header-est">
+            <h2 id="formTitle"><i class="fas fa-plus-circle"></i> Cadastrar Produto</h2>
+            <button class="btn-est btn-secondary-est btn-sm" onclick="window.EstoquePage.limparFormulario()">
+                <i class="fas fa-eraser"></i> Limpar
+            </button>
         </div>
         <form id="produtoForm">
             <input type="hidden" id="produtoId">
-            <div class="form-grid">
-                <div class="form-group">
+            <div class="form-grid-est">
+                <div class="form-group-est">
                     <label for="nome">Nome do Material *</label>
                     <input type="text" id="nome" required placeholder="Ex: Cimento CP-II">
                 </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="categoria_id">Categoria *</label>
                     <select id="categoria_id" required>
                         <option value="">Selecione...</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="unidade_medida">Unidade de Medida *</label>
                     <select id="unidade_medida" required>
                         <option value="Unidade">Unidade</option>
-                        <option value="Metro">Metro</option>
                         <option value="Kg">Kg</option>
                         <option value="Litro">Litro</option>
+                        <option value="Metro">Metro</option>
                         <option value="Caixa">Caixa</option>
                         <option value="Pacote">Pacote</option>
-                        <option value="Rolo">Rolo</option>
-                        <option value="Saco">Saco</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="preco_unitario">Preço Unitário (R$) *</label>
                     <input type="number" id="preco_unitario" step="0.01" min="0" required>
                 </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="quantidade_estoque">Quantidade Atual *</label>
                     <input type="number" id="quantidade_estoque" step="0.01" min="0" required>
                 </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="estoque_minimo">Estoque Mínimo</label>
                     <input type="number" id="estoque_minimo" step="0.01" min="0">
                 </div>
-                <div class="form-group">
-                    <label for="estoque_maximo">Estoque Máximo</label>
-                    <input type="number" id="estoque_maximo" step="0.01" min="0">
-                </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="localizacao">Localização</label>
-                    <input type="text" id="localizacao" placeholder="Ex: Depósito A - Prateleira 1">
+                    <input type="text" id="localizacao" placeholder="Ex: Almoxarifado central">
                 </div>
-                <div class="form-group">
+                <div class="form-group-est">
                     <label for="fornecedor">Fornecedor Principal</label>
                     <input type="text" id="fornecedor">
                 </div>
             </div>
-            <div class="form-group" style="margin-top: 1rem;">
+            <div class="form-group-est" style="margin-top: 1rem;">
                 <label for="descricao">Descrição / Observações</label>
-                <textarea id="descricao" rows="3"></textarea>
+                <textarea id="descricao" rows="2"></textarea>
             </div>
-            <div class="form-footer" style="margin-top: 2rem; display: flex; gap: 1rem;">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Produto</button>
-                <button type="button" class="btn btn-secondary" onclick="window.EstoquePage.limparFormulario()"><i class="fas fa-times"></i> Cancelar</button>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                <button type="submit" class="btn-est btn-primary-est"><i class="fas fa-save"></i> Salvar Produto</button>
+                <button type="reset" class="btn-est btn-secondary-est"><i class="fas fa-times"></i> Cancelar</button>
             </div>
         </form>
     </div>
 
-    <!-- Busca e Filtros -->
-    <div class="page-card" style="margin-bottom: 2rem;">
-        <div class="card-header-flex">
-            <h2 class="section-title"><i class="fas fa-search"></i> Filtros de Busca</h2>
-        </div>
-        <div class="search-box-flex" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
-            <div class="form-group">
-                <label for="busca">Palavra-chave</label>
-                <input type="text" id="busca" placeholder="Nome, código ou descrição...">
+    <!-- Filtros e Listagem -->
+    <div class="card-est">
+        <div class="card-header-est">
+            <h2><i class="fas fa-list"></i> Inventário de Materiais</h2>
+            <div class="card-header-actions">
+                <button class="btn-est btn-secondary-est btn-sm" onclick="window.EstoquePage.carregarProdutos()">
+                    <i class="fas fa-sync"></i> Atualizar
+                </button>
             </div>
-            <div class="form-group">
-                <label for="filtroCategoria">Categoria</label>
-                <select id="filtroCategoria">
-                    <option value="">Todas as categorias</option>
+        </div>
+        
+        <div style="padding: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
+            <div style="flex: 1; min-width: 250px;">
+                <input type="text" id="busca" class="form-group-est" style="width: 100%;" placeholder="Buscar por código ou nome..." onkeyup="if(event.key === 'Enter') window.EstoquePage.carregarProdutos()">
+            </div>
+            <div style="width: 200px;">
+                <select id="filtroCategoria" class="form-group-est" style="width: 100%;" onchange="window.EstoquePage.carregarProdutos()">
+                    <option value="">Todas Categorias</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label for="filtroEstoque">Situação do Estoque</label>
-                <select id="filtroEstoque">
-                    <option value="">Todos os produtos</option>
+            <div style="width: 200px;">
+                <select id="filtroEstoque" class="form-group-est" style="width: 100%;" onchange="window.EstoquePage.carregarProdutos()">
+                    <option value="todos">Todos os Níveis</option>
                     <option value="baixo">Estoque Baixo</option>
                     <option value="zerado">Estoque Zerado</option>
-                    <option value="normal">Estoque Normal</option>
                 </select>
             </div>
-            <button class="btn btn-primary" onclick="window.EstoquePage.carregarProdutos()" style="height: 48px;">
-                <i class="fas fa-search"></i> Filtrar
-            </button>
         </div>
-    </div>
 
-    <!-- Lista de Produtos -->
-    <div class="page-card">
-        <div class="card-header-flex">
-            <h2 class="section-title"><i class="fas fa-list"></i> Inventário de Produtos</h2>
-        </div>
-        <div class="table-responsive">
-            <table class="standard-table" id="produtosTable">
+        <div class="table-responsive-est">
+            <table class="data-table-est" id="produtosTable">
                 <thead>
                     <tr>
-                        <th>Código</th>
-                        <th>Nome do Produto</th>
+                        <th>Cód.</th>
+                        <th>Material</th>
                         <th>Categoria</th>
-                        <th>Unidade</th>
-                        <th>Preço Unit.</th>
-                        <th>Qtd.</th>
-                        <th>Total</th>
+                        <th>Un.</th>
+                        <th>Vlr. Unit</th>
+                        <th>Saldo</th>
+                        <th>Vlr. Total</th>
                         <th>Status</th>
-                        <th style="width: 100px;">Ações</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="produtosTableBody">
                     <tr>
-                        <td colspan="9" class="loading-state">
-                            <i class="fas fa-spinner fa-spin"></i> Carregando produtos...
+                        <td colspan="9" style="text-align: center; padding: 3rem;">
+                            <i class="fas fa-spinner fa-spin fa-2x" style="color: var(--color-primary-600);"></i>
+                            <p style="margin-top: 1rem; color: var(--color-text-tertiary);">Carregando inventário...</p>
                         </td>
                     </tr>
                 </tbody>
