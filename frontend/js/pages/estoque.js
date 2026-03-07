@@ -3,22 +3,33 @@
  * Gerencia produtos, categorias e controle de estoque
  */
 
+'use strict';
+
+const _listeners = [];
 let editando = false;
 
 /**
  * Inicializar página
  */
 export function init() {
-    console.log('[Estoque] Inicializando...');
+    console.log('[Estoque] Inicializando módulo...');
 
     carregarDashboard();
     carregarCategorias();
     carregarProdutos();
 
     // Configurar listener do formulário
-    document.getElementById('produtoForm').addEventListener('submit', handleSubmitForm);
+    const form = document.getElementById('produtoForm');
+    if (form) {
+        const fn = (e) => {
+            e.preventDefault();
+            salvarProduto();
+        };
+        form.addEventListener('submit', fn);
+        _listeners.push({ el: form, event: 'submit', fn });
+    }
 
-    // Expor funções globais
+    // Expor funções globais para botões de ação na tabela
     window.EstoquePage = {
         carregarProdutos,
         editarProduto,
@@ -26,30 +37,30 @@ export function init() {
         limparFormulario
     };
 
-    console.log('[Estoque] ✅ Inicializado');
+    console.log('[Estoque] ✅ Módulo pronto');
 }
 
 /**
  * Destruir página (cleanup)
  */
 export function destroy() {
-    console.log('[Estoque] Destruindo...');
+    console.log('[Estoque] Finalizando módulo...');
 
-    // Remover event listeners
-    const form = document.getElementById('produtoForm');
-    if (form) {
-        form.removeEventListener('submit', handleSubmitForm);
-    }
+    // Remover todos os event listeners registrados
+    _listeners.forEach(({ el, event, fn }) => {
+        if (el) el.removeEventListener(event, fn);
+    });
+    _listeners.length = 0;
 
     // Limpar namespace global
     if (window.EstoquePage) {
         delete window.EstoquePage;
     }
 
-    // Limpar dados
+    // Reset estado
     editando = false;
 
-    console.log('[Estoque] ✅ Destruído');
+    console.log('[Estoque] ✅ Cleanup concluído');
 }
 
 // ========== FUNÇÕES DE CARREGAMENTO ==========
@@ -68,11 +79,9 @@ async function carregarDashboard() {
             if (elemValor) elemValor.textContent = 'R$ ' + (data.dados.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
             if (elemBaixo) elemBaixo.textContent = data.dados.produtos_estoque_baixo || 0;
             if (elemZerado) elemZerado.textContent = data.dados.produtos_zerados || 0;
-
-            console.log('[Estoque] ✅ Dashboard carregado');
         }
     } catch (error) {
-        console.error('[Estoque] ❌ Erro ao carregar dashboard:', error);
+        console.error('[Estoque] Erro ao carregar dashboard:', error);
     }
 }
 
@@ -97,23 +106,21 @@ async function carregarCategorias() {
                     selectFiltro.innerHTML += `<option value="${cat.id}">${cat.nome}</option>`;
                 });
             }
-
-            console.log('[Estoque] ✅ Categorias carregadas:', data.dados.length);
         }
     } catch (error) {
-        console.error('[Estoque] ❌ Erro ao carregar categorias:', error);
+        console.error('[Estoque] Erro ao carregar categorias:', error);
     }
 }
 
 async function carregarProdutos() {
-    const busca = document.getElementById('busca').value;
-    const categoria = document.getElementById('filtroCategoria').value;
-    const estoque = document.getElementById('filtroEstoque').value;
+    const busca = document.getElementById('busca') ? document.getElementById('busca').value : '';
+    const categoria = document.getElementById('filtroCategoria') ? document.getElementById('filtroCategoria').value : '';
+    const estoque = document.getElementById('filtroEstoque') ? document.getElementById('filtroEstoque').value : '';
 
     const tbody = document.getElementById('produtosTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="9" class="loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="loading-state"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
         let url = '../api/api_estoque.php?action=produtos';
@@ -133,43 +140,37 @@ async function carregarProdutos() {
 
                 if (produto.quantidade_estoque == 0) {
                     statusBadge = '<span class="badge badge-danger">Zerado</span>';
-                } else if (produto.quantidade_estoque <= produto.estoque_minimo) {
+                } else if (parseFloat(produto.quantidade_estoque) <= parseFloat(produto.estoque_minimo)) {
                     statusBadge = '<span class="badge badge-warning">Baixo</span>';
                 }
 
                 tbody.innerHTML += `
                     <tr>
-                        <td>${produto.codigo}</td>
+                        <td><strong>${produto.codigo}</strong></td>
                         <td>${produto.nome}</td>
-                        <td>${produto.categoria_nome || '-'}</td>
+                        <td><span class="badge badge-info">${produto.categoria_nome || '-'}</span></td>
                         <td>${produto.unidade_medida}</td>
                         <td>R$ ${parseFloat(produto.preco_unitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                        <td>${parseFloat(produto.quantidade_estoque).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td><strong>${parseFloat(produto.quantidade_estoque).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></td>
                         <td>R$ ${parseFloat(valorTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         <td>${statusBadge}</td>
                         <td class="action-buttons">
-                            <button class="btn btn-sm btn-primary" onclick="window.EstoquePage.editarProduto(${produto.id})"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-sm btn-danger" onclick="window.EstoquePage.excluirProduto(${produto.id}, '${produto.nome.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+                            <button class="btn btn-sm btn-primary" onclick="window.EstoquePage.editarProduto(${produto.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="window.EstoquePage.excluirProduto(${produto.id}, '${produto.nome.replace(/'/g, "\\'")}')" title="Excluir"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
             });
-            console.log('[Estoque] ✅ Produtos carregados:', data.dados.length);
         } else {
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-box-open"></i><br>Nenhum produto encontrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state" style="text-align:center; padding: 2rem;"><i class="fas fa-box-open" style="font-size: 2rem; opacity: 0.3;"></i><br>Nenhum produto encontrado</td></tr>';
         }
     } catch (error) {
-        console.error('[Estoque] ❌ Erro ao carregar produtos:', error);
+        console.error('[Estoque] Erro ao carregar produtos:', error);
         tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-exclamation-triangle"></i><br>Erro ao carregar produtos</td></tr>';
     }
 }
 
 // ========== HANDLERS ==========
-
-function handleSubmitForm(e) {
-    e.preventDefault();
-    salvarProduto();
-}
 
 async function salvarProduto() {
     const formData = {
@@ -211,7 +212,7 @@ async function salvarProduto() {
             mostrarAlerta('error', data.mensagem);
         }
     } catch (error) {
-        console.error('[Estoque] ❌ Erro ao salvar produto:', error);
+        console.error('[Estoque] Erro ao salvar produto:', error);
         mostrarAlerta('error', 'Erro ao salvar produto');
     }
 }
@@ -239,13 +240,13 @@ async function editarProduto(id) {
             editando = true;
 
             // Scroll para o formulário
-            const form = document.getElementById('produtoForm');
-            if (form) {
-                form.scrollIntoView({ behavior: 'smooth' });
+            const formCard = document.getElementById('produtoForm').closest('.page-card');
+            if (formCard) {
+                formCard.scrollIntoView({ behavior: 'smooth' });
             }
         }
     } catch (error) {
-        console.error('[Estoque] ❌ Erro ao carregar produto:', error);
+        console.error('[Estoque] Erro ao carregar produto:', error);
         mostrarAlerta('error', 'Erro ao carregar produto');
     }
 }
@@ -268,7 +269,7 @@ async function excluirProduto(id, nome) {
             mostrarAlerta('error', data.mensagem);
         }
     } catch (error) {
-        console.error('[Estoque] ❌ Erro ao excluir produto:', error);
+        console.error('[Estoque] Erro ao excluir produto:', error);
         mostrarAlerta('error', 'Erro ao excluir produto');
     }
 }
@@ -278,8 +279,12 @@ function limparFormulario() {
     if (form) {
         form.reset();
     }
-    document.getElementById('produtoId').value = '';
-    document.getElementById('formTitle').textContent = 'Cadastrar Produto';
+    const idField = document.getElementById('produtoId');
+    if (idField) idField.value = '';
+    
+    const titleField = document.getElementById('formTitle');
+    if (titleField) titleField.textContent = 'Cadastrar Produto';
+    
     editando = false;
 }
 
@@ -291,7 +296,28 @@ function mostrarAlerta(tipo, mensagem) {
 
     const div = document.createElement('div');
     div.className = `alert alert-${tipo}`;
+    div.style.padding = '1rem';
+    div.style.borderRadius = '8px';
+    div.style.marginBottom = '1rem';
+    div.style.display = 'flex';
+    div.style.alignItems = 'center';
+    div.style.gap = '0.5rem';
+    
+    if (tipo === 'success') {
+        div.style.background = '#f0fdf4';
+        div.style.color = '#16a34a';
+        div.style.borderLeft = '4px solid #16a34a';
+    } else {
+        div.style.background = '#fef2f2';
+        div.style.color = '#ef4444';
+        div.style.borderLeft = '4px solid #ef4444';
+    }
+
     div.innerHTML = `<i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${mensagem}`;
     container.appendChild(div);
-    setTimeout(() => div.remove(), 5000);
+    setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transition = '0.5s';
+        setTimeout(() => div.remove(), 500);
+    }, 4000);
 }

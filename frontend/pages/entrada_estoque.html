@@ -1,0 +1,113 @@
+<!-- Page Metadata for AppRouter -->
+<div id="page-metadata" data-title="Entrada de Estoque" data-icon="fa-arrow-down" style="display:none;"></div>
+
+<!-- Modern Page Wrapper -->
+<div class="page-wrapper page-entrada-estoque">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1><i class="fas fa-arrow-down" style="color:#16a34a;margin-right:10px;"></i>Entrada de Material</h1>
+            <p>Registro de novas entradas, compras e reposição de estoque</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn btn-secondary btn-sm" data-page="estoque">
+                <i class="fas fa-arrow-left"></i> Voltar ao Estoque
+            </button>
+        </div>
+    </div>
+
+    <!-- Submenu (Tabs) -->
+    <div class="tabs">
+        <button class="tab-button" data-page="estoque">
+            <i class="fas fa-boxes"></i> Produtos
+        </button>
+        <button class="tab-button active" data-page="entrada_estoque">
+            <i class="fas fa-arrow-down"></i> Entrada
+        </button>
+        <button class="tab-button" data-page="saida_estoque">
+            <i class="fas fa-arrow-up"></i> Saída
+        </button>
+        <button class="tab-button" data-page="relatorio_estoque">
+            <i class="fas fa-chart-bar"></i> Relatórios
+        </button>
+    </div>
+
+    <div id="alertContainerEntrada"></div>
+
+    <!-- Novo Registro de Entrada -->
+    <div class="page-card" style="margin-bottom: 2rem;">
+        <div class="card-header-flex">
+            <h2 class="section-title"><i class="fas fa-plus-circle"></i> Registrar Nova Entrada</h2>
+        </div>
+        <form id="entradaEstoqueForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="produto_id">Produto / Material *</label>
+                    <select id="produto_id" required>
+                        <option value="">Selecione o produto...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantidade">Quantidade de Entrada *</label>
+                    <input type="number" id="quantidade" step="0.01" min="0.01" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="preco_unitario_entrada">Preço Unitário na Compra (R$)</label>
+                    <input type="number" id="preco_unitario_entrada" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="numero_documento">Nº Documento / NF</label>
+                    <input type="text" id="numero_documento" placeholder="Ex: NF-12345">
+                </div>
+                <div class="form-group">
+                    <label for="data_entrada">Data da Entrada</label>
+                    <input type="date" id="data_entrada">
+                </div>
+                <div class="form-group">
+                    <label for="fornecedor_entrada">Fornecedor</label>
+                    <input type="text" id="fornecedor_entrada" placeholder="Nome do fornecedor">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="observacoes_entrada">Observações</label>
+                <textarea id="observacoes_entrada" rows="3" placeholder="Informações adicionais sobre esta entrada..."></textarea>
+            </div>
+            <div class="form-footer" style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Confirmar Entrada</button>
+                <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Limpar Campos</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Últimas Entradas -->
+    <div class="page-card">
+        <div class="card-header-flex">
+            <h2 class="section-title"><i class="fas fa-history"></i> Histórico Recente de Entradas</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="standard-table" id="historicoEntradasTable">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Produto</th>
+                        <th>Qtd.</th>
+                        <th>Preço Unit.</th>
+                        <th>Total</th>
+                        <th>Documento</th>
+                        <th>Fornecedor</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="entradasTableBody">
+                    <tr>
+                        <td colspan="8" class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i> Carregando histórico...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

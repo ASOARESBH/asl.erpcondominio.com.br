@@ -1,0 +1,97 @@
+<!-- Page Metadata for AppRouter -->
+<div id="page-metadata" data-title="Relatórios de Estoque" data-icon="fa-chart-bar" style="display:none;"></div>
+
+<!-- Modern Page Wrapper -->
+<div class="page-wrapper page-relatorios-estoque">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1><i class="fas fa-chart-bar" style="color:#d97706;margin-right:10px;"></i>Relatórios de Estoque</h1>
+            <p>Análise de movimentação, saldo e valorização do inventário</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn btn-secondary btn-sm" data-page="estoque">
+                <i class="fas fa-arrow-left"></i> Voltar ao Estoque
+            </button>
+        </div>
+    </div>
+
+    <!-- Submenu (Tabs) -->
+    <div class="tabs">
+        <button class="tab-button" data-page="estoque">
+            <i class="fas fa-boxes"></i> Produtos
+        </button>
+        <button class="tab-button" data-page="entrada_estoque">
+            <i class="fas fa-arrow-down"></i> Entrada
+        </button>
+        <button class="tab-button" data-page="saida_estoque">
+            <i class="fas fa-arrow-up"></i> Saída
+        </button>
+        <button class="tab-button active" data-page="relatorio_estoque">
+            <i class="fas fa-chart-bar"></i> Relatórios
+        </button>
+    </div>
+
+    <div id="alertContainerRelatorios"></div>
+
+    <!-- Filtros do Relatório -->
+    <div class="page-card" style="margin-bottom: 2rem;">
+        <div class="card-header-flex">
+            <h2 class="section-title"><i class="fas fa-filter"></i> Parâmetros do Relatório</h2>
+        </div>
+        <form id="relatorioEstoqueForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="tipo_relatorio">Tipo de Relatório *</label>
+                    <select id="tipo_relatorio" required>
+                        <option value="movimentacao">Movimentação por Período</option>
+                        <option value="saldo">Saldo Atual em Estoque</option>
+                        <option value="curva_abc">Análise por Valor (Curva ABC)</option>
+                        <option value="abaixo_minimo">Produtos Abaixo do Mínimo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="data_inicio">Data Inicial</label>
+                    <input type="date" id="data_inicio">
+                </div>
+                <div class="form-group">
+                    <label for="data_fim">Data Final</label>
+                    <input type="date" id="data_fim">
+                </div>
+                <div class="form-group">
+                    <label for="categoria_rel">Categoria</label>
+                    <select id="categoria_rel">
+                        <option value="">Todas as categorias</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-footer" style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sync"></i> Gerar Relatório</button>
+                <button type="button" class="btn btn-secondary" id="btnExportarRelatorio"><i class="fas fa-file-excel"></i> Exportar CSV</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resultados do Relatório -->
+    <div class="page-card">
+        <div class="card-header-flex">
+            <h2 class="section-title"><i class="fas fa-table"></i> Resultados do Relatório</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="standard-table" id="resultadosRelatorioTable">
+                <thead id="resultadosHead">
+                    <!-- Dinâmico -->
+                </thead>
+                <tbody id="resultadosBody">
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 3rem; color: var(--color-text-tertiary);">
+                            Configure os filtros e clique em "Gerar Relatório" para visualizar os dados.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

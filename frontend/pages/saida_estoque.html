@@ -1,0 +1,119 @@
+<!-- Page Metadata for AppRouter -->
+<div id="page-metadata" data-title="Saída de Estoque" data-icon="fa-arrow-up" style="display:none;"></div>
+
+<!-- Modern Page Wrapper -->
+<div class="page-wrapper page-saida-estoque">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1><i class="fas fa-arrow-up" style="color:#ef4444;margin-right:10px;"></i>Saída de Material</h1>
+            <p>Registro de baixas, consumo interno e devoluções</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn btn-secondary btn-sm" data-page="estoque">
+                <i class="fas fa-arrow-left"></i> Voltar ao Estoque
+            </button>
+        </div>
+    </div>
+
+    <!-- Submenu (Tabs) -->
+    <div class="tabs">
+        <button class="tab-button" data-page="estoque">
+            <i class="fas fa-boxes"></i> Produtos
+        </button>
+        <button class="tab-button" data-page="entrada_estoque">
+            <i class="fas fa-arrow-down"></i> Entrada
+        </button>
+        <button class="tab-button active" data-page="saida_estoque">
+            <i class="fas fa-arrow-up"></i> Saída
+        </button>
+        <button class="tab-button" data-page="relatorio_estoque">
+            <i class="fas fa-chart-bar"></i> Relatórios
+        </button>
+    </div>
+
+    <div id="alertContainerSaida"></div>
+
+    <!-- Novo Registro de Saída -->
+    <div class="page-card" style="margin-bottom: 2rem;">
+        <div class="card-header-flex">
+            <h2 class="section-title"><i class="fas fa-minus-circle"></i> Registrar Nova Saída</h2>
+        </div>
+        <form id="saidaEstoqueForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="produto_id_saida">Produto / Material *</label>
+                    <select id="produto_id_saida" required>
+                        <option value="">Selecione o produto...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="quantidade_saida">Quantidade de Saída *</label>
+                    <input type="number" id="quantidade_saida" step="0.01" min="0.01" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="tipo_saida">Tipo de Saída *</label>
+                    <select id="tipo_saida" required>
+                        <option value="Consumo">Consumo Interno</option>
+                        <option value="Manutenção">Manutenção</option>
+                        <option value="Perda/Avaria">Perda / Avaria</option>
+                        <option value="Venda">Venda</option>
+                        <option value="Devolução">Devolução ao Fornecedor</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="solicitante">Responsável / Solicitante</label>
+                    <input type="text" id="solicitante" placeholder="Quem retirou o material">
+                </div>
+                <div class="form-group">
+                    <label for="data_saida">Data da Saída</label>
+                    <input type="date" id="data_saida">
+                </div>
+                <div class="form-group">
+                    <label for="destino">Destino / Local de Uso</label>
+                    <input type="text" id="destino" placeholder="Ex: Bloco A, Piscina, etc.">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="observacoes_saida">Observações</label>
+                <textarea id="observacoes_saida" rows="3" placeholder="Motivo da saída ou detalhes adicionais..."></textarea>
+            </div>
+            <div class="form-footer" style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit" class="btn btn-danger"><i class="fas fa-check"></i> Confirmar Saída</button>
+                <button type="reset" class="btn btn-secondary"><i class="fas fa-times"></i> Limpar Campos</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Últimas Saídas -->
+    <div class="page-card">
+        <div class="card-header-flex">
+            <h2 class="section-title"><i class="fas fa-history"></i> Histórico Recente de Saídas</h2>
+        </div>
+        <div class="table-responsive">
+            <table class="standard-table" id="historicoSaidasTable">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Produto</th>
+                        <th>Qtd.</th>
+                        <th>Tipo</th>
+                        <th>Solicitante</th>
+                        <th>Destino</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="saidasTableBody">
+                    <tr>
+                        <td colspan="7" class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i> Carregando histórico...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
