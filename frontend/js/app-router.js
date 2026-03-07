@@ -182,6 +182,14 @@ const AppRouter = {
             const icon = metadata.dataset.icon || 'fa-circle';
             titleEl.innerHTML = `<i class="fas ${icon}"></i> ${title}`;
         }
+    },
+
+    /**
+     * Alias para loadPage para compatibilidade com scripts que usam navigate()
+     * @param {string} pageName - Nome da página
+     */
+    navigate(pageName) {
+        return this.loadPage(pageName);
     }
 };
 
