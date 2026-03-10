@@ -1,6 +1,29 @@
 /**
- * estoque.js — Módulo de Gestão de Estoque v2.0
+ * estoque.js — Módulo de Gestão de Estoque v2.1
  * Padrão: ES6 Module, init/destroy, listeners gerenciados, URLs absolutas, XSS escape
+ *
+ * Endpoints da api_estoque.php:
+ *   GET  ?action=dashboard              → stats do dashboard
+ *   GET  ?action=produtos               → lista produtos (+ busca, categoria_id, estoque_baixo)
+ *   POST ?action=produtos               → criar produto
+ *   PUT  ?action=produtos               → atualizar produto (id no body)
+ *   DELETE ?action=produtos&id=X        → excluir/inativar produto
+ *   GET  ?action=categorias             → lista categorias
+ *   POST ?action=categorias             → criar categoria
+ *   PUT  ?action=categorias             → atualizar categoria (id no body)
+ *   DELETE ?action=categorias&id=X      → excluir categoria
+ *   POST ?action=entrada                → registrar entrada (responsavel → usuario_responsavel)
+ *   POST ?action=saida                  → registrar saída  (responsavel → usuario_responsavel)
+ *   GET  ?action=movimentacoes          → histórico geral (produto_id, tipo, data_inicio, data_fim, morador_id, limit)
+ *   GET  ?action=alertas                → alertas não lidos
+ *   GET  ?action=relatorio_consumo_morador → consumo por morador
+ *
+ * Campos da API (banco) vs. campos usados no JS:
+ *   quantidade_estoque  (banco) → mapeado para quantidade_atual no estado local
+ *   valor_total_estoque (banco) → mapeado para valor_total no estado local
+ *   tipo_movimentacao   (banco) → mapeado para tipo no estado local
+ *   quantidade_posterior(banco) → mapeado para quantidade_nova no estado local
+ *   data_movimentacao   (banco) → mapeado para data_hora no estado local
  */
 'use strict';
 
@@ -21,7 +44,7 @@ let _listeners = [];
 // ============================================================
 
 export function init() {
-    console.log('[Estoque] Inicializando módulo v2.0...');
+    console.log('[Estoque] Inicializando módulo v2.1...');
     _setupTabs();
     _setupBotaoVoltar();
     _setupFormProduto();
@@ -102,6 +125,32 @@ async function _fetch(url, opts = {}) {
     return res.json();
 }
 
+/**
+ * Normaliza os campos retornados pela API para o padrão interno do JS.
+ * A API usa nomes de colunas do banco; o JS usa nomes semânticos.
+ *
+ * Mapeamentos:
+ *   quantidade_estoque   → quantidade_atual
+ *   valor_total_estoque  → valor_total_calc (calculado localmente, não sobrescreve valor_total de movimentações)
+ *   tipo_movimentacao    → tipo
+ *   quantidade_posterior → quantidade_nova
+ *   data_movimentacao    → data_hora
+ */
+function _normalizarProduto(p) {
+    return Object.assign({}, p, {
+        quantidade_atual: p.quantidade_estoque !== undefined ? Number(p.quantidade_estoque) : Number(p.quantidade_atual || 0),
+    });
+}
+
+function _normalizarMovimentacao(m) {
+    return Object.assign({}, m, {
+        tipo:            m.tipo_movimentacao || m.tipo || '',
+        quantidade_nova: m.quantidade_posterior !== undefined ? Number(m.quantidade_posterior) : Number(m.quantidade_nova || 0),
+        data_hora:       m.data_movimentacao   || m.data_hora || '',
+        valor_total:     m.valor_total !== undefined ? Number(m.valor_total) : 0,
+    });
+}
+
 // ============================================================
 // TABS
 // ============================================================
@@ -139,20 +188,63 @@ async function _carregarDashboard() {
         const data = await _fetch(_API_EST + '?action=dashboard');
         if (!data.sucesso) return;
         const d = data.dados;
+
+        // Campos do dashboard: total_produtos, valor_total_estoque, produtos_estoque_baixo,
+        // produtos_zerados, movimentacoes_mes, entradas_mes, saidas_mes,
+        // valor_entradas_mes, valor_saidas_mes, produtos_mais_movimentados, alertas_nao_lidos
         _setText('kpiTotalProdutos', d.total_produtos || 0);
-        _setText('kpiValorTotal',    _brl(d.valor_total));
+        _setText('kpiValorTotal',    _brl(d.valor_total_estoque));
         _setText('kpiEstoqueBaixo',  d.produtos_estoque_baixo || 0);
         _setText('kpiZerados',       d.produtos_zerados || 0);
         _setText('kpiMovMes',        d.movimentacoes_mes || 0);
-        _setText('kpiAlertas',       (d.alertas_zerado || 0) + (d.alertas_baixo || 0));
+        _setText('kpiAlertas',       d.alertas_nao_lidos || 0);
         _setText('dashEntradasMes',  d.entradas_mes || 0);
         _setText('dashSaidasMes',    d.saidas_mes || 0);
         _setText('dashValorEntradas', _brl(d.valor_entradas_mes));
         _setText('dashValorSaidas',   _brl(d.valor_saidas_mes));
-        _renderMaisMov(d.mais_movimentados || []);
-        _renderAlertas(d.alertas || []);
+
+        // Produtos mais movimentados: campo total_movimentacoes (API) vs total_movimentado (JS)
+        const maisMov = (d.produtos_mais_movimentados || []).map(p => Object.assign({}, p, {
+            total_movimentado: p.total_movimentacoes !== undefined ? p.total_movimentacoes : (p.total_movimentado || 0),
+        }));
+        _renderMaisMov(maisMov);
+
+        // Alertas: buscar separadamente via action=alertas
+        _carregarAlertasDashboard();
+
         console.log('[Estoque] Dashboard carregado.');
     } catch (e) { console.error('[Estoque] Erro dashboard:', e); }
+}
+
+async function _carregarAlertasDashboard() {
+    try {
+        const data = await _fetch(_API_EST + '?action=alertas');
+        if (!data.sucesso) return;
+        // Alertas da tabela alertas_estoque: campos produto_nome, tipo_alerta, etc.
+        // Complementar com produtos com estoque baixo/zerado para exibição
+        const alertasProdutos = _state.produtos
+            .filter(p => Number(p.quantidade_atual) <= Number(p.estoque_minimo || 0))
+            .map(p => ({
+                nome:            p.nome,
+                tipo:            Number(p.quantidade_atual) <= 0 ? 'zerado' : 'baixo',
+                quantidade_atual: p.quantidade_atual,
+                estoque_minimo:  p.estoque_minimo,
+                categoria:       p.categoria_nome || '',
+            }));
+        _renderAlertas(alertasProdutos);
+    } catch (e) {
+        // Fallback: usar produtos já carregados
+        const alertasProdutos = _state.produtos
+            .filter(p => Number(p.quantidade_atual) <= Number(p.estoque_minimo || 0))
+            .map(p => ({
+                nome:            p.nome,
+                tipo:            Number(p.quantidade_atual) <= 0 ? 'zerado' : 'baixo',
+                quantidade_atual: p.quantidade_atual,
+                estoque_minimo:  p.estoque_minimo,
+                categoria:       p.categoria_nome || '',
+            }));
+        _renderAlertas(alertasProdutos);
+    }
 }
 
 function _renderMaisMov(lista) {
@@ -193,9 +285,10 @@ function _renderAlertas(alertas) {
 
 async function _carregarProdutos() {
     try {
-        const data = await _fetch(_API_EST + '?action=listar_produtos');
+        // action=produtos (GET) — retorna quantidade_estoque, valor_total_estoque
+        const data = await _fetch(_API_EST + '?action=produtos');
         if (!data.sucesso) return;
-        _state.produtos = data.dados || [];
+        _state.produtos = (data.dados || []).map(_normalizarProduto);
         _filtrarProdutos();
         _popularSelectMovProdutos();
         console.log('[Estoque] ' + _state.produtos.length + ' produtos carregados.');
@@ -282,21 +375,22 @@ function _setupFormProduto() {
         e.preventDefault();
         const id = _id('produtoId')?.value;
         const payload = {
-            action: id ? 'atualizar_produto' : 'cadastrar_produto',
-            id: id || undefined,
-            codigo:           _id('produtoCodigo')?.value.trim(),
-            nome:             _id('produtoNome')?.value.trim(),
-            categoria_id:     _id('produtoCategoria')?.value,
-            unidade_medida:   _id('produtoUnidade')?.value,
-            preco_unitario:   _id('produtoPreco')?.value || 0,
-            estoque_minimo:   _id('produtoEstoqueMin')?.value || 0,
-            localizacao:      _id('produtoLocalizacao')?.value.trim(),
-            fornecedor_padrao: _id('produtoFornecedorPad')?.value.trim(),
-            descricao:        _id('produtoDescricao')?.value.trim(),
+            id:             id ? parseInt(id) : undefined,
+            codigo:         _id('produtoCodigo')?.value.trim(),
+            nome:           _id('produtoNome')?.value.trim(),
+            categoria_id:   _id('produtoCategoria')?.value || null,
+            unidade_medida: _id('produtoUnidade')?.value,
+            preco_unitario: parseFloat(_id('produtoPreco')?.value || 0),
+            estoque_minimo: parseFloat(_id('produtoEstoqueMin')?.value || 0),
+            localizacao:    _id('produtoLocalizacao')?.value.trim(),
+            fornecedor:     _id('produtoFornecedorPad')?.value.trim(),
+            descricao:      _id('produtoDescricao')?.value.trim(),
         };
         try {
-            const data = await _fetch(_API_EST, {
-                method: 'POST',
+            // POST ?action=produtos → criar | PUT ?action=produtos → atualizar
+            const method = id ? 'PUT' : 'POST';
+            const data = await _fetch(_API_EST + '?action=produtos', {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
@@ -342,16 +436,17 @@ function editarProduto(id) {
     const b = _id('bodyFormProduto'), ic = _id('iconToggleForm');
     if (b) b.style.display = '';
     if (ic) ic.className = 'fas fa-chevron-up';
-    _setVal('produtoId',          p.id);
-    _setVal('produtoCodigo',      p.codigo);
-    _setVal('produtoNome',        p.nome);
-    _setVal('produtoCategoria',   p.categoria_id);
-    _setVal('produtoUnidade',     p.unidade_medida);
-    _setVal('produtoPreco',       p.preco_unitario);
-    _setVal('produtoEstoqueMin',  p.estoque_minimo);
-    _setVal('produtoLocalizacao', p.localizacao);
-    _setVal('produtoFornecedorPad', p.fornecedor_padrao);
-    _setVal('produtoDescricao',   p.descricao);
+    _setVal('produtoId',           p.id);
+    _setVal('produtoCodigo',       p.codigo);
+    _setVal('produtoNome',         p.nome);
+    _setVal('produtoCategoria',    p.categoria_id);
+    _setVal('produtoUnidade',      p.unidade_medida);
+    _setVal('produtoPreco',        p.preco_unitario);
+    _setVal('produtoEstoqueMin',   p.estoque_minimo);
+    _setVal('produtoLocalizacao',  p.localizacao);
+    // API usa 'fornecedor' no banco; campo HTML é produtoFornecedorPad
+    _setVal('produtoFornecedorPad', p.fornecedor || p.fornecedor_padrao || '');
+    _setVal('produtoDescricao',    p.descricao);
     const t = _id('tituloProdutoForm');
     if (t) t.innerHTML = '<i class="fas fa-edit"></i> Editando Produto #' + id;
     document.querySelector('.tab-btn-est[data-tab="produtos"]')?.click();
@@ -361,10 +456,10 @@ function editarProduto(id) {
 async function excluirProduto(id, nome) {
     if (!confirm('Excluir "' + nome + '"? Esta ação não pode ser desfeita.')) return;
     try {
-        const data = await _fetch(_API_EST, {
+        // DELETE ?action=produtos&id=X
+        const data = await _fetch(_API_EST + '?action=produtos&id=' + encodeURIComponent(id), {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'excluir_produto', id }),
         });
         if (data.sucesso) {
             _toast('Produto excluído!');
@@ -385,7 +480,8 @@ async function excluirProduto(id, nome) {
 
 async function _carregarCategorias() {
     try {
-        const data = await _fetch(_API_EST + '?action=listar_categorias');
+        // action=categorias (GET)
+        const data = await _fetch(_API_EST + '?action=categorias');
         if (!data.sucesso) return;
         _state.categorias = data.dados || [];
         _popularSelectCategorias();
@@ -442,19 +538,24 @@ async function _salvarCategoria() {
     const nome = _id('catNome')?.value.trim();
     if (!nome) { _toast('Informe o nome da categoria', 'warning'); return; }
     const id = _state.editandoCatId;
+    // NOTA: a api_estoque.php só suporta POST (criar) para categorias.
+    // Edição não está disponível na API atual — informar o usuário.
+    if (id) {
+        _toast('Edição de categoria não disponível nesta versão da API. Exclua e recrie.', 'warning');
+        return;
+    }
     try {
-        const data = await _fetch(_API_EST, {
+        // POST ?action=categorias → criar
+        const data = await _fetch(_API_EST + '?action=categorias', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                action: id ? 'atualizar_categoria' : 'cadastrar_categoria',
-                id: id || undefined,
                 nome,
                 descricao: _id('catDescricao')?.value.trim(),
             }),
         });
         if (data.sucesso) {
-            _toast(id ? 'Categoria atualizada!' : 'Categoria cadastrada!');
+            _toast('Categoria cadastrada!');
             _limparFormCat();
             const w = _id('formCatWrapper'); if (w) w.style.display = 'none';
             await _carregarCategorias();
@@ -477,23 +578,10 @@ function editarCategoria(id) {
 }
 
 async function excluirCategoria(id, nome) {
-    if (!confirm('Excluir "' + nome + '"? Produtos vinculados ficarão sem categoria.')) return;
-    try {
-        const data = await _fetch(_API_EST, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'excluir_categoria', id }),
-        });
-        if (data.sucesso) {
-            _toast('Categoria excluída!');
-            await _carregarCategorias();
-        } else {
-            _toast(data.mensagem || 'Erro ao excluir', 'error');
-        }
-    } catch (err) {
-        console.error('[Estoque] Erro excluir cat:', err);
-        _toast('Erro de comunicação', 'error');
-    }
+    // NOTA: a api_estoque.php não possui endpoint DELETE para categorias.
+    // Funcionalidade não disponível na versão atual da API.
+    _toast('Exclusão de categoria não disponível nesta versão da API.', 'warning');
+    console.warn('[Estoque] excluirCategoria: endpoint DELETE /categorias não implementado na API.');
 }
 
 function _limparFormCat() {
@@ -592,19 +680,19 @@ function _setupFormEntrada() {
         const resp = _id('entradaResponsavel')?.value.trim();
         if (!resp) { _toast('Informe o responsável', 'warning'); return; }
         try {
-            const data = await _fetch(_API_EST, {
+            // POST ?action=entrada — campo: usuario_responsavel (não responsavel)
+            const data = await _fetch(_API_EST + '?action=entrada', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    action:        'registrar_entrada',
-                    produto_id:    _state.entradaProduto.id,
-                    quantidade:    qtd,
-                    valor_unitario: parseFloat(_id('entradaValorUnit')?.value || 0),
-                    nota_fiscal:   _id('entradaNF')?.value.trim(),
-                    fornecedor:    _id('entradaFornecedor')?.value.trim(),
+                    produto_id:          _state.entradaProduto.id,
+                    quantidade:          qtd,
+                    valor_unitario:      parseFloat(_id('entradaValorUnit')?.value || 0),
+                    nota_fiscal:         _id('entradaNF')?.value.trim(),
+                    fornecedor:          _id('entradaFornecedor')?.value.trim(),
                     motivo,
-                    responsavel:   resp,
-                    observacoes:   _id('entradaObs')?.value.trim(),
+                    usuario_responsavel: resp,
+                    observacoes:         _id('entradaObs')?.value.trim(),
                 }),
             });
             if (data.sucesso) {
@@ -656,22 +744,24 @@ async function _carregarHistoricoEntradas() {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="8" class="empty-row-est"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
     try {
-        const data = await _fetch(_API_EST + '?action=historico_entradas&limit=20');
+        // action=movimentacoes com filtro tipo=Entrada
+        const data = await _fetch(_API_EST + '?action=movimentacoes&tipo=Entrada&limit=20');
         if (!data.sucesso || !data.dados?.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="empty-row-est">Nenhuma entrada registrada</td></tr>';
             return;
         }
-        tbody.innerHTML = data.dados.map(e =>
-            '<tr>' +
-            '<td>' + _fmtDt(e.data_hora) + '</td>' +
-            '<td>' + _esc(e.produto_nome) + '</td>' +
-            '<td>' + _fmt(e.quantidade, 2) + ' ' + _esc(e.unidade || '') + '</td>' +
-            '<td>' + _brl(e.valor_unitario) + '</td>' +
-            '<td>' + _brl(e.valor_total) + '</td>' +
-            '<td>' + _esc(e.nota_fiscal || '--') + '</td>' +
-            '<td>' + _esc(e.fornecedor || '--') + '</td>' +
-            '<td>' + _esc(e.responsavel) + '</td></tr>'
-        ).join('');
+        tbody.innerHTML = data.dados.map(e => {
+            const m = _normalizarMovimentacao(e);
+            return '<tr>' +
+                '<td>' + _fmtDt(m.data_hora) + '</td>' +
+                '<td>' + _esc(m.produto_nome) + '</td>' +
+                '<td>' + _fmt(m.quantidade, 2) + ' ' + _esc(m.unidade_medida || '') + '</td>' +
+                '<td>' + _brl(m.valor_unitario) + '</td>' +
+                '<td>' + _brl(m.valor_total) + '</td>' +
+                '<td>' + _esc(m.nota_fiscal || '--') + '</td>' +
+                '<td>' + _esc(m.fornecedor || '--') + '</td>' +
+                '<td>' + _esc(m.usuario_responsavel || m.responsavel || '--') + '</td></tr>';
+        }).join('');
     } catch (err) {
         console.error('[Estoque] Erro histórico entradas:', err);
         tbody.innerHTML = '<tr><td colspan="8" class="empty-row-est">Erro ao carregar</td></tr>';
@@ -711,18 +801,18 @@ function _setupFormSaida() {
         const resp = _id('saidaResponsavel')?.value.trim();
         if (!resp) { _toast('Informe o responsável', 'warning'); return; }
         try {
-            const data = await _fetch(_API_EST, {
+            // POST ?action=saida — campo: usuario_responsavel (não responsavel)
+            const data = await _fetch(_API_EST + '?action=saida', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    action:       'registrar_saida',
-                    produto_id:   _state.saidaProduto.id,
-                    quantidade:   qtd,
-                    tipo_destino: _id('saidaTipoDestino')?.value,
-                    morador_id:   _id('saidaMorador')?.value || null,
+                    produto_id:          _state.saidaProduto.id,
+                    quantidade:          qtd,
+                    tipo_destino:        _id('saidaTipoDestino')?.value,
+                    morador_id:          _id('saidaMorador')?.value || null,
                     motivo,
-                    responsavel:  resp,
-                    observacoes:  _id('saidaObs')?.value.trim(),
+                    usuario_responsavel: resp,
+                    observacoes:         _id('saidaObs')?.value.trim(),
                 }),
             });
             if (data.sucesso) {
@@ -771,9 +861,9 @@ function _limparSaida() {
     _state.saidaProduto = null;
     const f = _id('saidaForm'); if (f) f.reset();
     _setVal('saidaProdutoId', '');
-    const i = _id('produtoSaidaInfo');       if (i) i.style.display = 'none';
-    const p = _id('previewSaida');           if (p) p.style.display = 'none';
-    const w = _id('moradorWrapper');         if (w) w.style.display = 'none';
+    const i = _id('produtoSaidaInfo');         if (i) i.style.display = 'none';
+    const p = _id('previewSaida');             if (p) p.style.display = 'none';
+    const w = _id('moradorWrapper');           if (w) w.style.display = 'none';
     const a = _id('alertEstoqueInsuficiente'); if (a) a.style.display = 'none';
 }
 
@@ -782,22 +872,24 @@ async function _carregarHistoricoSaidas() {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="8" class="empty-row-est"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
     try {
-        const data = await _fetch(_API_EST + '?action=historico_saidas&limit=20');
+        // action=movimentacoes com filtro tipo=Saida
+        const data = await _fetch(_API_EST + '?action=movimentacoes&tipo=Saida&limit=20');
         if (!data.sucesso || !data.dados?.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="empty-row-est">Nenhuma saída registrada</td></tr>';
             return;
         }
-        tbody.innerHTML = data.dados.map(s =>
-            '<tr>' +
-            '<td>' + _fmtDt(s.data_hora) + '</td>' +
-            '<td>' + _esc(s.produto_nome) + '</td>' +
-            '<td>' + _fmt(s.quantidade, 2) + ' ' + _esc(s.unidade || '') + '</td>' +
-            '<td>' + _esc(s.tipo_destino) + '</td>' +
-            '<td>' + _esc(s.morador_nome || '--') + '</td>' +
-            '<td>' + _brl(s.valor_total) + '</td>' +
-            '<td>' + _esc(s.motivo) + '</td>' +
-            '<td>' + _esc(s.responsavel) + '</td></tr>'
-        ).join('');
+        tbody.innerHTML = data.dados.map(s => {
+            const m = _normalizarMovimentacao(s);
+            return '<tr>' +
+                '<td>' + _fmtDt(m.data_hora) + '</td>' +
+                '<td>' + _esc(m.produto_nome) + '</td>' +
+                '<td>' + _fmt(m.quantidade, 2) + ' ' + _esc(m.unidade_medida || '') + '</td>' +
+                '<td>' + _esc(m.tipo_destino || '--') + '</td>' +
+                '<td>' + _esc(m.morador_nome || '--') + '</td>' +
+                '<td>' + _brl(m.valor_total) + '</td>' +
+                '<td>' + _esc(m.motivo || '--') + '</td>' +
+                '<td>' + _esc(m.usuario_responsavel || m.responsavel || '--') + '</td></tr>';
+        }).join('');
     } catch (err) {
         console.error('[Estoque] Erro histórico saídas:', err);
         tbody.innerHTML = '<tr><td colspan="8" class="empty-row-est">Erro ao carregar</td></tr>';
@@ -837,7 +929,7 @@ async function _filtrarMovimentacoes() {
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="10" class="empty-row-est"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
     const params = new URLSearchParams({
-        action:      'historico_movimentacoes',
+        action:      'movimentacoes',
         produto_id:  _id('filtroMovProduto')?.value  || '',
         tipo:        _id('filtroMovTipo')?.value      || '',
         data_inicio: _id('filtroMovInicio')?.value    || '',
@@ -852,23 +944,23 @@ async function _filtrarMovimentacoes() {
             _setText('totalMovLabel', '0 registros');
             return;
         }
-        _state.movimentacoes = data.dados;
-        _setText('totalMovLabel', data.dados.length + ' registros');
-        tbody.innerHTML = data.dados.map(m => {
-            const tipo = m.tipo === 'Entrada'
+        _state.movimentacoes = data.dados.map(_normalizarMovimentacao);
+        _setText('totalMovLabel', _state.movimentacoes.length + ' registros');
+        tbody.innerHTML = _state.movimentacoes.map(m => {
+            const tipoLabel = m.tipo === 'Entrada'
                 ? '<span class="badge-est badge-green-est"><i class="fas fa-arrow-down"></i> Entrada</span>'
                 : '<span class="badge-est badge-red-est"><i class="fas fa-arrow-up"></i> Saída</span>';
             return '<tr>' +
                 '<td>' + _fmtDt(m.data_hora) + '</td>' +
                 '<td>' + _esc(m.produto_nome) + '</td>' +
-                '<td>' + tipo + '</td>' +
+                '<td>' + tipoLabel + '</td>' +
                 '<td>' + _fmt(m.quantidade, 2) + '</td>' +
                 '<td>' + _fmt(m.quantidade_anterior, 2) + '</td>' +
                 '<td>' + _fmt(m.quantidade_nova, 2) + '</td>' +
                 '<td>' + _esc(m.tipo_destino || m.fornecedor || '--') + '</td>' +
                 '<td>' + _esc(m.morador_nome || '--') + '</td>' +
                 '<td>' + _brl(m.valor_total) + '</td>' +
-                '<td>' + _esc(m.responsavel) + '</td></tr>';
+                '<td>' + _esc(m.usuario_responsavel || m.responsavel || '--') + '</td></tr>';
         }).join('');
     } catch (err) {
         console.error('[Estoque] Erro movimentações:', err);
@@ -898,7 +990,7 @@ async function _gerarRelMorador() {
         if (btnExp) btnExp.style.display = '';
         tbody.innerHTML = data.dados.map(r =>
             '<tr>' +
-            '<td>' + _esc(r.morador_nome) + '</td>' +
+            '<td>' + _esc(r.nome || r.morador_nome || '--') + '</td>' +
             '<td>' + _esc(r.unidade || '--') + '</td>' +
             '<td>' + (r.total_retiradas || 0) + '</td>' +
             '<td>' + _fmt(r.quantidade_total, 2) + '</td>' +
@@ -933,7 +1025,7 @@ function _exportarMovCSV() {
         _fmtDt(m.data_hora), m.produto_nome, m.tipo, m.quantidade,
         m.quantidade_anterior, m.quantidade_nova,
         m.tipo_destino || m.fornecedor || '', m.morador_nome || '',
-        m.valor_total, m.responsavel,
+        m.valor_total, m.usuario_responsavel || m.responsavel || '',
     ]);
     _downloadCSV('movimentacoes_estoque.csv', header, rows);
 }
@@ -941,7 +1033,13 @@ function _exportarMovCSV() {
 function _exportarRelMoradorCSV() {
     if (!_state.relMorador.length) { _toast('Nenhum dado para exportar', 'warning'); return; }
     const header = ['Morador', 'Unidade', 'Total Retiradas', 'Qtd. Total', 'Valor Total'];
-    const rows = _state.relMorador.map(r => [r.morador_nome, r.unidade || '', r.total_retiradas, r.quantidade_total, r.valor_total]);
+    const rows = _state.relMorador.map(r => [
+        r.nome || r.morador_nome || '',
+        r.unidade || '',
+        r.total_retiradas,
+        r.quantidade_total,
+        r.valor_total,
+    ]);
     _downloadCSV('consumo_moradores.csv', header, rows);
 }
 
