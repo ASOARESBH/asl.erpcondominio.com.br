@@ -1,290 +1,58 @@
-<!-- Módulo: Configurações | Padrão SPA v2.0 -->
 <!-- Page Metadata -->
 <div id="page-metadata" data-title="Configurações" data-icon="fa-cog" style="display:none;"></div>
 
+<!-- Modern Page Wrapper -->
 <div class="page-wrapper page-configuracao">
 
-  <!-- Cabeçalho da página -->
-  <div class="page-header-cfg">
-    <div class="page-title-cfg">
-      <i class="fas fa-cog"></i>
-      <div>
-        <h1>Configurações do Sistema</h1>
-        <p>Usuários, empresa, e-mail e parâmetros do sistema</p>
-      </div>
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Configurações do Sistema</h1>
+    <p>Configurações gerais, usuários, e-mail e políticas de segurança</p>
+  </div>
+
+  <!-- Content Card Grid -->
+  <div class="cards-grid">
+    <div class="page-card interactive" data-page="empresa" role="button" tabindex="0"
+      title="Acessar configurações da Empresa">
+      <div class="card-icon"><i class="fas fa-building"></i></div>
+      <h3>Empresa</h3>
+      <p>Dados cadastrais, logotipo e identidade visual do condomínio</p>
+    </div>
+
+    <div class="page-card interactive" data-page="usuarios" role="button" tabindex="0"
+      title="Acessar gerenciamento de Usuários">
+      <div class="card-icon"><i class="fas fa-users-cog"></i></div>
+      <h3>Usuários</h3>
+      <p>Gerenciar níveis de acesso, senhas e permissões de usuários</p>
+    </div>
+
+    <div class="page-card interactive" data-page="config_smtp" role="button" tabindex="0"
+      title="Acessar configurações de E-mail">
+      <div class="card-icon"><i class="fas fa-envelope"></i></div>
+      <h3>E-mail</h3>
+      <p>Servidores SMTP, notificações automáticas e templates</p>
+    </div>
+
+    <div class="page-card interactive" data-page="logs_sistema" role="button" tabindex="0"
+      title="Acessar configurações do Sistema">
+      <div class="card-icon"><i class="fas fa-server"></i></div>
+      <h3>Sistema</h3>
+      <p>Parâmetros globais, integrações e manutenção técnica</p>
+    </div>
+
+    <div class="page-card interactive" data-page="seguranca" role="button" tabindex="0"
+      title="Acessar políticas de Segurança">
+      <div class="card-icon"><i class="fas fa-shield-alt"></i></div>
+      <h3>Segurança</h3>
+      <p>Logs de auditoria, políticas de senha e backups</p>
+    </div>
+
+    <div class="page-card interactive" data-page="notificacoes" role="button" tabindex="0"
+      title="Acessar sistema de Notificações">
+      <div class="card-icon"><i class="fas fa-bell"></i></div>
+      <h3>Notificações</h3>
+      <p>Configurar alertas push e avisos do painel</p>
     </div>
   </div>
 
-  <!-- Tabs de navegação -->
-  <div class="tabs-cfg">
-    <button class="tab-btn-cfg active" data-tab="usuarios">
-      <i class="fas fa-users-cog"></i> Usuários
-    </button>
-    <button class="tab-btn-cfg" data-tab="meu-perfil">
-      <i class="fas fa-user-circle"></i> Meu Perfil
-    </button>
-    <button class="tab-btn-cfg" data-tab="empresa">
-      <i class="fas fa-building"></i> Empresa
-    </button>
-    <button class="tab-btn-cfg" data-tab="sistema">
-      <i class="fas fa-server"></i> Sistema
-    </button>
-    <button class="tab-btn-cfg" data-tab="seguranca">
-      <i class="fas fa-shield-alt"></i> Segurança
-    </button>
-  </div>
-
-  <!-- ===== ABA USUÁRIOS ===== -->
-  <div class="tab-content-cfg active" id="tab-usuarios">
-
-    <!-- Barra de ações -->
-    <div class="toolbar-cfg">
-      <div class="toolbar-left-cfg">
-        <h2 class="section-title-cfg"><i class="fas fa-users"></i> Gerenciar Usuários</h2>
-        <span class="badge-count-cfg" id="cfgTotalUsuarios">--</span>
-      </div>
-      <div class="toolbar-right-cfg">
-        <button class="btn-cfg btn-primary-cfg" id="btnNovoUsuario">
-          <i class="fas fa-plus"></i> Novo Usuário
-        </button>
-      </div>
-    </div>
-
-    <!-- Aviso de permissão (exibido para não-admin) -->
-    <div class="alert-cfg alert-warning-cfg" id="cfgAvisoPermissao" style="display:none;">
-      <i class="fas fa-lock"></i>
-      <span>Apenas administradores podem gerenciar usuários do sistema.</span>
-    </div>
-
-    <!-- Tabela de usuários -->
-    <div class="table-wrapper-cfg" id="cfgTabelaUsuarios">
-      <table class="table-cfg">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>E-mail</th>
-            <th>Função</th>
-            <th>Departamento</th>
-            <th>Permissão</th>
-            <th>Status</th>
-            <th>Criado em</th>
-            <th class="col-actions-cfg">Ações</th>
-          </tr>
-        </thead>
-        <tbody id="cfgListaUsuarios">
-          <tr>
-            <td colspan="8" class="empty-state-cfg">
-              <i class="fas fa-spinner fa-spin"></i> Carregando usuários...
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Modal: Criar / Editar Usuário -->
-    <div class="modal-cfg" id="modalUsuario" style="display:none;">
-      <div class="modal-overlay-cfg" id="modalUsuarioOverlay"></div>
-      <div class="modal-box-cfg">
-        <div class="modal-header-cfg">
-          <h3 id="modalUsuarioTitulo"><i class="fas fa-user-plus"></i> Novo Usuário</h3>
-          <button class="modal-close-cfg" id="btnFecharModalUsuario"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="modal-body-cfg">
-          <form id="formUsuario" autocomplete="off">
-            <input type="hidden" id="usuarioId">
-            <div class="form-row-cfg">
-              <div class="form-group-cfg">
-                <label for="usuarioNome">Nome Completo <span class="required-cfg">*</span></label>
-                <input type="text" id="usuarioNome" placeholder="Ex: João Silva" required>
-              </div>
-              <div class="form-group-cfg">
-                <label for="usuarioEmail">E-mail <span class="required-cfg">*</span></label>
-                <input type="email" id="usuarioEmail" placeholder="joao@email.com" required>
-              </div>
-            </div>
-            <div class="form-row-cfg">
-              <div class="form-group-cfg">
-                <label for="usuarioFuncao">Função <span class="required-cfg">*</span></label>
-                <input type="text" id="usuarioFuncao" placeholder="Ex: Porteiro, Síndico" required>
-              </div>
-              <div class="form-group-cfg">
-                <label for="usuarioDepartamento">Departamento</label>
-                <input type="text" id="usuarioDepartamento" placeholder="Ex: Administração">
-              </div>
-            </div>
-            <div class="form-row-cfg">
-              <div class="form-group-cfg">
-                <label for="usuarioPermissao">Nível de Permissão <span class="required-cfg">*</span></label>
-                <select id="usuarioPermissao" required>
-                  <option value="operador">Operador</option>
-                  <option value="gerente">Gerente</option>
-                  <option value="admin">Administrador</option>
-                </select>
-              </div>
-              <div class="form-group-cfg">
-                <label for="usuarioAtivo">Status</label>
-                <select id="usuarioAtivo">
-                  <option value="1">Ativo</option>
-                  <option value="0">Inativo</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-row-cfg">
-              <div class="form-group-cfg">
-                <label for="usuarioSenha" id="labelSenha">Senha <span class="required-cfg"
-                    id="senhaObrigatorio">*</span></label>
-                <input type="password" id="usuarioSenha" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
-                <small class="form-hint-cfg" id="hintSenha" style="display:none;">Deixe em branco para manter a senha
-                  atual</small>
-              </div>
-              <div class="form-group-cfg">
-                <label for="usuarioSenhaConfirm">Confirmar Senha</label>
-                <input type="password" id="usuarioSenhaConfirm" placeholder="Repita a senha"
-                  autocomplete="new-password">
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer-cfg">
-          <button class="btn-cfg btn-secondary-cfg" id="btnCancelarUsuario">Cancelar</button>
-          <button class="btn-cfg btn-primary-cfg" id="btnSalvarUsuario">
-            <i class="fas fa-save"></i> Salvar Usuário
-          </button>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /tab-usuarios -->
-
-  <!-- ===== ABA MEU PERFIL ===== -->
-  <div class="tab-content-cfg" id="tab-meu-perfil">
-
-    <div class="toolbar-cfg">
-      <div class="toolbar-left-cfg">
-        <h2 class="section-title-cfg"><i class="fas fa-user-circle"></i> Meu Perfil</h2>
-      </div>
-    </div>
-
-    <div class="perfil-grid-cfg">
-      <!-- Card: Dados do perfil -->
-      <div class="perfil-card-cfg">
-        <div class="perfil-avatar-cfg" id="cfgPerfilAvatar">A</div>
-        <div class="perfil-info-cfg">
-          <h3 id="cfgPerfilNome">Carregando...</h3>
-          <p id="cfgPerfilEmail" class="perfil-email-cfg">--</p>
-          <span class="badge-permissao-cfg" id="cfgPerfilPermissao">--</span>
-        </div>
-        <div class="perfil-meta-cfg">
-          <div class="perfil-meta-item-cfg">
-            <i class="fas fa-briefcase"></i>
-            <span id="cfgPerfilFuncao">--</span>
-          </div>
-          <div class="perfil-meta-item-cfg">
-            <i class="fas fa-building"></i>
-            <span id="cfgPerfilDepartamento">--</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card: Sessão atual -->
-      <div class="sessao-card-cfg">
-        <h4 class="sessao-title-cfg"><i class="fas fa-clock"></i> Sessão Atual</h4>
-        <div class="sessao-info-cfg">
-          <div class="sessao-item-cfg">
-            <span class="sessao-label-cfg">Tempo decorrido</span>
-            <span class="sessao-value-cfg" id="cfgSessaoDecorrido">--</span>
-          </div>
-          <div class="sessao-item-cfg">
-            <span class="sessao-label-cfg">Tempo restante</span>
-            <span class="sessao-value-cfg" id="cfgSessaoRestante">--</span>
-          </div>
-          <div class="sessao-item-cfg">
-            <span class="sessao-label-cfg">IP de acesso</span>
-            <span class="sessao-value-cfg" id="cfgSessaoIP">--</span>
-          </div>
-          <div class="sessao-item-cfg">
-            <span class="sessao-label-cfg">Login em</span>
-            <span class="sessao-value-cfg" id="cfgSessaoLogin">--</span>
-          </div>
-        </div>
-        <!-- Barra de progresso da sessão -->
-        <div class="sessao-progress-cfg">
-          <div class="sessao-progress-bar-cfg" id="cfgSessaoProgressBar" style="width: 0%"></div>
-        </div>
-        <button class="btn-cfg btn-secondary-cfg btn-full-cfg" id="btnRenovarSessao">
-          <i class="fas fa-sync-alt"></i> Renovar Sessão
-        </button>
-      </div>
-    </div>
-
-    <!-- Card: Alterar senha do perfil -->
-    <div class="form-card-cfg" style="margin-top: 1.5rem;">
-      <h4 class="form-card-title-cfg"><i class="fas fa-key"></i> Alterar Minha Senha</h4>
-      <form id="formAlterarSenha" autocomplete="off">
-        <div class="form-row-cfg">
-          <div class="form-group-cfg">
-            <label for="senhaAtual">Senha Atual <span class="required-cfg">*</span></label>
-            <input type="password" id="senhaAtual" placeholder="Sua senha atual" required>
-          </div>
-          <div class="form-group-cfg">
-            <label for="senhaNova">Nova Senha <span class="required-cfg">*</span></label>
-            <input type="password" id="senhaNova" placeholder="Mínimo 6 caracteres" required>
-          </div>
-          <div class="form-group-cfg">
-            <label for="senhaNovaConfirm">Confirmar Nova Senha <span class="required-cfg">*</span></label>
-            <input type="password" id="senhaNovaConfirm" placeholder="Repita a nova senha" required>
-          </div>
-        </div>
-        <div class="form-actions-cfg">
-          <button type="submit" class="btn-cfg btn-primary-cfg">
-            <i class="fas fa-key"></i> Alterar Senha
-          </button>
-        </div>
-      </form>
-    </div>
-
-  </div><!-- /tab-meu-perfil -->
-
-  <!-- ===== ABA EMPRESA ===== -->
-  <div class="tab-content-cfg" id="tab-empresa">
-    <div class="toolbar-cfg">
-      <div class="toolbar-left-cfg">
-        <h2 class="section-title-cfg"><i class="fas fa-building"></i> Dados da Empresa</h2>
-      </div>
-    </div>
-    <div class="coming-soon-cfg">
-      <i class="fas fa-building"></i>
-      <h3>Em desenvolvimento</h3>
-      <p>As configurações de empresa estarão disponíveis em breve.</p>
-    </div>
-  </div>
-
-  <!-- ===== ABA SISTEMA ===== -->
-  <div class="tab-content-cfg" id="tab-sistema">
-    <div class="toolbar-cfg">
-      <div class="toolbar-left-cfg">
-        <h2 class="section-title-cfg"><i class="fas fa-server"></i> Parâmetros do Sistema</h2>
-      </div>
-    </div>
-    <div class="coming-soon-cfg">
-      <i class="fas fa-server"></i>
-      <h3>Em desenvolvimento</h3>
-      <p>As configurações de sistema estarão disponíveis em breve.</p>
-    </div>
-  </div>
-
-  <!-- ===== ABA SEGURANÇA ===== -->
-  <div class="tab-content-cfg" id="tab-seguranca">
-    <div class="toolbar-cfg">
-      <div class="toolbar-left-cfg">
-        <h2 class="section-title-cfg"><i class="fas fa-shield-alt"></i> Segurança e Auditoria</h2>
-      </div>
-    </div>
-    <div class="coming-soon-cfg">
-      <i class="fas fa-shield-alt"></i>
-      <h3>Em desenvolvimento</h3>
-      <p>Os logs de auditoria e políticas de segurança estarão disponíveis em breve.</p>
-    </div>
-  </div>
-
-</div><!-- /page-wrapper -->
+</div>
