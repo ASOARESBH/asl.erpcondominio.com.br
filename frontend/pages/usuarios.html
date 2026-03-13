@@ -1,0 +1,84 @@
+<!-- Page Metadata -->
+<div id="page-metadata" data-title="Usuários" data-icon="fa-user-shield" style="display:none;"></div>
+
+<div class="page-wrapper page-usuarios">
+    <div class="page-header">
+        <h1><i class="fas fa-user-shield"></i> Gerenciamento de Usuários</h1>
+        <p>Gerencie os usuários do sistema. Cadastre, edite permissões e controle o acesso.</p>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <div class="page-card form-section">
+        <h3><i class="fas fa-user-plus"></i> <span id="formTitle">Novo Usuário</span></h3>
+        <form id="formUsuario">
+            <input type="hidden" id="usuarioId">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Nome Completo *</label>
+                    <input type="text" id="nome" required placeholder="Nome completo do usuário">
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="email" required placeholder="email@exemplo.com">
+                </div>
+                <div class="form-group">
+                    <label>Senha *</label>
+                    <input type="password" id="senha" required placeholder="Senha segura">
+                </div>
+                <div class="form-group">
+                    <label>Função *</label>
+                    <input type="text" id="funcao" placeholder="Ex: Porteiro, Gerente" required>
+                </div>
+                <div class="form-group">
+                    <label>Departamento</label>
+                    <input type="text" id="departamento" placeholder="Ex: Portaria, Administração">
+                </div>
+                <div class="form-group">
+                    <label>Permissão *</label>
+                    <select id="permissao" required>
+                        <option value="operador">Operador</option>
+                        <option value="gerente">Gerente</option>
+                        <option value="admin">Administrador</option>
+                        <option value="visualizador">Visualizador</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn-primary-modern" id="btnSalvar"><i class="fas fa-save"></i> <span
+                        id="btnSalvarTexto">Salvar Usuário</span></button>
+                <button type="button" class="btn-secondary-modern" id="btnLimpar"><i class="fas fa-times"></i>
+                    Limpar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="page-card table-section">
+        <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-list"></i> Lista de Usuários</h3>
+        <div class="loading" id="loading" style="display: none; text-align: center; padding: 2rem;">
+            <i class="fas fa-spinner fa-spin fa-2x"></i>
+            <p>Carregando...</p>
+        </div>
+        <div class="table-container" style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Função</th>
+                        <th>Departamento</th>
+                        <th>Permissão</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaUsuarios">
+                    <tr>
+                        <td colspan="8" style="text-align: center;">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
