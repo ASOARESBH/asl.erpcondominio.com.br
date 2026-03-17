@@ -12,7 +12,7 @@
         </div>
     </div>
 
-    <!-- Submenu (Tabs-like) -->
+    <!-- Submenu (Tabs-like) — usa data-page para o listener global do layout-base -->
     <div class="tabs">
         <button class="tab-button active">
             <i class="fas fa-home"></i> Início
@@ -37,50 +37,65 @@
         </button>
     </div>
 
-    <!-- Content Card Grid -->
+    <!-- Content Card Grid — usa data-page (padrão do sistema) para navegação -->
     <div class="cards-grid">
-        <div class="page-card interactive" data-navigate="protocolos">
+
+        <div class="page-card interactive" data-page="protocolos" role="button" tabindex="0"
+            title="Acessar Protocolos">
             <div class="card-icon"><i class="fas fa-box"></i></div>
             <h3>Protocolos</h3>
             <p>Gerenciar recebimento e entrega de encomendas e mercadorias dos moradores</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive" data-navigate="contratos">
-            <div class="card-icon" style="background:#f0fdf4;color:#16a34a;"><i class="fas fa-file-contract"></i></div>
+
+        <div class="page-card interactive" data-page="contratos" role="button" tabindex="0"
+            title="Acessar Contratos">
+            <div class="card-icon" style="background:#f0fdf4;"><i class="fas fa-file-contract" style="color:#16a34a;"></i></div>
             <h3>Contratos</h3>
             <p>Controle de contratos com fornecedores, vigências e renovações</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive" data-navigate="eventos">
-            <div class="card-icon" style="background:#fef3c7;color:#d97706;"><i class="fas fa-calendar-alt"></i></div>
+
+        <div class="page-card interactive" data-page="eventos" role="button" tabindex="0"
+            title="Acessar Eventos">
+            <div class="card-icon" style="background:#fef3c7;"><i class="fas fa-calendar-alt" style="color:#d97706;"></i></div>
             <h3>Eventos</h3>
             <p>Agendar e gerenciar eventos em áreas comuns do condomínio</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive" data-navigate="checklists">
-            <div class="card-icon" style="background:#fdf4ff;color:#9333ea;"><i class="fas fa-clipboard-list"></i></div>
+
+        <div class="page-card interactive" data-page="checklists" role="button" tabindex="0"
+            title="Acessar Checklists">
+            <div class="card-icon" style="background:#fdf4ff;"><i class="fas fa-clipboard-list" style="color:#9333ea;"></i></div>
             <h3>Checklists</h3>
             <p>Listas de verificação para rondas, inspeções e manutenções periódicas</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive" data-navigate="inventario">
-            <div class="card-icon" style="background:#ecfdf5;color:#059669;"><i class="fas fa-boxes"></i></div>
+
+        <div class="page-card interactive" data-page="inventario" role="button" tabindex="0"
+            title="Acessar Inventário">
+            <div class="card-icon" style="background:#ecfdf5;"><i class="fas fa-boxes" style="color:#059669;"></i></div>
             <h3>Inventário</h3>
             <p>Controle de bens patrimoniais, situação contábil e responsáveis por tutela</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive" data-navigate="marketplace">
-            <div class="card-icon" style="background:#eff6ff;color:#2563eb;"><i class="fas fa-store"></i></div>
+
+        <div class="page-card interactive" data-page="marketplace" role="button" tabindex="0"
+            title="Acessar Marketplace">
+            <div class="card-icon" style="background:#eff6ff;"><i class="fas fa-store" style="color:#2563eb;"></i></div>
             <h3>Marketplace</h3>
             <p>Vitrine de produtos e serviços, gestão de fornecedores e ramos de atividade</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
-        <div class="page-card interactive" data-navigate="estoque">
-            <div class="card-icon" style="background:#fefce8;color:#ca8a04;"><i class="fas fa-warehouse"></i></div>
+
+        <div class="page-card interactive" data-page="estoque" role="button" tabindex="0"
+            title="Acessar Estoque">
+            <div class="card-icon" style="background:#fefce8;"><i class="fas fa-warehouse" style="color:#ca8a04;"></i></div>
             <h3>Estoque</h3>
             <p>Controle de produtos, entradas, saídas e movimentações do almoxarifado</p>
             <div class="card-footer"><span class="card-link"><i class="fas fa-arrow-right"></i> Acessar</span></div>
         </div>
+
     </div>
 
 </div>

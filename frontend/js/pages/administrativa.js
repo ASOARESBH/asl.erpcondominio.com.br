@@ -1,55 +1,67 @@
 /**
- * Administrativa.js — Hub de Módulos Administrativos
- * Gerencia navegação pelos cards e tabs para subpáginas
- * @version 2.0.0
+ * administrativa.js — Hub de Módulos Administrativos v2.1
+ *
+ * Navegação por clique: tratada pelo listener global do layout-base.html
+ * que detecta qualquer elemento com [data-page] no DOM.
+ *
+ * Este módulo é responsável apenas por:
+ *   1. Acessibilidade: ativar cards com Enter/Espaço via teclado
+ *   2. Log de debug para diagnóstico
+ *
+ * Sub-páginas disponíveis:
+ *   - protocolos   → /pages/protocolos.html
+ *   - contratos    → /pages/contratos.html
+ *   - eventos      → /pages/eventos.html
+ *   - checklists   → /pages/checklists.html
+ *   - inventario   → /pages/inventario.html
+ *   - marketplace  → /pages/marketplace.html
+ *   - estoque      → /pages/estoque.html
  */
-
 'use strict';
 
-const _listeners = [];
+let _listeners = [];
 
 export function init() {
-    console.log('[Administrativa] Inicializando módulo v2.0...');
-    _setupCards();
-    _setupTabButtons();
+    console.log('[Administrativa] Inicializando módulo v2.1...');
+    _setupKeyboardNavigation();
+    console.log('[Administrativa] Cards disponíveis:', _getCardList());
     console.log('[Administrativa] Módulo pronto.');
 }
 
 export function destroy() {
     console.log('[Administrativa] Destruindo módulo...');
-    _listeners.forEach(({ el, event, fn }) => {
-        if (el) el.removeEventListener(event, fn);
-    });
-    _listeners.length = 0;
+    _listeners.forEach(({ el, ev, fn }) => el.removeEventListener(ev, fn));
+    _listeners = [];
     console.log('[Administrativa] Módulo destruído.');
 }
 
-/** Cards interativos com data-navigate navegam para a subpágina */
-function _setupCards() {
-    document.querySelectorAll('.page-administrativa .page-card[data-navigate]').forEach(card => {
-        const fn = () => {
-            const pagina = card.dataset.navigate;
-            if (pagina && window.AppRouter) {
-                console.log('[Administrativa] Navegando para módulo: ' + pagina);
-                window.AppRouter.navigate(pagina);
+/**
+ * Acessibilidade: permite navegar pelos cards usando Enter ou Espaço no teclado.
+ * A navegação por clique é tratada pelo listener global do layout-base.html.
+ */
+function _setupKeyboardNavigation() {
+    const cards = document.querySelectorAll('.page-administrativa .page-card[data-page]');
+
+    cards.forEach(card => {
+        const fn = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const pageName = card.dataset.page;
+                console.log(`[Administrativa] Navegação por teclado: ${pageName}`);
+                if (window.AppRouter) {
+                    window.AppRouter.loadPage(pageName);
+                }
             }
         };
-        card.addEventListener('click', fn);
-        _listeners.push({ el: card, event: 'click', fn });
+        card.addEventListener('keydown', fn);
+        _listeners.push({ el: card, ev: 'keydown', fn });
     });
+
+    console.log(`[Administrativa] Acessibilidade configurada para ${cards.length} card(s).`);
 }
 
-/** Tabs com data-page navegam para a subpágina correspondente */
-function _setupTabButtons() {
-    document.querySelectorAll('.page-administrativa .tab-button[data-page]').forEach(btn => {
-        const fn = () => {
-            const pagina = btn.dataset.page;
-            if (pagina && window.AppRouter) {
-                console.log('[Administrativa] Navegando para subpágina: ' + pagina);
-                window.AppRouter.navigate(pagina);
-            }
-        };
-        btn.addEventListener('click', fn);
-        _listeners.push({ el: btn, event: 'click', fn });
-    });
+function _getCardList() {
+    return Array.from(
+        document.querySelectorAll('.page-administrativa .page-card[data-page]')
+    ).map(c => c.dataset.page);
 }
