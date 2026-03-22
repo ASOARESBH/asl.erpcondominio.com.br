@@ -2,7 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Portal do Morador</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -10,6 +13,7 @@
            RESET & BASE
            ============================================================ */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         :root {
             --primary:        #2563eb;
             --primary-dark:   #1e40af;
@@ -39,15 +43,25 @@
             --shadow-md:      0 4px 12px rgba(0,0,0,.08);
             --shadow-lg:      0 10px 30px rgba(0,0,0,.12);
             --header-h:       64px;
-            --nav-h:          56px;
+            --nav-h:          52px;
+            --safe-bottom:    env(safe-area-inset-bottom, 0px);
         }
-        html { scroll-behavior: smooth; }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg-page);
             color: var(--text-primary);
             min-height: 100vh;
+            min-height: 100dvh;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
         }
 
         /* ============================================================
@@ -61,8 +75,8 @@
             z-index: 9999;
             transition: opacity .4s ease;
         }
-        #loadingScreen.hide { opacity: 0; pointer-events: none; visibility: hidden; }
-        #loadingScreen.gone { display: none !important; }
+        #loadingScreen.hide  { opacity: 0; pointer-events: none; visibility: hidden; }
+        #loadingScreen.gone  { display: none !important; }
         .loading-spinner {
             width: 52px; height: 52px;
             border: 4px solid rgba(255,255,255,.25);
@@ -70,7 +84,11 @@
             border-radius: 50%;
             animation: spin .9s linear infinite;
         }
-        .loading-text { color: #fff; margin-top: 1.2rem; font-size: 1rem; font-weight: 500; }
+        .loading-text {
+            color: #fff; margin-top: 1.2rem;
+            font-size: 1rem; font-weight: 500;
+            text-align: center; padding: 0 1rem;
+        }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ============================================================
@@ -84,30 +102,38 @@
             display: none;
         }
         #mainHeader.visible { display: flex !important; align-items: center; }
+
         .header-inner {
-            max-width: 1200px; margin: 0 auto;
+            width: 100%; max-width: 1280px; margin: 0 auto;
             padding: 0 1.5rem;
             height: 100%;
-            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            display: flex; align-items: center;
+            justify-content: space-between; gap: 1rem;
         }
-        .header-brand { display: flex; align-items: center; gap: .75rem; }
+        .header-brand { display: flex; align-items: center; gap: .75rem; min-width: 0; }
         .header-brand-icon {
-            width: 38px; height: 38px;
+            width: 38px; height: 38px; flex-shrink: 0;
             background: rgba(255,255,255,.2);
             border-radius: var(--radius-md);
             display: flex; align-items: center; justify-content: center;
             font-size: 1.1rem; color: #fff;
         }
-        .header-brand-text { color: #fff; }
-        .header-brand-text h1 { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
-        .header-brand-text span { font-size: .78rem; opacity: .8; }
-        .header-user { display: flex; align-items: center; gap: .75rem; }
+        .header-brand-text { color: #fff; min-width: 0; }
+        .header-brand-text h1 {
+            font-size: 1.05rem; font-weight: 700; line-height: 1.2;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .header-brand-text span { font-size: .78rem; opacity: .8; white-space: nowrap; }
+
+        .header-user { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
         .header-user-name {
             color: rgba(255,255,255,.9);
             font-size: .88rem; font-weight: 500;
             display: flex; align-items: center; gap: .4rem;
+            max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .header-user-name i { opacity: .7; }
+        .header-user-name i { opacity: .7; flex-shrink: 0; }
+
         .btn-logout {
             background: rgba(255,255,255,.18);
             border: 1px solid rgba(255,255,255,.3);
@@ -119,64 +145,61 @@
             display: flex; align-items: center; gap: .4rem;
             transition: background .2s;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .btn-logout:hover { background: rgba(255,255,255,.28); }
+        .btn-logout .btn-logout-text { display: inline; }
 
         /* ============================================================
-           NAVIGATION TABS (sticky below header)
+           NAVIGATION TABS
            ============================================================ */
         #mainNav {
             position: sticky; top: var(--header-h); z-index: 90;
             background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
-            box-shadow: var(--shadow-sm);
+            border-bottom: 2px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
             display: none;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
         }
-        #mainNav.visible { display: block !important; overflow-x: auto; }
+        #mainNav.visible { display: block !important; }
         #mainNav::-webkit-scrollbar { display: none; }
+
         .nav-inner {
-            max-width: 1200px; margin: 0 auto;
+            max-width: 1280px; margin: 0 auto;
             padding: 0 1rem;
-            display: flex; gap: .25rem;
+            display: flex; gap: 0;
             min-width: max-content;
         }
         .nav-tab {
-            padding: .85rem 1.1rem;
+            padding: .9rem 1rem;
             border: none; background: transparent;
             color: var(--text-secondary);
-            font-size: .88rem; font-weight: 600;
+            font-size: .85rem; font-weight: 600;
             cursor: pointer;
-            display: flex; align-items: center; gap: .45rem;
+            display: flex; align-items: center; gap: .4rem;
             border-bottom: 3px solid transparent;
             transition: all .2s;
             white-space: nowrap;
+            position: relative;
         }
-        .nav-tab:hover { color: var(--primary); background: var(--primary-light); }
-        .nav-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-        .nav-tab .badge-count {
-            background: var(--primary); color: #fff;
-            font-size: .7rem; padding: .1rem .4rem;
-            border-radius: 10px; font-weight: 700;
-        }
+        .nav-tab:hover  { color: var(--primary); background: var(--primary-light); }
+        .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .nav-tab i      { font-size: .9rem; }
 
         /* ============================================================
            MAIN CONTENT
            ============================================================ */
         #mainContent {
-            max-width: 1200px; margin: 0 auto;
-            padding: 1.5rem 1.5rem 3rem;
+            max-width: 1280px; margin: 0 auto;
+            padding: 1.5rem 1.5rem calc(2rem + var(--safe-bottom));
             display: none;
         }
         #mainContent.visible { display: block !important; }
 
         /* ============================================================
-           ALERT CONTAINER
+           ALERT
            ============================================================ */
         #alertContainer { margin-bottom: 1rem; }
         .alert {
@@ -184,14 +207,16 @@
             border-radius: var(--radius-md);
             font-size: .9rem;
             display: none;
-            align-items: center; gap: .6rem;
+            align-items: flex-start; gap: .6rem;
             animation: slideDown .3s ease-out;
+            line-height: 1.5;
         }
         .alert.show { display: flex; }
-        .alert-error  { background: var(--danger-bg);  color: var(--danger-text);  border-left: 4px solid var(--danger); }
-        .alert-success{ background: var(--success-bg); color: var(--success-text); border-left: 4px solid var(--success); }
-        .alert-info   { background: var(--info-bg);    color: var(--info-text);    border-left: 4px solid var(--primary); }
-        .alert-warning{ background: var(--warning-bg); color: var(--warning-text); border-left: 4px solid var(--warning); }
+        .alert i    { margin-top: 2px; flex-shrink: 0; }
+        .alert-error   { background: var(--danger-bg);  color: var(--danger-text);  border-left: 4px solid var(--danger); }
+        .alert-success { background: var(--success-bg); color: var(--success-text); border-left: 4px solid var(--success); }
+        .alert-info    { background: var(--info-bg);    color: var(--info-text);    border-left: 4px solid var(--primary); }
+        .alert-warning { background: var(--warning-bg); color: var(--warning-text); border-left: 4px solid var(--warning); }
         @keyframes slideDown {
             from { opacity: 0; transform: translateY(-8px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -200,8 +225,8 @@
         /* ============================================================
            TAB PANELS
            ============================================================ */
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
+        .tab-panel         { display: none; }
+        .tab-panel.active  { display: block; }
 
         /* ============================================================
            CARD
@@ -215,60 +240,58 @@
             border: 1px solid var(--border);
         }
         .card-header {
-            display: flex; align-items: center; gap: .75rem;
+            display: flex; align-items: flex-start; gap: .75rem;
             margin-bottom: 1.25rem;
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--border);
         }
         .card-header-icon {
-            width: 40px; height: 40px;
+            width: 40px; height: 40px; flex-shrink: 0;
             background: var(--primary-light);
             border-radius: var(--radius-md);
             display: flex; align-items: center; justify-content: center;
             color: var(--primary); font-size: 1.1rem;
         }
-        .card-header h2 {
-            font-size: 1.1rem; font-weight: 700;
-            color: var(--text-primary);
-        }
-        .card-header p {
-            font-size: .82rem; color: var(--text-muted);
-            margin-top: .1rem;
-        }
+        .card-header h2  { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+        .card-header p   { font-size: .82rem; color: var(--text-muted); margin-top: .15rem; }
 
         /* ============================================================
            INFO GRID (dados do perfil)
            ============================================================ */
         .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 1rem;
         }
         .info-item {
             background: var(--bg-subtle);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            padding: 1rem;
+            padding: .9rem 1rem;
         }
         .info-label {
-            font-size: .78rem; color: var(--text-muted);
+            font-size: .75rem; color: var(--text-muted);
             font-weight: 600; text-transform: uppercase;
             letter-spacing: .04em; margin-bottom: .3rem;
         }
-        .info-value { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+        .info-value {
+            font-size: .95rem; font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
 
         /* ============================================================
            FORM
            ============================================================ */
         .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 1rem;
         }
         .form-grid-3 {
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         }
-        .form-group { margin-bottom: 1.1rem; }
+        .form-group { margin-bottom: 1rem; }
         .form-group label {
             display: block;
             font-size: .88rem; font-weight: 600;
@@ -287,6 +310,14 @@
             background: var(--bg-card);
             transition: border-color .2s, box-shadow .2s;
             font-family: inherit;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394a3b8' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
         }
         .form-group input:focus,
         .form-group select:focus,
@@ -301,38 +332,45 @@
            BUTTONS
            ============================================================ */
         .btn {
-            display: inline-flex; align-items: center; gap: .45rem;
+            display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
             padding: .7rem 1.3rem;
             border: none; border-radius: var(--radius-md);
             font-size: .9rem; font-weight: 600;
             cursor: pointer; transition: all .2s;
             font-family: inherit;
+            white-space: nowrap;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
         }
         .btn:disabled { opacity: .55; cursor: not-allowed; }
         .btn-primary {
             background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
             color: #fff;
         }
-        .btn-primary:not(:disabled):hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(37,99,235,.35);
-        }
+        .btn-primary:not(:disabled):hover  { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37,99,235,.35); }
+        .btn-primary:not(:disabled):active { transform: translateY(0); }
         .btn-danger  { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; }
-        .btn-danger:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(239,68,68,.3); }
+        .btn-danger:not(:disabled):hover   { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(239,68,68,.3); }
+        .btn-danger:not(:disabled):active  { transform: translateY(0); }
         .btn-secondary { background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-secondary); }
         .btn-secondary:hover { background: var(--border); }
-        .btn-sm { padding: .4rem .75rem; font-size: .82rem; }
-        .btn-full { width: 100%; justify-content: center; }
+        .btn-sm   { padding: .4rem .75rem; font-size: .82rem; }
+        .btn-full { width: 100%; }
 
         /* ============================================================
-           TABLE
+           TABLE — responsiva com cards em mobile
            ============================================================ */
-        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: .88rem; min-width: 500px; }
         thead th {
             background: var(--bg-subtle);
             color: var(--text-secondary);
-            font-weight: 700; font-size: .8rem;
+            font-weight: 700; font-size: .78rem;
             text-transform: uppercase; letter-spacing: .04em;
             padding: .75rem 1rem;
             text-align: left;
@@ -356,12 +394,13 @@
             padding: .25rem .65rem;
             border-radius: 20px;
             font-size: .78rem; font-weight: 600;
+            white-space: nowrap;
         }
-        .badge-success  { background: var(--success-bg);  color: var(--success-text); }
-        .badge-danger   { background: var(--danger-bg);   color: var(--danger-text); }
-        .badge-warning  { background: var(--warning-bg);  color: var(--warning-text); }
-        .badge-primary  { background: var(--primary-light); color: var(--primary); }
-        .badge-secondary{ background: #f1f5f9; color: #64748b; }
+        .badge-success   { background: var(--success-bg);   color: var(--success-text); }
+        .badge-danger    { background: var(--danger-bg);    color: var(--danger-text); }
+        .badge-warning   { background: var(--warning-bg);   color: var(--warning-text); }
+        .badge-primary   { background: var(--primary-light); color: var(--primary); }
+        .badge-secondary { background: #f1f5f9; color: #64748b; }
 
         /* ============================================================
            EMPTY STATE
@@ -371,14 +410,14 @@
             padding: 3rem 1rem;
             color: var(--text-muted);
         }
-        .empty-state i { font-size: 3rem; margin-bottom: 1rem; display: block; opacity: .5; }
+        .empty-state i { font-size: 2.5rem; margin-bottom: .75rem; display: block; opacity: .4; }
         .empty-state p { font-size: .95rem; }
 
         /* ============================================================
            SECTION DIVIDER
            ============================================================ */
         .section-title {
-            font-size: .9rem; font-weight: 700;
+            font-size: .85rem; font-weight: 700;
             color: var(--text-secondary);
             text-transform: uppercase; letter-spacing: .05em;
             margin: 1.5rem 0 .75rem;
@@ -404,14 +443,16 @@
             cursor: pointer;
             text-align: center;
             transition: all .2s;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .tipo-acesso-label.selected {
             border-color: var(--primary);
             background: var(--primary-light);
         }
         .tipo-acesso-label input { display: none; }
-        .tipo-acesso-label i { font-size: 1.6rem; display: block; margin-bottom: .4rem; }
-        .tipo-acesso-label span { font-size: .85rem; font-weight: 600; color: var(--text-secondary); }
+        .tipo-acesso-label i     { font-size: 1.5rem; display: block; margin-bottom: .4rem; }
+        .tipo-acesso-label span  { font-size: .82rem; font-weight: 600; color: var(--text-secondary); }
 
         /* ============================================================
            DIAS COUNTER
@@ -424,7 +465,7 @@
             border-radius: var(--radius-md);
             margin: .75rem 0;
         }
-        .dias-counter-num { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        .dias-counter-num   { font-size: 2rem; font-weight: 800; color: var(--primary); }
         .dias-counter-label { font-size: .82rem; color: var(--text-secondary); }
 
         /* ============================================================
@@ -439,16 +480,18 @@
         }
         .protocolo-card:hover { box-shadow: var(--shadow-md); }
         .protocolo-header {
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; align-items: flex-start;
+            justify-content: space-between;
             gap: .75rem; flex-wrap: wrap;
+            margin-bottom: .5rem;
         }
         .protocolo-info-row {
             display: flex; align-items: flex-start; gap: .5rem;
-            margin-top: .6rem;
+            margin-top: .55rem;
         }
-        .protocolo-info-row i { color: var(--primary); width: 18px; flex-shrink: 0; margin-top: 2px; }
-        .protocolo-info-label { font-size: .78rem; color: var(--text-muted); }
-        .protocolo-info-value { font-size: .9rem; font-weight: 500; }
+        .protocolo-info-row i      { color: var(--primary); width: 18px; flex-shrink: 0; margin-top: 2px; font-size: .9rem; }
+        .protocolo-info-label      { font-size: .75rem; color: var(--text-muted); }
+        .protocolo-info-value      { font-size: .9rem; font-weight: 500; word-break: break-word; }
 
         /* ============================================================
            FILTRO BUTTONS
@@ -463,8 +506,9 @@
             font-size: .83rem; font-weight: 600;
             cursor: pointer; transition: all .2s;
             display: flex; align-items: center; gap: .35rem;
+            touch-action: manipulation;
         }
-        .btn-filtro:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-filtro:hover  { border-color: var(--primary); color: var(--primary); }
         .btn-filtro.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
         /* ============================================================
@@ -472,7 +516,7 @@
            ============================================================ */
         .hidro-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
@@ -480,11 +524,11 @@
             background: var(--bg-subtle);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            padding: 1.1rem;
+            padding: 1rem;
             text-align: center;
         }
-        .hidro-stat-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
-        .hidro-stat-label { font-size: .78rem; color: var(--text-muted); margin-top: .2rem; }
+        .hidro-stat-value { font-size: 1.35rem; font-weight: 800; color: var(--primary); word-break: break-all; }
+        .hidro-stat-label { font-size: .75rem; color: var(--text-muted); margin-top: .25rem; }
 
         /* ============================================================
            DEPENDENTE CARD
@@ -493,7 +537,8 @@
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             padding: 1rem 1.25rem;
-            display: flex; align-items: center; justify-content: space-between;
+            display: flex; align-items: center;
+            justify-content: space-between;
             gap: 1rem; flex-wrap: wrap;
             margin-bottom: .6rem;
             transition: box-shadow .2s;
@@ -507,9 +552,9 @@
             font-size: 1.2rem; color: var(--primary);
             flex-shrink: 0;
         }
-        .dep-info { flex: 1; min-width: 0; }
-        .dep-name { font-weight: 700; font-size: .95rem; }
-        .dep-meta { font-size: .8rem; color: var(--text-muted); margin-top: .15rem; }
+        .dep-info    { flex: 1; min-width: 0; }
+        .dep-name    { font-weight: 700; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dep-meta    { font-size: .8rem; color: var(--text-muted); margin-top: .15rem; }
         .dep-actions { display: flex; gap: .4rem; flex-shrink: 0; }
 
         /* ============================================================
@@ -521,34 +566,42 @@
             z-index: 1000;
             display: none; align-items: center; justify-content: center;
             padding: 1rem;
+            padding-bottom: calc(1rem + var(--safe-bottom));
         }
         .modal-overlay.show { display: flex; }
         .modal {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
-            padding: 2rem;
-            width: 100%; max-width: 480px;
-            max-height: 90vh; overflow-y: auto;
+            padding: 1.75rem;
+            width: 100%; max-width: 500px;
+            max-height: 92vh; max-height: 92dvh;
+            overflow-y: auto;
             box-shadow: var(--shadow-lg);
             animation: modalIn .25s ease-out;
         }
         @keyframes modalIn {
-            from { opacity: 0; transform: scale(.95); }
-            to   { opacity: 1; transform: scale(1); }
+            from { opacity: 0; transform: scale(.95) translateY(10px); }
+            to   { opacity: 1; transform: scale(1)  translateY(0); }
         }
         .modal-header {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.5rem; gap: .5rem;
         }
-        .modal-header h3 { font-size: 1.1rem; font-weight: 700; }
+        .modal-header h3 { font-size: 1.05rem; font-weight: 700; }
         .modal-close {
             background: none; border: none;
             font-size: 1.2rem; cursor: pointer;
-            color: var(--text-muted); padding: .25rem;
+            color: var(--text-muted); padding: .3rem;
             border-radius: var(--radius-sm);
+            flex-shrink: 0;
         }
         .modal-close:hover { color: var(--danger); background: var(--danger-bg); }
-        .modal-footer { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
+        .modal-footer {
+            display: flex; gap: .75rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
 
         /* ============================================================
            SPINNER INLINE
@@ -563,33 +616,222 @@
         }
 
         /* ============================================================
-           RESPONSIVE
+           VISITANTE CARD (mobile-friendly alternativa à tabela)
+           ============================================================ */
+        .visitante-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            margin-bottom: .6rem;
+            display: flex; align-items: center;
+            gap: 1rem; flex-wrap: wrap;
+            transition: box-shadow .2s;
+        }
+        .visitante-card:hover { box-shadow: var(--shadow-sm); }
+        .visitante-avatar {
+            width: 44px; height: 44px; flex-shrink: 0;
+            background: var(--primary-light);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; color: var(--primary);
+        }
+        .visitante-info { flex: 1; min-width: 0; }
+        .visitante-name { font-weight: 700; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .visitante-meta { font-size: .8rem; color: var(--text-muted); margin-top: .15rem; }
+        .visitante-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+
+        /* ============================================================
+           ACESSO CARD (mobile-friendly)
+           ============================================================ */
+        .acesso-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            margin-bottom: .6rem;
+            transition: box-shadow .2s;
+        }
+        .acesso-card:hover { box-shadow: var(--shadow-sm); }
+        .acesso-card-header {
+            display: flex; align-items: flex-start;
+            justify-content: space-between; gap: .75rem;
+            flex-wrap: wrap; margin-bottom: .6rem;
+        }
+        .acesso-card-name { font-weight: 700; font-size: .95rem; }
+        .acesso-card-body {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: .5rem;
+            font-size: .82rem; color: var(--text-secondary);
+        }
+        .acesso-card-field { display: flex; flex-direction: column; gap: .1rem; }
+        .acesso-card-field-label { font-size: .72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .acesso-card-field-value { font-weight: 500; }
+        .acesso-card-actions { display: flex; gap: .4rem; margin-top: .75rem; flex-wrap: wrap; }
+
+        /* ============================================================
+           RESPONSIVE — 1024px (tablet landscape)
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .header-inner { padding: 0 1.25rem; }
+            #mainContent  { padding: 1.25rem 1.25rem calc(2rem + var(--safe-bottom)); }
+        }
+
+        /* ============================================================
+           RESPONSIVE — 768px (tablet portrait / large phone)
            ============================================================ */
         @media (max-width: 768px) {
             :root { --header-h: 56px; }
+
+            .header-inner { padding: 0 1rem; }
             .header-brand-text span { display: none; }
-            .header-user-name { display: none; }
-            #mainContent { padding: 1rem 1rem 2rem; }
+            .header-user-name { max-width: 130px; }
+            .btn-logout-text { display: none; }
+            .btn-logout { padding: .45rem .65rem; }
+
+            #mainContent { padding: 1rem 1rem calc(1.5rem + var(--safe-bottom)); }
+
             .card { padding: 1.25rem; }
+
             .info-grid { grid-template-columns: 1fr 1fr; }
+
             .tipo-acesso-grid { grid-template-columns: repeat(3, 1fr); }
+
+            .hidro-stats { grid-template-columns: repeat(2, 1fr); }
+
+            .nav-tab { padding: .8rem .85rem; font-size: .82rem; }
+
+            .modal { padding: 1.5rem; }
         }
-        @media (max-width: 480px) {
-            .card { padding: 1rem; }
-            .info-grid { grid-template-columns: 1fr; }
-            .form-grid { grid-template-columns: 1fr; }
-            .form-grid-3 { grid-template-columns: 1fr; }
-            .tipo-acesso-grid { grid-template-columns: 1fr; }
-            .hidro-stats { grid-template-columns: 1fr 1fr; }
-            .dep-card { flex-direction: column; align-items: flex-start; }
+
+        /* ============================================================
+           RESPONSIVE — 600px (small tablet / large phone)
+           ============================================================ */
+        @media (max-width: 600px) {
+            .form-grid   { grid-template-columns: 1fr; }
+            .form-grid-3 { grid-template-columns: 1fr 1fr; }
+
+            .info-grid { grid-template-columns: 1fr 1fr; }
+
+            .tipo-acesso-grid { grid-template-columns: repeat(3, 1fr); }
+
+            .dep-card { flex-wrap: wrap; }
             .dep-actions { width: 100%; }
-            .dep-actions .btn { flex: 1; justify-content: center; }
+            .dep-actions .btn { flex: 1; }
+
+            .visitante-actions { width: 100%; }
+            .visitante-actions .btn { flex: 1; }
+
+            .modal-footer .btn { flex: 1; }
+        }
+
+        /* ============================================================
+           RESPONSIVE — 480px (phone)
+           ============================================================ */
+        @media (max-width: 480px) {
+            :root { --header-h: 52px; }
+
+            .header-brand-text h1 { font-size: .95rem; }
+            .header-user-name { display: none; }
+
+            .card { padding: 1rem; border-radius: var(--radius-md); }
+            .card-header { gap: .6rem; }
+            .card-header-icon { width: 36px; height: 36px; font-size: 1rem; }
+            .card-header h2 { font-size: 1rem; }
+
+            .info-grid { grid-template-columns: 1fr; }
+
+            .form-grid-3 { grid-template-columns: 1fr; }
+
+            .tipo-acesso-grid { grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+            .tipo-acesso-label { padding: .75rem .5rem; }
+            .tipo-acesso-label i { font-size: 1.25rem; }
+            .tipo-acesso-label span { font-size: .75rem; }
+
+            .hidro-stats { grid-template-columns: 1fr 1fr; }
+            .hidro-stat-value { font-size: 1.1rem; }
+
+            .btn { padding: .65rem 1rem; font-size: .88rem; }
+            .btn-sm { padding: .4rem .65rem; font-size: .8rem; }
+
+            .nav-tab { padding: .75rem .7rem; font-size: .78rem; }
+            .nav-tab i { font-size: .85rem; }
+
+            .protocolo-card { padding: 1rem; }
+
             table { font-size: .8rem; }
             thead th, tbody td { padding: .6rem .75rem; }
-            .btn { padding: .65rem 1rem; }
+
+            .acesso-card-body { grid-template-columns: 1fr 1fr; }
+
+            #mainContent { padding: .875rem .875rem calc(1.5rem + var(--safe-bottom)); }
         }
+
+        /* ============================================================
+           RESPONSIVE — 360px (very small phone)
+           ============================================================ */
         @media (max-width: 360px) {
+            :root { --header-h: 50px; }
+
             .hidro-stats { grid-template-columns: 1fr; }
+
+            .tipo-acesso-grid { grid-template-columns: 1fr; }
+            .tipo-acesso-label { display: flex; align-items: center; gap: .75rem; text-align: left; }
+            .tipo-acesso-label i { font-size: 1.4rem; margin-bottom: 0; }
+
+            .form-grid-3 { grid-template-columns: 1fr; }
+
+            .nav-tab span { display: none; }
+            .nav-tab i    { font-size: 1rem; }
+            .nav-tab      { padding: .75rem .9rem; }
+
+            #mainContent { padding: .75rem .75rem calc(1.5rem + var(--safe-bottom)); }
+        }
+
+        /* ============================================================
+           DARK MODE (respeita preferência do sistema)
+           ============================================================ */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-page:        #0f172a;
+                --bg-card:        #1e293b;
+                --bg-subtle:      #1e293b;
+                --border:         #334155;
+                --text-primary:   #f1f5f9;
+                --text-secondary: #94a3b8;
+                --text-muted:     #64748b;
+                --primary-light:  rgba(37,99,235,.15);
+                --info-bg:        rgba(37,99,235,.15);
+                --info-text:      #93c5fd;
+                --success-bg:     rgba(34,197,94,.15);
+                --success-text:   #86efac;
+                --danger-bg:      rgba(239,68,68,.15);
+                --danger-text:    #fca5a5;
+                --warning-bg:     rgba(245,158,11,.15);
+                --warning-text:   #fcd34d;
+            }
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                background: #0f172a;
+                color: var(--text-primary);
+                border-color: var(--border);
+            }
+            .form-group select {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2364748b' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+                background-color: #0f172a;
+            }
+            thead th { background: #0f172a; }
+            .btn-secondary { background: #1e293b; color: var(--text-secondary); border-color: var(--border); }
+            .btn-secondary:hover { background: #334155; }
+        }
+
+        /* ============================================================
+           PRINT
+           ============================================================ */
+        @media print {
+            #mainHeader, #mainNav, .btn, .btn-filtro, .dep-actions, .visitante-actions, .acesso-card-actions { display: none !important; }
+            #mainContent { padding: 0; max-width: 100%; }
+            .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -620,9 +862,9 @@
                 <i class="fas fa-user-circle"></i>
                 <span id="headerNome">Carregando...</span>
             </span>
-            <button class="btn-logout" onclick="fazerLogout()">
+            <button class="btn-logout" onclick="fazerLogout()" aria-label="Sair do portal">
                 <i class="fas fa-sign-out-alt"></i>
-                <span>Sair</span>
+                <span class="btn-logout-text">Sair</span>
             </button>
         </div>
     </div>
@@ -631,25 +873,31 @@
 <!-- ================================================================
      NAVIGATION TABS
      ================================================================ -->
-<nav id="mainNav">
+<nav id="mainNav" role="navigation" aria-label="Menu principal">
     <div class="nav-inner">
-        <button class="nav-tab active" onclick="abrirAba('perfil', this)">
-            <i class="fas fa-user"></i> Meu Perfil
+        <button class="nav-tab active" onclick="abrirAba('perfil', this)" aria-label="Meu Perfil">
+            <i class="fas fa-user" aria-hidden="true"></i>
+            <span>Meu Perfil</span>
         </button>
-        <button class="nav-tab" onclick="abrirAba('visitantes', this)">
-            <i class="fas fa-users"></i> Visitantes
+        <button class="nav-tab" onclick="abrirAba('visitantes', this)" aria-label="Visitantes">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            <span>Visitantes</span>
         </button>
-        <button class="nav-tab" onclick="abrirAba('acessos', this)">
-            <i class="fas fa-qrcode"></i> Acessos
+        <button class="nav-tab" onclick="abrirAba('acessos', this)" aria-label="Acessos">
+            <i class="fas fa-qrcode" aria-hidden="true"></i>
+            <span>Acessos</span>
         </button>
-        <button class="nav-tab" onclick="abrirAba('dependentes', this)">
-            <i class="fas fa-people-arrows"></i> Dependentes
+        <button class="nav-tab" onclick="abrirAba('dependentes', this)" aria-label="Dependentes">
+            <i class="fas fa-people-arrows" aria-hidden="true"></i>
+            <span>Dependentes</span>
         </button>
-        <button class="nav-tab" onclick="abrirAba('protocolos', this)">
-            <i class="fas fa-box"></i> Protocolos
+        <button class="nav-tab" onclick="abrirAba('protocolos', this)" aria-label="Protocolos">
+            <i class="fas fa-box" aria-hidden="true"></i>
+            <span>Protocolos</span>
         </button>
-        <button class="nav-tab" onclick="abrirAba('hidrometro', this)">
-            <i class="fas fa-tint"></i> Hidrômetro
+        <button class="nav-tab" onclick="abrirAba('hidrometro', this)" aria-label="Hidrômetro">
+            <i class="fas fa-tint" aria-hidden="true"></i>
+            <span>Hidrômetro</span>
         </button>
     </div>
 </nav>
@@ -657,18 +905,17 @@
 <!-- ================================================================
      MAIN CONTENT
      ================================================================ -->
-<main id="mainContent">
-    <div id="alertContainer"></div>
+<main id="mainContent" role="main">
+    <div id="alertContainer" aria-live="polite"></div>
 
     <!-- ============================================================
          ABA: PERFIL
          ============================================================ -->
-    <div id="panel-perfil" class="tab-panel active">
+    <div id="panel-perfil" class="tab-panel active" role="tabpanel">
 
-        <!-- Dados pessoais -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-id-card"></i></div>
+                <div class="card-header-icon"><i class="fas fa-id-card" aria-hidden="true"></i></div>
                 <div>
                     <h2>Meus Dados</h2>
                     <p>Informações cadastrais da sua unidade</p>
@@ -694,39 +941,37 @@
             </div>
         </div>
 
-        <!-- Atualizar telefones -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-phone"></i></div>
+                <div class="card-header-icon"><i class="fas fa-phone" aria-hidden="true"></i></div>
                 <div><h2>Atualizar Contatos</h2></div>
             </div>
-            <form id="formTelefone" onsubmit="atualizarTelefone(event)">
+            <form id="formTelefone" onsubmit="atualizarTelefone(event)" novalidate>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="telefone">Telefone Fixo</label>
-                        <input type="text" id="telefone" placeholder="(31) 3333-3333">
+                        <input type="tel" id="telefone" placeholder="(31) 3333-3333" autocomplete="tel" inputmode="tel">
                     </div>
                     <div class="form-group">
                         <label for="celular">Celular / WhatsApp</label>
-                        <input type="text" id="celular" placeholder="(31) 99999-9999">
+                        <input type="tel" id="celular" placeholder="(31) 99999-9999" autocomplete="tel" inputmode="tel">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary" id="btnSalvarTelefone">
-                    <i class="fas fa-save"></i> Salvar Contatos
+                    <i class="fas fa-save" aria-hidden="true"></i> Salvar Contatos
                 </button>
             </form>
         </div>
 
-        <!-- Alterar senha -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-lock"></i></div>
+                <div class="card-header-icon"><i class="fas fa-lock" aria-hidden="true"></i></div>
                 <div>
                     <h2>Alterar Senha</h2>
                     <p>Mínimo de 6 caracteres</p>
                 </div>
             </div>
-            <form id="formSenha" onsubmit="alterarSenha(event)">
+            <form id="formSenha" onsubmit="alterarSenha(event)" novalidate>
                 <div class="form-group">
                     <label for="senhaAtual">Senha Atual *</label>
                     <input type="password" id="senhaAtual" required autocomplete="current-password">
@@ -742,7 +987,7 @@
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary" id="btnAlterarSenha">
-                    <i class="fas fa-key"></i> Alterar Senha
+                    <i class="fas fa-key" aria-hidden="true"></i> Alterar Senha
                 </button>
             </form>
         </div>
@@ -751,22 +996,21 @@
     <!-- ============================================================
          ABA: VISITANTES
          ============================================================ -->
-    <div id="panel-visitantes" class="tab-panel">
+    <div id="panel-visitantes" class="tab-panel" role="tabpanel">
 
-        <!-- Cadastrar visitante -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-user-plus"></i></div>
+                <div class="card-header-icon"><i class="fas fa-user-plus" aria-hidden="true"></i></div>
                 <div>
                     <h2>Cadastrar Visitante</h2>
                     <p>Adicione visitantes autorizados para sua unidade</p>
                 </div>
             </div>
-            <form id="formVisitante" onsubmit="cadastrarVisitante(event)">
+            <form id="formVisitante" onsubmit="cadastrarVisitante(event)" novalidate>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="visitanteNome">Nome Completo *</label>
-                        <input type="text" id="visitanteNome" required placeholder="Nome do visitante">
+                        <input type="text" id="visitanteNome" required placeholder="Nome do visitante" autocomplete="name">
                     </div>
                     <div class="form-group">
                         <label for="visitanteTipoDoc">Tipo de Documento *</label>
@@ -784,15 +1028,15 @@
                     </div>
                     <div class="form-group">
                         <label for="visitanteTelefone">Telefone</label>
-                        <input type="text" id="visitanteTelefone" placeholder="(31) 3333-3333">
+                        <input type="tel" id="visitanteTelefone" placeholder="(31) 3333-3333" inputmode="tel">
                     </div>
                     <div class="form-group">
                         <label for="visitanteCelular">Celular</label>
-                        <input type="text" id="visitanteCelular" placeholder="(31) 99999-9999">
+                        <input type="tel" id="visitanteCelular" placeholder="(31) 99999-9999" inputmode="tel">
                     </div>
                     <div class="form-group">
                         <label for="visitanteEmail">E-mail</label>
-                        <input type="email" id="visitanteEmail" placeholder="email@exemplo.com">
+                        <input type="email" id="visitanteEmail" placeholder="email@exemplo.com" autocomplete="email" inputmode="email">
                     </div>
                 </div>
                 <div class="form-group">
@@ -800,15 +1044,14 @@
                     <textarea id="visitanteObs" rows="2" placeholder="Informações adicionais..."></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" id="btnCadastrarVisitante">
-                    <i class="fas fa-user-plus"></i> Cadastrar Visitante
+                    <i class="fas fa-user-plus" aria-hidden="true"></i> Cadastrar Visitante
                 </button>
             </form>
         </div>
 
-        <!-- Lista de visitantes -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-list"></i></div>
+                <div class="card-header-icon"><i class="fas fa-list" aria-hidden="true"></i></div>
                 <div>
                     <h2>Meus Visitantes</h2>
                     <p>Visitantes cadastrados para sua unidade</p>
@@ -823,20 +1066,20 @@
     <!-- ============================================================
          ABA: ACESSOS
          ============================================================ -->
-    <div id="panel-acessos" class="tab-panel">
+    <div id="panel-acessos" class="tab-panel" role="tabpanel">
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-qrcode"></i></div>
+                <div class="card-header-icon"><i class="fas fa-qrcode" aria-hidden="true"></i></div>
                 <div>
                     <h2>Gerar QR Code de Acesso</h2>
                     <p>Autorize a entrada de visitantes cadastrados</p>
                 </div>
             </div>
             <div class="alert alert-info show" style="margin-bottom:1rem;">
-                <i class="fas fa-info-circle"></i>
+                <i class="fas fa-info-circle" aria-hidden="true"></i>
                 <span>Um visitante pode ter apenas um acesso ativo por vez. Cadastre o visitante na aba <strong>Visitantes</strong> antes de gerar o acesso.</span>
             </div>
-            <form id="formAcesso" onsubmit="salvarAcesso(event)">
+            <form id="formAcesso" onsubmit="salvarAcesso(event)" novalidate>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="acessoVisitante">Visitante *</label>
@@ -853,11 +1096,11 @@
                     </div>
                 </div>
 
-                <div class="section-title"><i class="fas fa-car"></i> Dados do Veículo</div>
+                <div class="section-title"><i class="fas fa-car" aria-hidden="true"></i> Dados do Veículo</div>
                 <div class="form-grid form-grid-3">
                     <div class="form-group">
                         <label for="acessoPlaca">Placa</label>
-                        <input type="text" id="acessoPlaca" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase">
+                        <input type="text" id="acessoPlaca" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase" autocomplete="off">
                     </div>
                     <div class="form-group">
                         <label for="acessoModelo">Modelo</label>
@@ -869,7 +1112,7 @@
                     </div>
                 </div>
 
-                <div class="section-title"><i class="fas fa-calendar"></i> Período</div>
+                <div class="section-title"><i class="fas fa-calendar" aria-hidden="true"></i> Período</div>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="acessoDataInicial">Data Inicial *</label>
@@ -886,35 +1129,34 @@
                     <div class="dias-counter-label">dias de permanência</div>
                 </div>
 
-                <div class="section-title"><i class="fas fa-door-open"></i> Tipo de Acesso *</div>
+                <div class="section-title"><i class="fas fa-door-open" aria-hidden="true"></i> Tipo de Acesso *</div>
                 <div class="tipo-acesso-grid">
                     <label class="tipo-acesso-label" id="labelPortaria" onclick="selecionarTipoAcesso('portaria')">
                         <input type="radio" name="acessoTipoAcesso" value="portaria" required>
-                        <i class="fas fa-door-open" style="color:var(--primary)"></i>
+                        <i class="fas fa-door-open" style="color:var(--primary)" aria-hidden="true"></i>
                         <span>Portaria</span>
                     </label>
                     <label class="tipo-acesso-label" id="labelExterno" onclick="selecionarTipoAcesso('externo')">
                         <input type="radio" name="acessoTipoAcesso" value="externo">
-                        <i class="fas fa-road" style="color:var(--warning)"></i>
+                        <i class="fas fa-road" style="color:var(--warning)" aria-hidden="true"></i>
                         <span>Externo</span>
                     </label>
                     <label class="tipo-acesso-label" id="labelLagoa" onclick="selecionarTipoAcesso('lagoa')">
                         <input type="radio" name="acessoTipoAcesso" value="lagoa">
-                        <i class="fas fa-water" style="color:var(--success)"></i>
+                        <i class="fas fa-water" style="color:var(--success)" aria-hidden="true"></i>
                         <span>Lagoa</span>
                     </label>
                 </div>
 
-                <button type="submit" class="btn btn-primary" id="btnGerarQR" style="margin-top:1.5rem;">
-                    <i class="fas fa-qrcode"></i> Gerar QR Code
+                <button type="submit" class="btn btn-primary btn-full" id="btnGerarQR" style="margin-top:1.5rem;">
+                    <i class="fas fa-qrcode" aria-hidden="true"></i> Gerar QR Code
                 </button>
             </form>
         </div>
 
-        <!-- Lista de acessos -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-list-alt"></i></div>
+                <div class="card-header-icon"><i class="fas fa-list-alt" aria-hidden="true"></i></div>
                 <div>
                     <h2>Meus Acessos</h2>
                     <p>Acessos gerados para visitantes da sua unidade</p>
@@ -929,22 +1171,21 @@
     <!-- ============================================================
          ABA: DEPENDENTES
          ============================================================ -->
-    <div id="panel-dependentes" class="tab-panel">
+    <div id="panel-dependentes" class="tab-panel" role="tabpanel">
 
-        <!-- Cadastrar dependente -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-user-friends"></i></div>
+                <div class="card-header-icon"><i class="fas fa-user-friends" aria-hidden="true"></i></div>
                 <div>
                     <h2>Cadastrar Dependente</h2>
                     <p>Filhos, cônjuge e outros moradores da unidade</p>
                 </div>
             </div>
-            <form id="formDependente" onsubmit="cadastrarDependente(event)">
+            <form id="formDependente" onsubmit="cadastrarDependente(event)" novalidate>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="depNome">Nome Completo *</label>
-                        <input type="text" id="depNome" required placeholder="Nome do dependente">
+                        <input type="text" id="depNome" required placeholder="Nome do dependente" autocomplete="name">
                     </div>
                     <div class="form-group">
                         <label for="depParentesco">Parentesco</label>
@@ -959,7 +1200,7 @@
                     </div>
                     <div class="form-group">
                         <label for="depCpf">CPF</label>
-                        <input type="text" id="depCpf" placeholder="000.000.000-00" maxlength="14">
+                        <input type="text" id="depCpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric">
                     </div>
                     <div class="form-group">
                         <label for="depNascimento">Data de Nascimento</label>
@@ -967,11 +1208,11 @@
                     </div>
                     <div class="form-group">
                         <label for="depEmail">E-mail</label>
-                        <input type="email" id="depEmail" placeholder="email@exemplo.com">
+                        <input type="email" id="depEmail" placeholder="email@exemplo.com" autocomplete="email" inputmode="email">
                     </div>
                     <div class="form-group">
                         <label for="depCelular">Celular</label>
-                        <input type="text" id="depCelular" placeholder="(31) 99999-9999">
+                        <input type="tel" id="depCelular" placeholder="(31) 99999-9999" inputmode="tel">
                     </div>
                 </div>
                 <div class="form-group">
@@ -979,15 +1220,14 @@
                     <textarea id="depObs" rows="2" placeholder="Informações adicionais..."></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" id="btnCadastrarDep">
-                    <i class="fas fa-user-plus"></i> Cadastrar Dependente
+                    <i class="fas fa-user-plus" aria-hidden="true"></i> Cadastrar Dependente
                 </button>
             </form>
         </div>
 
-        <!-- Lista de dependentes -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-people-arrows"></i></div>
+                <div class="card-header-icon"><i class="fas fa-people-arrows" aria-hidden="true"></i></div>
                 <div>
                     <h2>Meus Dependentes</h2>
                     <p>Moradores cadastrados na sua unidade</p>
@@ -1002,24 +1242,24 @@
     <!-- ============================================================
          ABA: PROTOCOLOS
          ============================================================ -->
-    <div id="panel-protocolos" class="tab-panel">
+    <div id="panel-protocolos" class="tab-panel" role="tabpanel">
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-box"></i></div>
+                <div class="card-header-icon"><i class="fas fa-box" aria-hidden="true"></i></div>
                 <div>
                     <h2>Meus Protocolos</h2>
                     <p>Encomendas e entregas recebidas na portaria</p>
                 </div>
             </div>
-            <div class="filtro-bar">
+            <div class="filtro-bar" role="group" aria-label="Filtrar protocolos">
                 <button class="btn-filtro active" id="filtroTodos"    onclick="filtrarProtocolos('')">
-                    <i class="fas fa-list"></i> Todos
+                    <i class="fas fa-list" aria-hidden="true"></i> Todos
                 </button>
                 <button class="btn-filtro" id="filtroPendente" onclick="filtrarProtocolos('pendente')">
-                    <i class="fas fa-clock"></i> Pendentes
+                    <i class="fas fa-clock" aria-hidden="true"></i> Pendentes
                 </button>
                 <button class="btn-filtro" id="filtroEntregue" onclick="filtrarProtocolos('entregue')">
-                    <i class="fas fa-check"></i> Entregues
+                    <i class="fas fa-check" aria-hidden="true"></i> Entregues
                 </button>
             </div>
             <div id="listaProtocolos">
@@ -1031,12 +1271,11 @@
     <!-- ============================================================
          ABA: HIDRÔMETRO
          ============================================================ -->
-    <div id="panel-hidrometro" class="tab-panel">
+    <div id="panel-hidrometro" class="tab-panel" role="tabpanel">
 
-        <!-- Dados do hidrômetro -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-tachometer-alt"></i></div>
+                <div class="card-header-icon"><i class="fas fa-tachometer-alt" aria-hidden="true"></i></div>
                 <div>
                     <h2>Dados do Hidrômetro</h2>
                     <p>Informações do medidor ativo da sua unidade</p>
@@ -1047,10 +1286,9 @@
             </div>
         </div>
 
-        <!-- Histórico de leituras -->
         <div class="card">
             <div class="card-header">
-                <div class="card-header-icon"><i class="fas fa-history"></i></div>
+                <div class="card-header-icon"><i class="fas fa-history" aria-hidden="true"></i></div>
                 <div>
                     <h2>Histórico de Leituras</h2>
                     <p>Registro completo de consumo de água</p>
@@ -1067,17 +1305,19 @@
 <!-- ================================================================
      MODAL: EDITAR DEPENDENTE
      ================================================================ -->
-<div class="modal-overlay" id="modalEditarDep">
+<div class="modal-overlay" id="modalEditarDep" role="dialog" aria-modal="true" aria-labelledby="modalEditarDepTitle">
     <div class="modal">
         <div class="modal-header">
-            <h3><i class="fas fa-edit"></i> Editar Dependente</h3>
-            <button class="modal-close" onclick="fecharModalDep()"><i class="fas fa-times"></i></button>
+            <h3 id="modalEditarDepTitle"><i class="fas fa-edit" aria-hidden="true"></i> Editar Dependente</h3>
+            <button class="modal-close" onclick="fecharModalDep()" aria-label="Fechar modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
         </div>
-        <form id="formEditarDep" onsubmit="salvarEdicaoDep(event)">
+        <form id="formEditarDep" onsubmit="salvarEdicaoDep(event)" novalidate>
             <input type="hidden" id="editDepId">
             <div class="form-group">
                 <label for="editDepNome">Nome Completo *</label>
-                <input type="text" id="editDepNome" required>
+                <input type="text" id="editDepNome" required autocomplete="name">
             </div>
             <div class="form-grid">
                 <div class="form-group">
@@ -1097,11 +1337,11 @@
                 </div>
                 <div class="form-group">
                     <label for="editDepEmail">E-mail</label>
-                    <input type="email" id="editDepEmail">
+                    <input type="email" id="editDepEmail" autocomplete="email" inputmode="email">
                 </div>
                 <div class="form-group">
                     <label for="editDepCelular">Celular</label>
-                    <input type="text" id="editDepCelular">
+                    <input type="tel" id="editDepCelular" inputmode="tel">
                 </div>
             </div>
             <div class="form-group">
@@ -1111,7 +1351,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="fecharModalDep()">Cancelar</button>
                 <button type="submit" class="btn btn-primary" id="btnSalvarDep">
-                    <i class="fas fa-save"></i> Salvar
+                    <i class="fas fa-save" aria-hidden="true"></i> Salvar
                 </button>
             </div>
         </form>
@@ -1128,12 +1368,12 @@
    ESTADO GLOBAL
    ────────────────────────────────────────────────────────────────── */
 const Portal = {
-    token:      null,
-    moradorId:  null,
-    moradorNome: null,
+    token:          null,
+    moradorId:      null,
+    moradorNome:    null,
     moradorUnidade: null,
-    abaAtual:   'perfil',
-    tentativas: 0,
+    abaAtual:       'perfil',
+    tentativas:     0,
     MAX_TENTATIVAS: 3
 };
 
@@ -1141,9 +1381,9 @@ const Portal = {
    INICIALIZAÇÃO
    ────────────────────────────────────────────────────────────────── */
 (function init() {
-    Portal.token        = localStorage.getItem('portal_token');
-    Portal.moradorId    = localStorage.getItem('morador_id');
-    Portal.moradorNome  = localStorage.getItem('morador_nome');
+    Portal.token          = localStorage.getItem('portal_token');
+    Portal.moradorId      = localStorage.getItem('morador_id');
+    Portal.moradorNome    = localStorage.getItem('morador_nome');
     Portal.moradorUnidade = localStorage.getItem('morador_unidade');
 
     console.log('[Portal] Iniciando... Token:', Portal.token ? Portal.token.substring(0,16)+'...' : 'null');
@@ -1196,10 +1436,10 @@ function inicializarPortal() {
     const content = document.getElementById('mainContent');
 
     // Atualizar dados do usuário no header
-    document.getElementById('headerNome').textContent    = Portal.moradorNome || 'Morador';
+    document.getElementById('headerNome').textContent    = Portal.moradorNome    || 'Morador';
     document.getElementById('headerUnidade').textContent = Portal.moradorUnidade ? 'Unidade ' + Portal.moradorUnidade : '';
 
-    // Mostrar conteúdo imediatamente via classe CSS (garante !important sobre display:none do ID)
+    // Mostrar conteúdo via classe (garante !important sobre display:none do ID)
     header.classList.add('visible');
     nav.classList.add('visible');
     content.classList.add('visible');
@@ -1218,41 +1458,48 @@ function inicializarPortal() {
    NAVEGAÇÃO DE ABAS
    ────────────────────────────────────────────────────────────────── */
 function abrirAba(aba, btnEl) {
-    // Atualizar botões
     document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
 
-    // Atualizar painéis
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     const panel = document.getElementById('panel-' + aba);
     if (panel) panel.classList.add('active');
 
     Portal.abaAtual = aba;
 
-    // Carregar dados conforme aba
     const loaders = {
-        perfil:       carregarPerfil,
-        visitantes:   () => { carregarVisitantes(); },
-        acessos:      () => { carregarVisitantesSelect(); carregarAcessos(); },
-        dependentes:  carregarDependentes,
-        protocolos:   () => carregarProtocolos(''),
-        hidrometro:   carregarHidrometro
+        perfil:      carregarPerfil,
+        visitantes:  () => carregarVisitantes(),
+        acessos:     () => { carregarVisitantesSelect(); carregarAcessos(); },
+        dependentes: carregarDependentes,
+        protocolos:  () => carregarProtocolos(''),
+        hidrometro:  carregarHidrometro
     };
     if (loaders[aba]) loaders[aba]();
 
     // Scroll para o topo no mobile
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Scroll da nav para o botão ativo
+    if (btnEl) {
+        btnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
 }
 
 /* ──────────────────────────────────────────────────────────────────
    ALERTA
    ────────────────────────────────────────────────────────────────── */
 function mostrarAlerta(mensagem, tipo = 'info') {
-    const icons = { error: 'exclamation-circle', success: 'check-circle', info: 'info-circle', warning: 'exclamation-triangle' };
+    const icons = {
+        error:   'exclamation-circle',
+        success: 'check-circle',
+        info:    'info-circle',
+        warning: 'exclamation-triangle'
+    };
     const container = document.getElementById('alertContainer');
     container.innerHTML = `
-        <div class="alert alert-${tipo} show">
-            <i class="fas fa-${icons[tipo] || 'info-circle'}"></i>
+        <div class="alert alert-${tipo} show" role="alert">
+            <i class="fas fa-${icons[tipo] || 'info-circle'}" aria-hidden="true"></i>
             <span>${mensagem}</span>
         </div>`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1275,20 +1522,13 @@ function fazerLogout() {
         headers: { 'Authorization': 'Bearer ' + Portal.token }
     }).catch(() => {});
 
-    localStorage.removeItem('portal_token');
-    localStorage.removeItem('morador_id');
-    localStorage.removeItem('morador_nome');
-    localStorage.removeItem('morador_unidade');
-    localStorage.removeItem('morador_email');
+    ['portal_token','morador_id','morador_nome','morador_unidade','morador_email'].forEach(k => localStorage.removeItem(k));
     window.location.href = window.location.origin + '/frontend/login.html';
 }
 
 function redirecionarLogin(msg) {
     console.warn('[Portal] Redirecionando para login:', msg);
-    localStorage.removeItem('portal_token');
-    localStorage.removeItem('morador_id');
-    localStorage.removeItem('morador_nome');
-    localStorage.removeItem('morador_unidade');
+    ['portal_token','morador_id','morador_nome','morador_unidade'].forEach(k => localStorage.removeItem(k));
     sessionStorage.setItem('portal_msg', msg);
     setTimeout(() => {
         window.location.href = window.location.origin + '/frontend/login.html';
@@ -1334,9 +1574,7 @@ function atualizarTelefone(e) {
         })
     })
     .then(r => r.json())
-    .then(data => {
-        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
-    })
+    .then(data => mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error'))
     .catch(() => mostrarAlerta('Erro ao salvar contatos.', 'error'))
     .finally(() => {
         btn.disabled = false;
@@ -1346,8 +1584,8 @@ function atualizarTelefone(e) {
 
 function alterarSenha(e) {
     e.preventDefault();
-    const senhaAtual    = document.getElementById('senhaAtual').value;
-    const senhaNova     = document.getElementById('senhaNova').value;
+    const senhaAtual     = document.getElementById('senhaAtual').value;
+    const senhaNova      = document.getElementById('senhaNova').value;
     const senhaConfirmar = document.getElementById('senhaConfirmar').value;
 
     if (senhaNova !== senhaConfirmar) { mostrarAlerta('As senhas não coincidem.', 'error'); return; }
@@ -1375,7 +1613,7 @@ function alterarSenha(e) {
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   VISITANTES
+   VISITANTES — renderização em cards (responsivo) + tabela em desktop
    ────────────────────────────────────────────────────────────────── */
 function carregarVisitantes() {
     fetch(window.location.origin + '/api/api_portal_morador.php?action=visitantes', {
@@ -1384,25 +1622,33 @@ function carregarVisitantes() {
     .then(r => r.json())
     .then(data => {
         const container = document.getElementById('listaVisitantes');
-        if (!data.sucesso || !data.dados.length) {
+        if (!data.sucesso || !data.dados || !data.dados.length) {
             container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Nenhum visitante cadastrado</p></div>';
             return;
         }
-        let html = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Documento</th><th>Contato</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+        let html = '';
         data.dados.forEach(v => {
-            html += `<tr>
-                <td><strong>${v.nome_completo}</strong></td>
-                <td>${v.tipo_documento}: ${v.documento}</td>
-                <td>${v.celular || v.telefone || '—'}</td>
-                <td><span class="badge badge-${v.ativo ? 'success' : 'danger'}">${v.ativo ? 'Ativo' : 'Inativo'}</span></td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="excluirVisitante(${v.id})" title="Excluir">
-                        <i class="fas fa-trash"></i>
+            const contato = v.celular || v.telefone || '—';
+            const statusClass = v.ativo ? 'badge-success' : 'badge-danger';
+            const statusLabel = v.ativo ? 'Ativo' : 'Inativo';
+            html += `
+            <div class="visitante-card">
+                <div class="visitante-avatar"><i class="fas fa-user" aria-hidden="true"></i></div>
+                <div class="visitante-info">
+                    <div class="visitante-name">${escHtml(v.nome_completo)}</div>
+                    <div class="visitante-meta">
+                        ${escHtml(v.tipo_documento)}: ${escHtml(v.documento)}
+                        &nbsp;·&nbsp; ${escHtml(contato)}
+                        &nbsp;·&nbsp; <span class="badge ${statusClass}">${statusLabel}</span>
+                    </div>
+                </div>
+                <div class="visitante-actions">
+                    <button class="btn btn-danger btn-sm" onclick="excluirVisitante(${v.id})" title="Excluir visitante" aria-label="Excluir ${escHtml(v.nome_completo)}">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
-                </td>
-            </tr>`;
+                </div>
+            </div>`;
         });
-        html += '</tbody></table></div>';
         container.innerHTML = html;
     })
     .catch(() => mostrarAlerta('Erro ao carregar visitantes.', 'error'));
@@ -1416,7 +1662,7 @@ function carregarVisitantesSelect() {
     .then(data => {
         const sel = document.getElementById('acessoVisitante');
         sel.innerHTML = '<option value="">Selecione um visitante</option>';
-        if (data.sucesso && data.dados.length) {
+        if (data.sucesso && data.dados && data.dados.length) {
             data.dados.forEach(v => {
                 const opt = document.createElement('option');
                 opt.value = v.id;
@@ -1498,9 +1744,9 @@ function calcularDias() {
 
 function selecionarTipoAcesso(tipo) {
     ['portaria','externo','lagoa'].forEach(t => {
-        const lbl = document.getElementById('label' + t.charAt(0).toUpperCase() + t.slice(1));
-        if (lbl) lbl.classList.toggle('selected', t === tipo);
+        const lbl   = document.getElementById('label' + t.charAt(0).toUpperCase() + t.slice(1));
         const radio = lbl ? lbl.querySelector('input') : null;
+        if (lbl)   lbl.classList.toggle('selected', t === tipo);
         if (radio) radio.checked = (t === tipo);
     });
 }
@@ -1522,9 +1768,9 @@ function salvarAcesso(e) {
     const dados = {
         visitante_id:    visitanteId,
         tipo_visitante:  document.getElementById('acessoTipo').value,
-        placa:           document.getElementById('acessoPlaca').value || null,
-        modelo:          document.getElementById('acessoModelo').value || null,
-        cor:             document.getElementById('acessoCor').value || null,
+        placa:           document.getElementById('acessoPlaca').value   || null,
+        modelo:          document.getElementById('acessoModelo').value  || null,
+        cor:             document.getElementById('acessoCor').value     || null,
         data_inicial:    document.getElementById('acessoDataInicial').value,
         data_final:      document.getElementById('acessoDataFinal').value,
         tipo_acesso:     tipoAcesso,
@@ -1564,34 +1810,64 @@ function carregarAcessos() {
     .then(r => r.json())
     .then(data => {
         const container = document.getElementById('listaAcessos');
-        if (!data.sucesso || !data.dados.length) {
+        if (!data.sucesso || !data.dados || !data.dados.length) {
             container.innerHTML = '<div class="empty-state"><i class="fas fa-qrcode"></i><p>Nenhum acesso cadastrado</p></div>';
             return;
         }
         const hoje = new Date();
-        let html = '<div class="table-wrap"><table><thead><tr><th>Visitante</th><th>Período</th><th>Tipo</th><th>Veículo</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+        const tipoLabel = { portaria: 'Portaria', externo: 'Externo', lagoa: 'Lagoa' };
+        const tipoBadge = { portaria: 'primary',  externo: 'warning',  lagoa: 'success' };
+
+        let html = '';
         data.dados.forEach(a => {
-            const di = new Date(a.data_inicial), df = new Date(a.data_final);
+            const di    = new Date(a.data_inicial);
+            const df    = new Date(a.data_final);
             const ativo = hoje >= di && hoje <= df && a.ativo;
-            const veiculo = a.placa ? `${a.placa}${a.modelo ? ' · '+a.modelo : ''}${a.cor ? ' '+a.cor : ''}` : '—';
-            const tipoLabel = { portaria: 'Portaria', externo: 'Externo', lagoa: 'Lagoa' };
-            const tipoBadge = { portaria: 'primary', externo: 'warning', lagoa: 'success' };
-            html += `<tr>
-                <td><strong>${a.visitante_nome || '—'}</strong></td>
-                <td>${di.toLocaleDateString('pt-BR')} a ${df.toLocaleDateString('pt-BR')}<br><small style="color:var(--text-muted)">${a.dias_permanencia || '?'} dias</small></td>
-                <td><span class="badge badge-${tipoBadge[a.tipo_acesso]||'secondary'}">${tipoLabel[a.tipo_acesso]||a.tipo_acesso}</span></td>
-                <td>${veiculo}</td>
-                <td><span class="badge badge-${ativo ? 'success' : 'danger'}">${ativo ? 'Ativo' : 'Inativo'}</span></td>
-                <td style="display:flex;gap:.3rem;flex-wrap:wrap;">
-                    <button class="btn btn-primary btn-sm" onclick="gerarQRCode(${a.id})" title="QR Code"><i class="fas fa-qrcode"></i></button>
-                    <button class="btn btn-danger btn-sm" onclick="excluirAcesso(${a.id})" title="Excluir"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
+            const veiculo = a.placa
+                ? `${a.placa}${a.modelo ? ' · '+a.modelo : ''}${a.cor ? ' '+a.cor : ''}`
+                : '—';
+
+            html += `
+            <div class="acesso-card">
+                <div class="acesso-card-header">
+                    <div>
+                        <div class="acesso-card-name">${escHtml(a.visitante_nome || '—')}</div>
+                        <div style="font-size:.8rem;color:var(--text-muted);margin-top:.15rem;">
+                            <span class="badge badge-${tipoBadge[a.tipo_acesso]||'secondary'}">${tipoLabel[a.tipo_acesso]||a.tipo_acesso}</span>
+                        </div>
+                    </div>
+                    <span class="badge badge-${ativo ? 'success' : 'danger'}">${ativo ? 'Ativo' : 'Inativo'}</span>
+                </div>
+                <div class="acesso-card-body">
+                    <div class="acesso-card-field">
+                        <span class="acesso-card-field-label">Período</span>
+                        <span class="acesso-card-field-value">${di.toLocaleDateString('pt-BR')} a ${df.toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <div class="acesso-card-field">
+                        <span class="acesso-card-field-label">Dias</span>
+                        <span class="acesso-card-field-value">${a.dias_permanencia || '?'} dias</span>
+                    </div>
+                    <div class="acesso-card-field">
+                        <span class="acesso-card-field-label">Veículo</span>
+                        <span class="acesso-card-field-value">${escHtml(veiculo)}</span>
+                    </div>
+                </div>
+                <div class="acesso-card-actions">
+                    <button class="btn btn-primary btn-sm" onclick="gerarQRCode(${a.id})" aria-label="Gerar QR Code">
+                        <i class="fas fa-qrcode" aria-hidden="true"></i> QR Code
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="excluirAcesso(${a.id})" aria-label="Excluir acesso">
+                        <i class="fas fa-trash" aria-hidden="true"></i> Excluir
+                    </button>
+                </div>
+            </div>`;
         });
-        html += '</tbody></table></div>';
         container.innerHTML = html;
     })
-    .catch(() => { document.getElementById('listaAcessos').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar acessos</p></div>'; });
+    .catch(() => {
+        document.getElementById('listaAcessos').innerHTML =
+            '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar acessos</p></div>';
+    });
 }
 
 function gerarQRCode(id) {
@@ -1622,7 +1898,7 @@ function carregarDependentes() {
     .then(r => r.json())
     .then(data => {
         const container = document.getElementById('listaDependentes');
-        if (!data.sucesso || !data.dados.length) {
+        if (!data.sucesso || !data.dados || !data.dados.length) {
             container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Nenhum dependente cadastrado</p></div>';
             return;
         }
@@ -1631,17 +1907,17 @@ function carregarDependentes() {
             const meta = [d.parentesco, d.data_nascimento, d.celular].filter(Boolean).join(' · ');
             html += `
             <div class="dep-card">
-                <div class="dep-avatar"><i class="fas fa-user"></i></div>
+                <div class="dep-avatar"><i class="fas fa-user" aria-hidden="true"></i></div>
                 <div class="dep-info">
-                    <div class="dep-name">${d.nome_completo}</div>
-                    <div class="dep-meta">${meta || '—'}</div>
+                    <div class="dep-name">${escHtml(d.nome_completo)}</div>
+                    <div class="dep-meta">${escHtml(meta) || '—'}</div>
                 </div>
                 <div class="dep-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarDep(${JSON.stringify(d).replace(/"/g,'&quot;')})" title="Editar">
-                        <i class="fas fa-edit"></i> Editar
+                    <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarDep(${JSON.stringify(d).replace(/"/g,'&quot;')})" aria-label="Editar ${escHtml(d.nome_completo)}">
+                        <i class="fas fa-edit" aria-hidden="true"></i> Editar
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="excluirDependente(${d.id})" title="Excluir">
-                        <i class="fas fa-trash"></i>
+                    <button class="btn btn-danger btn-sm" onclick="excluirDependente(${d.id})" aria-label="Excluir ${escHtml(d.nome_completo)}">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>`;
@@ -1699,26 +1975,24 @@ function excluirDependente(id) {
 }
 
 function abrirModalEditarDep(dep) {
-    document.getElementById('editDepId').value          = dep.id;
-    document.getElementById('editDepNome').value        = dep.nome_completo || '';
-    document.getElementById('editDepParentesco').value  = dep.parentesco || '';
-    document.getElementById('editDepEmail').value       = dep.email || '';
-    document.getElementById('editDepCelular').value     = dep.celular || '';
-    document.getElementById('editDepObs').value         = dep.observacao || '';
+    document.getElementById('editDepId').value         = dep.id;
+    document.getElementById('editDepNome').value       = dep.nome_completo || '';
+    document.getElementById('editDepParentesco').value = dep.parentesco    || '';
+    document.getElementById('editDepEmail').value      = dep.email         || '';
+    document.getElementById('editDepCelular').value    = dep.celular       || '';
+    document.getElementById('editDepObs').value        = dep.observacao    || '';
 
-    // Converter data para formato input date (yyyy-mm-dd)
     if (dep.data_nascimento) {
         const partes = dep.data_nascimento.split('/');
-        if (partes.length === 3) {
-            document.getElementById('editDepNascimento').value = `${partes[2]}-${partes[1]}-${partes[0]}`;
-        } else {
-            document.getElementById('editDepNascimento').value = dep.data_nascimento;
-        }
+        document.getElementById('editDepNascimento').value = partes.length === 3
+            ? `${partes[2]}-${partes[1]}-${partes[0]}`
+            : dep.data_nascimento;
     } else {
         document.getElementById('editDepNascimento').value = '';
     }
 
     document.getElementById('modalEditarDep').classList.add('show');
+    document.getElementById('editDepNome').focus();
 }
 
 function fecharModalDep() {
@@ -1758,9 +2032,13 @@ function salvarEdicaoDep(e) {
     });
 }
 
-// Fechar modal ao clicar fora
 document.getElementById('modalEditarDep').addEventListener('click', function(e) {
     if (e.target === this) fecharModalDep();
+});
+
+// Fechar modal com Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') fecharModalDep();
 });
 
 /* ──────────────────────────────────────────────────────────────────
@@ -1772,7 +2050,7 @@ function filtrarProtocolos(filtro) {
     filtroProtocolo = filtro;
     document.querySelectorAll('.btn-filtro').forEach(b => b.classList.remove('active'));
     const ids = { '': 'filtroTodos', 'pendente': 'filtroPendente', 'entregue': 'filtroEntregue' };
-    const el = document.getElementById(ids[filtro]);
+    const el  = document.getElementById(ids[filtro]);
     if (el) el.classList.add('active');
     carregarProtocolos(filtro);
 }
@@ -1783,60 +2061,60 @@ function carregarProtocolos(filtro = '') {
     .then(r => r.json())
     .then(data => {
         const container = document.getElementById('listaProtocolos');
-        if (!data.sucesso || !data.dados.length) {
+        if (!data.sucesso || !data.dados || !data.dados.length) {
             container.innerHTML = '<div class="empty-state"><i class="fas fa-box"></i><p>Nenhum protocolo encontrado</p></div>';
             return;
         }
         let html = '';
         data.dados.forEach(p => {
             const statusBadge = p.status === 'entregue'
-                ? '<span class="badge badge-success"><i class="fas fa-check"></i> Entregue</span>'
-                : '<span class="badge badge-warning"><i class="fas fa-clock"></i> Pendente</span>';
+                ? '<span class="badge badge-success"><i class="fas fa-check" aria-hidden="true"></i> Entregue</span>'
+                : '<span class="badge badge-warning"><i class="fas fa-clock" aria-hidden="true"></i> Pendente</span>';
 
             html += `
             <div class="protocolo-card">
                 <div class="protocolo-header">
                     <div>
-                        <strong>${p.tipo_encomenda || 'Encomenda'}</strong>
-                        ${p.remetente ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:.2rem;">De: ${p.remetente}</div>` : ''}
+                        <strong>${escHtml(p.tipo_encomenda || 'Encomenda')}</strong>
+                        ${p.remetente ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:.2rem;">De: ${escHtml(p.remetente)}</div>` : ''}
                     </div>
                     ${statusBadge}
                 </div>
                 <div class="protocolo-info-row">
-                    <i class="fas fa-calendar"></i>
+                    <i class="fas fa-calendar" aria-hidden="true"></i>
                     <div>
                         <div class="protocolo-info-label">Recebido em</div>
-                        <div class="protocolo-info-value">${p.data_hora_recebimento || '—'}</div>
+                        <div class="protocolo-info-value">${escHtml(p.data_hora_recebimento || '—')}</div>
                     </div>
                 </div>
                 <div class="protocolo-info-row">
-                    <i class="fas fa-user"></i>
+                    <i class="fas fa-user" aria-hidden="true"></i>
                     <div>
                         <div class="protocolo-info-label">Recebido por (Portaria)</div>
-                        <div class="protocolo-info-value">${p.recebedor_portaria || 'Não informado'}</div>
+                        <div class="protocolo-info-value">${escHtml(p.recebedor_portaria || 'Não informado')}</div>
                     </div>
                 </div>
                 ${p.codigo_nf ? `
                 <div class="protocolo-info-row">
-                    <i class="fas fa-barcode"></i>
+                    <i class="fas fa-barcode" aria-hidden="true"></i>
                     <div>
                         <div class="protocolo-info-label">Código NF</div>
-                        <div class="protocolo-info-value">${p.codigo_nf}</div>
+                        <div class="protocolo-info-value">${escHtml(p.codigo_nf)}</div>
                     </div>
                 </div>` : ''}
                 ${p.status === 'entregue' ? `
                 <div class="protocolo-info-row">
-                    <i class="fas fa-check-circle" style="color:var(--success)"></i>
+                    <i class="fas fa-check-circle" style="color:var(--success)" aria-hidden="true"></i>
                     <div>
                         <div class="protocolo-info-label">Entregue em</div>
-                        <div class="protocolo-info-value">${p.data_hora_entrega || '—'}</div>
+                        <div class="protocolo-info-value">${escHtml(p.data_hora_entrega || '—')}</div>
                     </div>
                 </div>
                 <div class="protocolo-info-row">
-                    <i class="fas fa-user-check" style="color:var(--success)"></i>
+                    <i class="fas fa-user-check" style="color:var(--success)" aria-hidden="true"></i>
                     <div>
                         <div class="protocolo-info-label">Recebido por (Morador)</div>
-                        <div class="protocolo-info-value">${p.nome_recebedor_morador || 'Não informado'}</div>
+                        <div class="protocolo-info-value">${escHtml(p.nome_recebedor_morador || 'Não informado')}</div>
                     </div>
                 </div>` : ''}
             </div>`;
@@ -1860,7 +2138,7 @@ function carregarHidrometro() {
     .then(data => {
         if (!data.sucesso) {
             document.getElementById('dadosHidrometro').innerHTML =
-                `<div class="empty-state"><i class="fas fa-tint"></i><p>${data.mensagem}</p></div>`;
+                `<div class="empty-state"><i class="fas fa-tint"></i><p>${escHtml(data.mensagem)}</p></div>`;
             document.getElementById('historicoLeituras').innerHTML = '';
             return;
         }
@@ -1870,15 +2148,15 @@ function carregarHidrometro() {
 
         // ── Dados do hidrômetro ──
         if (hidrometros.length > 0) {
-            const h = hidrometros[0]; // hidrômetro ativo
+            const h = hidrometros[0];
             let html = `
             <div class="hidro-stats">
                 <div class="hidro-stat">
-                    <div class="hidro-stat-value">${h.numero_hidrometro || '—'}</div>
+                    <div class="hidro-stat-value">${escHtml(h.numero_hidrometro || '—')}</div>
                     <div class="hidro-stat-label">Número do Hidrômetro</div>
                 </div>
                 <div class="hidro-stat">
-                    <div class="hidro-stat-value">${h.numero_lacre || '—'}</div>
+                    <div class="hidro-stat-value">${escHtml(h.numero_lacre || '—')}</div>
                     <div class="hidro-stat-label">Número do Lacre</div>
                 </div>
                 <div class="hidro-stat">
@@ -1892,7 +2170,7 @@ function carregarHidrometro() {
             </div>`;
 
             if (hidrometros.length > 1) {
-                html += `<div class="alert alert-info show"><i class="fas fa-info-circle"></i>
+                html += `<div class="alert alert-info show"><i class="fas fa-info-circle" aria-hidden="true"></i>
                     <span>Você possui <strong>${hidrometros.length - 1}</strong> hidrômetro(s) anterior(es) com leituras registradas.</span></div>`;
             }
             document.getElementById('dadosHidrometro').innerHTML = html;
@@ -1903,13 +2181,18 @@ function carregarHidrometro() {
 
         // ── Histórico de leituras ──
         if (leituras.length > 0) {
-            let html = '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Hidrômetro</th><th>Leit. Anterior (m³)</th><th>Leit. Atual (m³)</th><th>Consumo (m³)</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
+            const fmt    = v => parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const fmtBRL = v => parseFloat(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            let html = '<div class="table-wrap"><table><thead><tr>'
+                + '<th>Data</th><th>Hidrômetro</th><th>Leit. Ant. (m³)</th><th>Leit. Atual (m³)</th>'
+                + '<th>Consumo (m³)</th><th>Valor</th><th>Status</th>'
+                + '</tr></thead><tbody>';
+
             leituras.forEach(l => {
-                const fmt = (v) => parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                const fmtBRL = (v) => parseFloat(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 html += `<tr>
-                    <td><strong>${l.data_leitura}</strong></td>
-                    <td>${l.numero_hidrometro}<br><small style="color:var(--text-muted)">Lacre: ${l.numero_lacre || 'N/A'}</small></td>
+                    <td><strong>${escHtml(l.data_leitura)}</strong></td>
+                    <td>${escHtml(l.numero_hidrometro)}<br><small style="color:var(--text-muted)">Lacre: ${escHtml(l.numero_lacre || 'N/A')}</small></td>
                     <td>${fmt(l.leitura_anterior)}</td>
                     <td>${fmt(l.leitura_atual)}</td>
                     <td><strong>${fmt(l.consumo)}</strong></td>
@@ -1929,6 +2212,19 @@ function carregarHidrometro() {
         document.getElementById('dadosHidrometro').innerHTML =
             '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar dados do hidrômetro</p></div>';
     });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   UTILITÁRIOS
+   ────────────────────────────────────────────────────────────────── */
+function escHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 </script>
 </body>
