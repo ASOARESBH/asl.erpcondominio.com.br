@@ -1,4 +1,5 @@
-ï»¿<!DOCTYPE html>
+ï»¿
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -481,7 +482,10 @@
             }
         }
     </style>
-    <!-- ââ¦ FASE 3: Session Manager Core v2.0 (Novo Singleton) -->
+    <!-- FASE 2: CSS do Web Component -->
+    <link rel="stylesheet" href="components/user-menu/user-menu.css">
+
+    <!-- FASE 3: Session Manager Core v2.0 (Novo Singleton) -->
     <script src="js/session-manager-core.js"></script>
 </head>
 
@@ -502,34 +506,38 @@
                     Dashboard</a></li>
             <li class="nav-item"><a href="moradores.html" class="nav-link"><i class="fas fa-users"></i> Moradores</a>
             </li>
-            <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i> Ve­culos</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=visitantes" class="nav-link"><i class="fas fa-user-friends"></i>
+            <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i>
+                    Ve­culos</a></li>
+            <li class="nav-item"><a href="layout-base.html?page=visitantes" class="nav-link"><i
+                        class="fas fa-user-friends"></i>
                     Visitantes</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i class="fas fa-clipboard-list"></i> Registro
+            <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i
+                        class="fas fa-clipboard-list"></i> Registro
                     Manual</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i class="fas fa-door-open"></i> Controle de
+            <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i
+                        class="fas fa-door-open"></i> Controle de
                     Acesso</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i>
+            <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i
+                        class="fas fa-file-alt"></i>
                     Relat³rios</a></li>
             <li class="nav-item"><a href="financeiro.html" class="nav-link"><i class="fas fa-money-bill-wave"></i>
                     Financeiro</a></li>
             <li class="nav-item"><a href="configuracao.html" class="nav-link"><i class="fas fa-cog"></i>
                     Configura§µes</a></li>
-            <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i> Manuten§£o</a>
+            <li class="nav-item"><a href="manutencao.html" class="nav-link"><i class="fas fa-tools"></i>
+                    Manuten§£o</a>
             </li>
             <li class="nav-item"><a href="administrativa.html" class="nav-link"><i class="fas fa-briefcase"></i>
                     Administrativo</a></li>
-            
+
             <!-- Bot£o de Sair / Logout -->
-            <li class="nav-item" style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
-                <a href="#" 
-                   class="nav-link nav-link-logout" 
-                   id="btn-logout" 
-                   title="Sair do sistema"
-                   style="background: rgba(239, 68, 68, 0.1); color: #fca5a5; transition: all 0.3s ease;" 
-                   onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'"
-                   onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
-                    <i class="fas fa-sign-out-alt"></i> 
+            <li class="nav-item"
+                style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                <a href="#" class="nav-link nav-link-logout" id="btn-logout" title="Sair do sistema"
+                    style="background: rgba(239, 68, 68, 0.1); color: #fca5a5; transition: all 0.3s ease;"
+                    onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'"
+                    onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">
+                    <i class="fas fa-sign-out-alt"></i>
                     <span>Sair</span>
                 </a>
             </li>
@@ -542,13 +550,7 @@
     <main class="main-content">
         <header class="header">
             <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
-            <div class="user-mini-profile">
-                <div class="user-info-mini">
-                    <span class="header-user-name">Carregando...</span>
-                </div>
-                <div class="user-avatar">A</div>
-            </div>
-
+            <app-user-menu></app-user-menu>
         </header>
 
         <div class="welcome">
@@ -904,7 +906,7 @@
 
     <!-- Prote§£o de Login -->
     <script src="js/auth-guard.js"></script>
-    <script src="js/user-display.js"></script>
+    <script src="components/user-menu/user-menu.js" defer></script>
 
     <!-- Script para exibir usu¡rio logado em tempo real -->
     <script>
@@ -1159,14 +1161,9 @@
     <script src="js/session-manager-init.js"></script>
     <!-- Menu Controller (Single Source of Truth) -->
     <script src="js/menu-controller.js"></script>
-    
+
     <!-- Legacy Bridge v2 (Compatibilidade) -->
     <script src="js/legacy-sidebar-bridge-v2.js"></script>
 </body>
 
 </html>
-
-
-
-
-

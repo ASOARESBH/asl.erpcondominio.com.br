@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="../assets/css/app.css">
     <!-- Tema Azul (FASE 2) -->
     <link rel="stylesheet" href="../assets/css/themes/theme-blue.css">
+
+    <!-- FASE 2: CSS do Web Component -->
+    <link rel="stylesheet" href="components/user-menu/user-menu.css">
     <style>
         * {
             box-sizing: border-box;
@@ -248,12 +251,7 @@
         <main class="main-content">
             <header class="header">
                 <h1><i class="fas fa-tools"></i> Manutenção</h1>
-                <div class="user-mini-profile">
-                    <div class="user-info-mini">
-                        <span class="header-user-name">Carregando...</span>
-                    </div>
-                    <div class="user-avatar">A</div>
-                </div>
+                <app-user-menu></app-user-menu>
             </header>
 
             <nav class="submenu">
@@ -335,7 +333,7 @@
     </div>
 
     <!-- Standard Scripts -->
-    <script src="js/user-display.js"></script>
+    <script src="components/user-menu/user-menu.js" defer></script>
     <script src="js/user-profile-sidebar.js"></script>
     <script src="js/menu-controller.js"></script>
     <script src="js/sidebar-controller.js"></script>

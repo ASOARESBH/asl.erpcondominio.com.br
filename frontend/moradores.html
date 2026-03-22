@@ -1,4 +1,5 @@
-ï»¿<!DOCTYPE html>
+ï»¿
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -10,6 +11,9 @@
     <link rel="stylesheet" href="../assets/css/app.css">
     <!-- Tema Azul (FASE 2) -->
     <link rel="stylesheet" href="../assets/css/themes/theme-blue.css">
+
+    <!-- FASE 2: CSS do Web Component -->
+    <link rel="stylesheet" href="components/user-menu/user-menu.css">
     <style>
         * {
             box-sizing: border-box;
@@ -419,14 +423,19 @@
                     Dashboard</a></li>
             <li class="nav-item"><a href="moradores.html" class="nav-link active"><i class="fas fa-users"></i>
                     Moradores</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i> Veículos</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=visitantes" class="nav-link"><i class="fas fa-user-friends"></i>
+            <li class="nav-item"><a href="layout-base.html?page=veiculos" class="nav-link"><i class="fas fa-car"></i>
+                    Veículos</a></li>
+            <li class="nav-item"><a href="layout-base.html?page=visitantes" class="nav-link"><i
+                        class="fas fa-user-friends"></i>
                     Visitantes</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i class="fas fa-clipboard-list"></i> Registro
+            <li class="nav-item"><a href="layout-base.html?page=registro" class="nav-link"><i
+                        class="fas fa-clipboard-list"></i> Registro
                     Manual</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i class="fas fa-door-open"></i> Controle de
+            <li class="nav-item"><a href="layout-base.html?page=acesso" class="nav-link"><i
+                        class="fas fa-door-open"></i> Controle de
                     Acesso</a></li>
-            <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i class="fas fa-file-alt"></i>
+            <li class="nav-item"><a href="layout-base.html?page=relatorios" class="nav-link"><i
+                        class="fas fa-file-alt"></i>
                     Relatórios</a></li>
             <li class="nav-item"><a href="financeiro.html" class="nav-link"><i class="fas fa-money-bill-wave"></i>
                     Financeiro</a></li>
@@ -438,7 +447,7 @@
                     Administrativo</a></li>
 
             <li class="nav-item" style="margin-top: 1rem;">
-                <a href="#" class="nav-link" id="btn-logout" style="color: #fca5a5;" >
+                <a href="#" class="nav-link" id="btn-logout" style="color: #fca5a5;">
                     <i class="fas fa-sign-out-alt"></i> Sair
                 </a>
             </li>
@@ -450,12 +459,7 @@
     <main class="main-content">
         <header class="header">
             <h1><i class="fas fa-users"></i> Moradores</h1>
-            <div class="user-mini-profile">
-                <div class="user-info-mini">
-                    <span class="header-user-name">Carregando...</span>
-                </div>
-                <div class="user-avatar">A</div>
-            </div>
+            <app-user-menu></app-user-menu>
         </header>
 
         <div id="alertBox"></div>
@@ -1285,18 +1289,13 @@
 
     <!-- Proteção de Login -->
     <script src="js/auth-guard.js"></script>
-    <script src="js/user-display.js"></script>
+    <script src="components/user-menu/user-menu.js" defer></script>
     <script src="js/user-profile-sidebar.js"></script>
     <!-- Menu Controller (Single Source of Truth) -->
     <script src="js/menu-controller.js"></script>
-    
+
     <!-- Legacy Bridge v2 (Compatibilidade) -->
     <script src="js/legacy-sidebar-bridge-v2.js"></script>
 </body>
 
 </html>
-
-
-
-
-

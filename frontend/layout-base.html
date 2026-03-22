@@ -10,6 +10,7 @@
     <!-- Design System CSS -->
     <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="/assets/css/themes/theme-blue.css">
+    <link rel="stylesheet" href="components/user-menu/user-menu.css">
 
 </head>
 
@@ -32,12 +33,7 @@
         <main class="main-content">
             <header class="header">
                 <h1 id="pageTitle"><i class="fas fa-circle"></i> Carregando...</h1>
-                <div class="user-mini-profile">
-                    <div class="user-info-mini">
-                        <span class="header-user-name">Carregando...</span>
-                    </div>
-                    <div class="user-avatar">A</div>
-                </div>
+                <app-user-menu></app-user-menu>
             </header>
 
             <!-- Dynamic Content Container -->
@@ -50,7 +46,7 @@
         </main>
 
         <!-- Base Scripts (Body End) -->
-        <script src="js/user-display.js"></script>
+        <script src="components/user-menu/user-menu.js" defer></script>
         <script src="js/user-profile-sidebar.js"></script>
         <script src="js/sidebar-controller.js"></script>
 
@@ -108,10 +104,10 @@
             </div>
         </div>
         <!-- Menu Controller (Single Source of Truth) -->
-    <script src="js/menu-controller.js"></script>
-    
-    <!-- Legacy Bridge v2 (Compatibilidade) -->
-    <script src="js/legacy-sidebar-bridge-v2.js"></script>
-</body>
+        <script src="js/menu-controller.js"></script>
+
+        <!-- Legacy Bridge v2 (Compatibilidade) -->
+        <script src="js/legacy-sidebar-bridge-v2.js"></script>
+    </body>
 
 </html>
