@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal do Morador</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* ============================================================
+           RESET & BASE
+           ============================================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary:        #2563eb;
+            --primary-dark:   #1e40af;
+            --primary-light:  #eff6ff;
+            --success:        #22c55e;
+            --success-bg:     #dcfce7;
+            --success-text:   #166534;
+            --danger:         #ef4444;
+            --danger-bg:      #fee2e2;
+            --danger-text:    #991b1b;
+            --warning:        #f59e0b;
+            --warning-bg:     #fef3c7;
+            --warning-text:   #92400e;
+            --info-bg:        #dbeafe;
+            --info-text:      #1e40af;
+            --text-primary:   #1e293b;
+            --text-secondary: #475569;
+            --text-muted:     #94a3b8;
+            --bg-page:        #f1f5f9;
+            --bg-card:        #ffffff;
+            --bg-subtle:      #f8fafc;
+            --border:         #e2e8f0;
+            --radius-sm:      6px;
+            --radius-md:      10px;
+            --radius-lg:      14px;
+            --shadow-sm:      0 1px 3px rgba(0,0,0,.06);
+            --shadow-md:      0 4px 12px rgba(0,0,0,.08);
+            --shadow-lg:      0 10px 30px rgba(0,0,0,.12);
+            --header-h:       64px;
+            --nav-h:          56px;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ============================================================
+           LOADING SCREEN
+           ============================================================ */
+        #loadingScreen {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 9999;
+            transition: opacity .4s ease;
+        }
+        #loadingScreen.hide { opacity: 0; pointer-events: none; }
+        .loading-spinner {
+            width: 52px; height: 52px;
+            border: 4px solid rgba(255,255,255,.25);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .9s linear infinite;
+        }
+        .loading-text { color: #fff; margin-top: 1.2rem; font-size: 1rem; font-weight: 500; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ============================================================
+           HEADER
+           ============================================================ */
+        #mainHeader {
+            position: sticky; top: 0; z-index: 100;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            height: var(--header-h);
+            box-shadow: 0 2px 12px rgba(37,99,235,.35);
+            display: none;
+        }
+        .header-inner {
+            max-width: 1200px; margin: 0 auto;
+            padding: 0 1.5rem;
+            height: 100%;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        }
+        .header-brand { display: flex; align-items: center; gap: .75rem; }
+        .header-brand-icon {
+            width: 38px; height: 38px;
+            background: rgba(255,255,255,.2);
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: #fff;
+        }
+        .header-brand-text { color: #fff; }
+        .header-brand-text h1 { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+        .header-brand-text span { font-size: .78rem; opacity: .8; }
+        .header-user { display: flex; align-items: center; gap: .75rem; }
+        .header-user-name {
+            color: rgba(255,255,255,.9);
+            font-size: .88rem; font-weight: 500;
+            display: flex; align-items: center; gap: .4rem;
+        }
+        .header-user-name i { opacity: .7; }
+        .btn-logout {
+            background: rgba(255,255,255,.18);
+            border: 1px solid rgba(255,255,255,.3);
+            color: #fff;
+            padding: .45rem .9rem;
+            border-radius: var(--radius-md);
+            font-size: .85rem; font-weight: 600;
+            cursor: pointer;
+            display: flex; align-items: center; gap: .4rem;
+            transition: background .2s;
+            white-space: nowrap;
+        }
+        .btn-logout:hover { background: rgba(255,255,255,.28); }
+
+        /* ============================================================
+           NAVIGATION TABS (sticky below header)
+           ============================================================ */
+        #mainNav {
+            position: sticky; top: var(--header-h); z-index: 90;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            display: none;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        #mainNav::-webkit-scrollbar { display: none; }
+        .nav-inner {
+            max-width: 1200px; margin: 0 auto;
+            padding: 0 1rem;
+            display: flex; gap: .25rem;
+            min-width: max-content;
+        }
+        .nav-tab {
+            padding: .85rem 1.1rem;
+            border: none; background: transparent;
+            color: var(--text-secondary);
+            font-size: .88rem; font-weight: 600;
+            cursor: pointer;
+            display: flex; align-items: center; gap: .45rem;
+            border-bottom: 3px solid transparent;
+            transition: all .2s;
+            white-space: nowrap;
+        }
+        .nav-tab:hover { color: var(--primary); background: var(--primary-light); }
+        .nav-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .nav-tab .badge-count {
+            background: var(--primary); color: #fff;
+            font-size: .7rem; padding: .1rem .4rem;
+            border-radius: 10px; font-weight: 700;
+        }
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        #mainContent {
+            max-width: 1200px; margin: 0 auto;
+            padding: 1.5rem 1.5rem 3rem;
+            display: none;
+        }
+
+        /* ============================================================
+           ALERT CONTAINER
+           ============================================================ */
+        #alertContainer { margin-bottom: 1rem; }
+        .alert {
+            padding: .9rem 1.1rem;
+            border-radius: var(--radius-md);
+            font-size: .9rem;
+            display: none;
+            align-items: center; gap: .6rem;
+            animation: slideDown .3s ease-out;
+        }
+        .alert.show { display: flex; }
+        .alert-error  { background: var(--danger-bg);  color: var(--danger-text);  border-left: 4px solid var(--danger); }
+        .alert-success{ background: var(--success-bg); color: var(--success-text); border-left: 4px solid var(--success); }
+        .alert-info   { background: var(--info-bg);    color: var(--info-text);    border-left: 4px solid var(--primary); }
+        .alert-warning{ background: var(--warning-bg); color: var(--warning-text); border-left: 4px solid var(--warning); }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================================
+           TAB PANELS
+           ============================================================ */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ============================================================
+           CARD
+           ============================================================ */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            padding: 1.75rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
+        }
+        .card-header {
+            display: flex; align-items: center; gap: .75rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-header-icon {
+            width: 40px; height: 40px;
+            background: var(--primary-light);
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--primary); font-size: 1.1rem;
+        }
+        .card-header h2 {
+            font-size: 1.1rem; font-weight: 700;
+            color: var(--text-primary);
+        }
+        .card-header p {
+            font-size: .82rem; color: var(--text-muted);
+            margin-top: .1rem;
+        }
+
+        /* ============================================================
+           INFO GRID (dados do perfil)
+           ============================================================ */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        .info-item {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+        .info-label {
+            font-size: .78rem; color: var(--text-muted);
+            font-weight: 600; text-transform: uppercase;
+            letter-spacing: .04em; margin-bottom: .3rem;
+        }
+        .info-value { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+
+        /* ============================================================
+           FORM
+           ============================================================ */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .form-grid-3 {
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        }
+        .form-group { margin-bottom: 1.1rem; }
+        .form-group label {
+            display: block;
+            font-size: .88rem; font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: .4rem;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: .75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: .93rem;
+            color: var(--text-primary);
+            background: var(--bg-card);
+            transition: border-color .2s, box-shadow .2s;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        /* ============================================================
+           BUTTONS
+           ============================================================ */
+        .btn {
+            display: inline-flex; align-items: center; gap: .45rem;
+            padding: .7rem 1.3rem;
+            border: none; border-radius: var(--radius-md);
+            font-size: .9rem; font-weight: 600;
+            cursor: pointer; transition: all .2s;
+            font-family: inherit;
+        }
+        .btn:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: #fff;
+        }
+        .btn-primary:not(:disabled):hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37,99,235,.35);
+        }
+        .btn-danger  { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; }
+        .btn-danger:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(239,68,68,.3); }
+        .btn-secondary { background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-secondary); }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-sm { padding: .4rem .75rem; font-size: .82rem; }
+        .btn-full { width: 100%; justify-content: center; }
+
+        /* ============================================================
+           TABLE
+           ============================================================ */
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+        thead th {
+            background: var(--bg-subtle);
+            color: var(--text-secondary);
+            font-weight: 700; font-size: .8rem;
+            text-transform: uppercase; letter-spacing: .04em;
+            padding: .75rem 1rem;
+            text-align: left;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+        tbody td {
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: var(--bg-subtle); }
+
+        /* ============================================================
+           BADGE
+           ============================================================ */
+        .badge {
+            display: inline-flex; align-items: center; gap: .3rem;
+            padding: .25rem .65rem;
+            border-radius: 20px;
+            font-size: .78rem; font-weight: 600;
+        }
+        .badge-success  { background: var(--success-bg);  color: var(--success-text); }
+        .badge-danger   { background: var(--danger-bg);   color: var(--danger-text); }
+        .badge-warning  { background: var(--warning-bg);  color: var(--warning-text); }
+        .badge-primary  { background: var(--primary-light); color: var(--primary); }
+        .badge-secondary{ background: #f1f5f9; color: #64748b; }
+
+        /* ============================================================
+           EMPTY STATE
+           ============================================================ */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 1rem; display: block; opacity: .5; }
+        .empty-state p { font-size: .95rem; }
+
+        /* ============================================================
+           SECTION DIVIDER
+           ============================================================ */
+        .section-title {
+            font-size: .9rem; font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: .05em;
+            margin: 1.5rem 0 .75rem;
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .section-title::after {
+            content: ''; flex: 1;
+            height: 1px; background: var(--border);
+        }
+
+        /* ============================================================
+           ACESSO TIPO SELECTOR
+           ============================================================ */
+        .tipo-acesso-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: .75rem;
+        }
+        .tipo-acesso-label {
+            border: 2px solid var(--border);
+            padding: 1rem .75rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: center;
+            transition: all .2s;
+        }
+        .tipo-acesso-label.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+        .tipo-acesso-label input { display: none; }
+        .tipo-acesso-label i { font-size: 1.6rem; display: block; margin-bottom: .4rem; }
+        .tipo-acesso-label span { font-size: .85rem; font-weight: 600; color: var(--text-secondary); }
+
+        /* ============================================================
+           DIAS COUNTER
+           ============================================================ */
+        .dias-counter {
+            display: none;
+            text-align: center;
+            padding: 1rem;
+            background: var(--primary-light);
+            border-radius: var(--radius-md);
+            margin: .75rem 0;
+        }
+        .dias-counter-num { font-size: 2rem; font-weight: 800; color: var(--primary); }
+        .dias-counter-label { font-size: .82rem; color: var(--text-secondary); }
+
+        /* ============================================================
+           PROTOCOLO CARD
+           ============================================================ */
+        .protocolo-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: .75rem;
+            transition: box-shadow .2s;
+        }
+        .protocolo-card:hover { box-shadow: var(--shadow-md); }
+        .protocolo-header {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: .75rem; flex-wrap: wrap;
+        }
+        .protocolo-info-row {
+            display: flex; align-items: flex-start; gap: .5rem;
+            margin-top: .6rem;
+        }
+        .protocolo-info-row i { color: var(--primary); width: 18px; flex-shrink: 0; margin-top: 2px; }
+        .protocolo-info-label { font-size: .78rem; color: var(--text-muted); }
+        .protocolo-info-value { font-size: .9rem; font-weight: 500; }
+
+        /* ============================================================
+           FILTRO BUTTONS
+           ============================================================ */
+        .filtro-bar { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .btn-filtro {
+            padding: .45rem .9rem;
+            border: 2px solid var(--border);
+            border-radius: 20px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: .83rem; font-weight: 600;
+            cursor: pointer; transition: all .2s;
+            display: flex; align-items: center; gap: .35rem;
+        }
+        .btn-filtro:hover { border-color: var(--primary); color: var(--primary); }
+        .btn-filtro.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+        /* ============================================================
+           HIDROMETRO STATS
+           ============================================================ */
+        .hidro-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .hidro-stat {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.1rem;
+            text-align: center;
+        }
+        .hidro-stat-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+        .hidro-stat-label { font-size: .78rem; color: var(--text-muted); margin-top: .2rem; }
+
+        /* ============================================================
+           DEPENDENTE CARD
+           ============================================================ */
+        .dep-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 1rem; flex-wrap: wrap;
+            margin-bottom: .6rem;
+            transition: box-shadow .2s;
+        }
+        .dep-card:hover { box-shadow: var(--shadow-sm); }
+        .dep-avatar {
+            width: 44px; height: 44px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; color: var(--primary);
+            flex-shrink: 0;
+        }
+        .dep-info { flex: 1; min-width: 0; }
+        .dep-name { font-weight: 700; font-size: .95rem; }
+        .dep-meta { font-size: .8rem; color: var(--text-muted); margin-top: .15rem; }
+        .dep-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+
+        /* ============================================================
+           MODAL
+           ============================================================ */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.55);
+            z-index: 1000;
+            display: none; align-items: center; justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            width: 100%; max-width: 480px;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn .25s ease-out;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(.95); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        .modal-header h3 { font-size: 1.1rem; font-weight: 700; }
+        .modal-close {
+            background: none; border: none;
+            font-size: 1.2rem; cursor: pointer;
+            color: var(--text-muted); padding: .25rem;
+            border-radius: var(--radius-sm);
+        }
+        .modal-close:hover { color: var(--danger); background: var(--danger-bg); }
+        .modal-footer { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+        /* ============================================================
+           SPINNER INLINE
+           ============================================================ */
+        .spinner-inline {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 768px) {
+            :root { --header-h: 56px; }
+            .header-brand-text span { display: none; }
+            .header-user-name { display: none; }
+            #mainContent { padding: 1rem 1rem 2rem; }
+            .card { padding: 1.25rem; }
+            .info-grid { grid-template-columns: 1fr 1fr; }
+            .tipo-acesso-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .card { padding: 1rem; }
+            .info-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-grid-3 { grid-template-columns: 1fr; }
+            .tipo-acesso-grid { grid-template-columns: 1fr; }
+            .hidro-stats { grid-template-columns: 1fr 1fr; }
+            .dep-card { flex-direction: column; align-items: flex-start; }
+            .dep-actions { width: 100%; }
+            .dep-actions .btn { flex: 1; justify-content: center; }
+            table { font-size: .8rem; }
+            thead th, tbody td { padding: .6rem .75rem; }
+            .btn { padding: .65rem 1rem; }
+        }
+        @media (max-width: 360px) {
+            .hidro-stats { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ================================================================
+     LOADING SCREEN
+     ================================================================ -->
+<div id="loadingScreen">
+    <div class="loading-spinner"></div>
+    <p class="loading-text" id="loadingText">Verificando sessão...</p>
+</div>
+
+<!-- ================================================================
+     HEADER
+     ================================================================ -->
+<header id="mainHeader">
+    <div class="header-inner">
+        <div class="header-brand">
+            <div class="header-brand-icon"><i class="fas fa-home"></i></div>
+            <div class="header-brand-text">
+                <h1>Portal do Morador</h1>
+                <span id="headerUnidade">Carregando...</span>
+            </div>
+        </div>
+        <div class="header-user">
+            <span class="header-user-name">
+                <i class="fas fa-user-circle"></i>
+                <span id="headerNome">Carregando...</span>
+            </span>
+            <button class="btn-logout" onclick="fazerLogout()">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </button>
+        </div>
+    </div>
+</header>
+
+<!-- ================================================================
+     NAVIGATION TABS
+     ================================================================ -->
+<nav id="mainNav">
+    <div class="nav-inner">
+        <button class="nav-tab active" onclick="abrirAba('perfil', this)">
+            <i class="fas fa-user"></i> Meu Perfil
+        </button>
+        <button class="nav-tab" onclick="abrirAba('visitantes', this)">
+            <i class="fas fa-users"></i> Visitantes
+        </button>
+        <button class="nav-tab" onclick="abrirAba('acessos', this)">
+            <i class="fas fa-qrcode"></i> Acessos
+        </button>
+        <button class="nav-tab" onclick="abrirAba('dependentes', this)">
+            <i class="fas fa-people-arrows"></i> Dependentes
+        </button>
+        <button class="nav-tab" onclick="abrirAba('protocolos', this)">
+            <i class="fas fa-box"></i> Protocolos
+        </button>
+        <button class="nav-tab" onclick="abrirAba('hidrometro', this)">
+            <i class="fas fa-tint"></i> Hidrômetro
+        </button>
+    </div>
+</nav>
+
+<!-- ================================================================
+     MAIN CONTENT
+     ================================================================ -->
+<main id="mainContent">
+    <div id="alertContainer"></div>
+
+    <!-- ============================================================
+         ABA: PERFIL
+         ============================================================ -->
+    <div id="panel-perfil" class="tab-panel active">
+
+        <!-- Dados pessoais -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-id-card"></i></div>
+                <div>
+                    <h2>Meus Dados</h2>
+                    <p>Informações cadastrais da sua unidade</p>
+                </div>
+            </div>
+            <div class="info-grid" id="perfilInfoGrid">
+                <div class="info-item">
+                    <div class="info-label">Nome Completo</div>
+                    <div class="info-value" id="perfilNome">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">CPF</div>
+                    <div class="info-value" id="perfilCpf">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Unidade</div>
+                    <div class="info-value" id="perfilUnidade">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">E-mail</div>
+                    <div class="info-value" id="perfilEmail">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Atualizar telefones -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-phone"></i></div>
+                <div><h2>Atualizar Contatos</h2></div>
+            </div>
+            <form id="formTelefone" onsubmit="atualizarTelefone(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="telefone">Telefone Fixo</label>
+                        <input type="text" id="telefone" placeholder="(31) 3333-3333">
+                    </div>
+                    <div class="form-group">
+                        <label for="celular">Celular / WhatsApp</label>
+                        <input type="text" id="celular" placeholder="(31) 99999-9999">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnSalvarTelefone">
+                    <i class="fas fa-save"></i> Salvar Contatos
+                </button>
+            </form>
+        </div>
+
+        <!-- Alterar senha -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-lock"></i></div>
+                <div>
+                    <h2>Alterar Senha</h2>
+                    <p>Mínimo de 6 caracteres</p>
+                </div>
+            </div>
+            <form id="formSenha" onsubmit="alterarSenha(event)">
+                <div class="form-group">
+                    <label for="senhaAtual">Senha Atual *</label>
+                    <input type="password" id="senhaAtual" required autocomplete="current-password">
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="senhaNova">Nova Senha *</label>
+                        <input type="password" id="senhaNova" required minlength="6" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="senhaConfirmar">Confirmar Nova Senha *</label>
+                        <input type="password" id="senhaConfirmar" required minlength="6" autocomplete="new-password">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnAlterarSenha">
+                    <i class="fas fa-key"></i> Alterar Senha
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ABA: VISITANTES
+         ============================================================ -->
+    <div id="panel-visitantes" class="tab-panel">
+
+        <!-- Cadastrar visitante -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-user-plus"></i></div>
+                <div>
+                    <h2>Cadastrar Visitante</h2>
+                    <p>Adicione visitantes autorizados para sua unidade</p>
+                </div>
+            </div>
+            <form id="formVisitante" onsubmit="cadastrarVisitante(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="visitanteNome">Nome Completo *</label>
+                        <input type="text" id="visitanteNome" required placeholder="Nome do visitante">
+                    </div>
+                    <div class="form-group">
+                        <label for="visitanteTipoDoc">Tipo de Documento *</label>
+                        <select id="visitanteTipoDoc" required>
+                            <option value="">Selecione...</option>
+                            <option value="RG">RG</option>
+                            <option value="CPF">CPF</option>
+                            <option value="CNH">CNH</option>
+                            <option value="Passaporte">Passaporte</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="visitanteDoc">Número do Documento *</label>
+                        <input type="text" id="visitanteDoc" required placeholder="Ex: 12.345.678-9">
+                    </div>
+                    <div class="form-group">
+                        <label for="visitanteTelefone">Telefone</label>
+                        <input type="text" id="visitanteTelefone" placeholder="(31) 3333-3333">
+                    </div>
+                    <div class="form-group">
+                        <label for="visitanteCelular">Celular</label>
+                        <input type="text" id="visitanteCelular" placeholder="(31) 99999-9999">
+                    </div>
+                    <div class="form-group">
+                        <label for="visitanteEmail">E-mail</label>
+                        <input type="email" id="visitanteEmail" placeholder="email@exemplo.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="visitanteObs">Observação</label>
+                    <textarea id="visitanteObs" rows="2" placeholder="Informações adicionais..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnCadastrarVisitante">
+                    <i class="fas fa-user-plus"></i> Cadastrar Visitante
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de visitantes -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-list"></i></div>
+                <div>
+                    <h2>Meus Visitantes</h2>
+                    <p>Visitantes cadastrados para sua unidade</p>
+                </div>
+            </div>
+            <div id="listaVisitantes">
+                <div class="empty-state"><i class="fas fa-users"></i><p>Carregando visitantes...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ABA: ACESSOS
+         ============================================================ -->
+    <div id="panel-acessos" class="tab-panel">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-qrcode"></i></div>
+                <div>
+                    <h2>Gerar QR Code de Acesso</h2>
+                    <p>Autorize a entrada de visitantes cadastrados</p>
+                </div>
+            </div>
+            <div class="alert alert-info show" style="margin-bottom:1rem;">
+                <i class="fas fa-info-circle"></i>
+                <span>Um visitante pode ter apenas um acesso ativo por vez. Cadastre o visitante na aba <strong>Visitantes</strong> antes de gerar o acesso.</span>
+            </div>
+            <form id="formAcesso" onsubmit="salvarAcesso(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="acessoVisitante">Visitante *</label>
+                        <select id="acessoVisitante" required>
+                            <option value="">Selecione um visitante</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="acessoTipo">Tipo de Visitante *</label>
+                        <select id="acessoTipo" required>
+                            <option value="visitante">Visitante</option>
+                            <option value="prestador">Prestador de Serviço</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-title"><i class="fas fa-car"></i> Dados do Veículo</div>
+                <div class="form-grid form-grid-3">
+                    <div class="form-group">
+                        <label for="acessoPlaca">Placa</label>
+                        <input type="text" id="acessoPlaca" placeholder="ABC-1234" maxlength="8" style="text-transform:uppercase">
+                    </div>
+                    <div class="form-group">
+                        <label for="acessoModelo">Modelo</label>
+                        <input type="text" id="acessoModelo" placeholder="Ex: Gol">
+                    </div>
+                    <div class="form-group">
+                        <label for="acessoCor">Cor</label>
+                        <input type="text" id="acessoCor" placeholder="Ex: Preto">
+                    </div>
+                </div>
+
+                <div class="section-title"><i class="fas fa-calendar"></i> Período</div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="acessoDataInicial">Data Inicial *</label>
+                        <input type="date" id="acessoDataInicial" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="acessoDataFinal">Data Final *</label>
+                        <input type="date" id="acessoDataFinal" required>
+                    </div>
+                </div>
+
+                <div class="dias-counter" id="diasCounter">
+                    <div class="dias-counter-num" id="diasNum">0</div>
+                    <div class="dias-counter-label">dias de permanência</div>
+                </div>
+
+                <div class="section-title"><i class="fas fa-door-open"></i> Tipo de Acesso *</div>
+                <div class="tipo-acesso-grid">
+                    <label class="tipo-acesso-label" id="labelPortaria" onclick="selecionarTipoAcesso('portaria')">
+                        <input type="radio" name="acessoTipoAcesso" value="portaria" required>
+                        <i class="fas fa-door-open" style="color:var(--primary)"></i>
+                        <span>Portaria</span>
+                    </label>
+                    <label class="tipo-acesso-label" id="labelExterno" onclick="selecionarTipoAcesso('externo')">
+                        <input type="radio" name="acessoTipoAcesso" value="externo">
+                        <i class="fas fa-road" style="color:var(--warning)"></i>
+                        <span>Externo</span>
+                    </label>
+                    <label class="tipo-acesso-label" id="labelLagoa" onclick="selecionarTipoAcesso('lagoa')">
+                        <input type="radio" name="acessoTipoAcesso" value="lagoa">
+                        <i class="fas fa-water" style="color:var(--success)"></i>
+                        <span>Lagoa</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btnGerarQR" style="margin-top:1.5rem;">
+                    <i class="fas fa-qrcode"></i> Gerar QR Code
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de acessos -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-list-alt"></i></div>
+                <div>
+                    <h2>Meus Acessos</h2>
+                    <p>Acessos gerados para visitantes da sua unidade</p>
+                </div>
+            </div>
+            <div id="listaAcessos">
+                <div class="empty-state"><i class="fas fa-qrcode"></i><p>Carregando acessos...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ABA: DEPENDENTES
+         ============================================================ -->
+    <div id="panel-dependentes" class="tab-panel">
+
+        <!-- Cadastrar dependente -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-user-friends"></i></div>
+                <div>
+                    <h2>Cadastrar Dependente</h2>
+                    <p>Filhos, cônjuge e outros moradores da unidade</p>
+                </div>
+            </div>
+            <form id="formDependente" onsubmit="cadastrarDependente(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="depNome">Nome Completo *</label>
+                        <input type="text" id="depNome" required placeholder="Nome do dependente">
+                    </div>
+                    <div class="form-group">
+                        <label for="depParentesco">Parentesco</label>
+                        <select id="depParentesco">
+                            <option value="">Selecione...</option>
+                            <option value="Cônjuge">Cônjuge</option>
+                            <option value="Filho(a)">Filho(a)</option>
+                            <option value="Pai/Mãe">Pai / Mãe</option>
+                            <option value="Irmão(ã)">Irmão(ã)</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="depCpf">CPF</label>
+                        <input type="text" id="depCpf" placeholder="000.000.000-00" maxlength="14">
+                    </div>
+                    <div class="form-group">
+                        <label for="depNascimento">Data de Nascimento</label>
+                        <input type="date" id="depNascimento">
+                    </div>
+                    <div class="form-group">
+                        <label for="depEmail">E-mail</label>
+                        <input type="email" id="depEmail" placeholder="email@exemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="depCelular">Celular</label>
+                        <input type="text" id="depCelular" placeholder="(31) 99999-9999">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="depObs">Observação</label>
+                    <textarea id="depObs" rows="2" placeholder="Informações adicionais..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btnCadastrarDep">
+                    <i class="fas fa-user-plus"></i> Cadastrar Dependente
+                </button>
+            </form>
+        </div>
+
+        <!-- Lista de dependentes -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-people-arrows"></i></div>
+                <div>
+                    <h2>Meus Dependentes</h2>
+                    <p>Moradores cadastrados na sua unidade</p>
+                </div>
+            </div>
+            <div id="listaDependentes">
+                <div class="empty-state"><i class="fas fa-users"></i><p>Carregando dependentes...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ABA: PROTOCOLOS
+         ============================================================ -->
+    <div id="panel-protocolos" class="tab-panel">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-box"></i></div>
+                <div>
+                    <h2>Meus Protocolos</h2>
+                    <p>Encomendas e entregas recebidas na portaria</p>
+                </div>
+            </div>
+            <div class="filtro-bar">
+                <button class="btn-filtro active" id="filtroTodos"    onclick="filtrarProtocolos('')">
+                    <i class="fas fa-list"></i> Todos
+                </button>
+                <button class="btn-filtro" id="filtroPendente" onclick="filtrarProtocolos('pendente')">
+                    <i class="fas fa-clock"></i> Pendentes
+                </button>
+                <button class="btn-filtro" id="filtroEntregue" onclick="filtrarProtocolos('entregue')">
+                    <i class="fas fa-check"></i> Entregues
+                </button>
+            </div>
+            <div id="listaProtocolos">
+                <div class="empty-state"><i class="fas fa-box"></i><p>Carregando protocolos...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         ABA: HIDRÔMETRO
+         ============================================================ -->
+    <div id="panel-hidrometro" class="tab-panel">
+
+        <!-- Dados do hidrômetro -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-tachometer-alt"></i></div>
+                <div>
+                    <h2>Dados do Hidrômetro</h2>
+                    <p>Informações do medidor ativo da sua unidade</p>
+                </div>
+            </div>
+            <div id="dadosHidrometro">
+                <div class="empty-state"><i class="fas fa-tint"></i><p>Carregando dados...</p></div>
+            </div>
+        </div>
+
+        <!-- Histórico de leituras -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-history"></i></div>
+                <div>
+                    <h2>Histórico de Leituras</h2>
+                    <p>Registro completo de consumo de água</p>
+                </div>
+            </div>
+            <div id="historicoLeituras">
+                <div class="empty-state"><i class="fas fa-history"></i><p>Carregando histórico...</p></div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- ================================================================
+     MODAL: EDITAR DEPENDENTE
+     ================================================================ -->
+<div class="modal-overlay" id="modalEditarDep">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Editar Dependente</h3>
+            <button class="modal-close" onclick="fecharModalDep()"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="formEditarDep" onsubmit="salvarEdicaoDep(event)">
+            <input type="hidden" id="editDepId">
+            <div class="form-group">
+                <label for="editDepNome">Nome Completo *</label>
+                <input type="text" id="editDepNome" required>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="editDepParentesco">Parentesco</label>
+                    <select id="editDepParentesco">
+                        <option value="">Selecione...</option>
+                        <option value="Cônjuge">Cônjuge</option>
+                        <option value="Filho(a)">Filho(a)</option>
+                        <option value="Pai/Mãe">Pai / Mãe</option>
+                        <option value="Irmão(ã)">Irmão(ã)</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editDepNascimento">Data de Nascimento</label>
+                    <input type="date" id="editDepNascimento">
+                </div>
+                <div class="form-group">
+                    <label for="editDepEmail">E-mail</label>
+                    <input type="email" id="editDepEmail">
+                </div>
+                <div class="form-group">
+                    <label for="editDepCelular">Celular</label>
+                    <input type="text" id="editDepCelular">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="editDepObs">Observação</label>
+                <textarea id="editDepObs" rows="2"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalDep()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btnSalvarDep">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ================================================================
+     JAVASCRIPT
+     ================================================================ -->
+<script>
+'use strict';
+
+/* ──────────────────────────────────────────────────────────────────
+   ESTADO GLOBAL
+   ────────────────────────────────────────────────────────────────── */
+const Portal = {
+    token:      null,
+    moradorId:  null,
+    moradorNome: null,
+    moradorUnidade: null,
+    abaAtual:   'perfil',
+    tentativas: 0,
+    MAX_TENTATIVAS: 3
+};
+
+/* ──────────────────────────────────────────────────────────────────
+   INICIALIZAÇÃO
+   ────────────────────────────────────────────────────────────────── */
+(function init() {
+    Portal.token        = localStorage.getItem('portal_token');
+    Portal.moradorId    = localStorage.getItem('morador_id');
+    Portal.moradorNome  = localStorage.getItem('morador_nome');
+    Portal.moradorUnidade = localStorage.getItem('morador_unidade');
+
+    console.log('[Portal] Iniciando... Token:', Portal.token ? Portal.token.substring(0,16)+'...' : 'null');
+
+    if (!Portal.token || !Portal.moradorId) {
+        redirecionarLogin('Sessão não encontrada. Faça login novamente.');
+        return;
+    }
+
+    verificarSessao();
+})();
+
+/* ──────────────────────────────────────────────────────────────────
+   VERIFICAR SESSÃO
+   ────────────────────────────────────────────────────────────────── */
+function verificarSessao() {
+    Portal.tentativas++;
+    setLoadingText(`Verificando sessão... (${Portal.tentativas}/${Portal.MAX_TENTATIVAS})`);
+
+    fetch(window.location.origin + '/api/api_portal.php?action=verificar_sessao', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            console.log('[Portal] Sessão válida!');
+            inicializarPortal();
+        } else {
+            console.warn('[Portal] Sessão inválida:', data.mensagem);
+            redirecionarLogin(data.mensagem || 'Sessão expirada.');
+        }
+    })
+    .catch(err => {
+        console.error('[Portal] Erro ao verificar sessão:', err);
+        if (Portal.tentativas < Portal.MAX_TENTATIVAS) {
+            setTimeout(verificarSessao, 2000);
+        } else {
+            redirecionarLogin('Erro ao conectar com o servidor.');
+        }
+    });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   INICIALIZAR PORTAL
+   ────────────────────────────────────────────────────────────────── */
+function inicializarPortal() {
+    setTimeout(() => {
+        document.getElementById('loadingScreen').classList.add('hide');
+        document.getElementById('mainHeader').style.display = '';
+        document.getElementById('mainNav').style.display = '';
+        document.getElementById('mainContent').style.display = '';
+
+        document.getElementById('headerNome').textContent    = Portal.moradorNome || 'Morador';
+        document.getElementById('headerUnidade').textContent = Portal.moradorUnidade ? 'Unidade ' + Portal.moradorUnidade : '';
+
+        carregarPerfil();
+    }, 400);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   NAVEGAÇÃO DE ABAS
+   ────────────────────────────────────────────────────────────────── */
+function abrirAba(aba, btnEl) {
+    // Atualizar botões
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    // Atualizar painéis
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById('panel-' + aba);
+    if (panel) panel.classList.add('active');
+
+    Portal.abaAtual = aba;
+
+    // Carregar dados conforme aba
+    const loaders = {
+        perfil:       carregarPerfil,
+        visitantes:   () => { carregarVisitantes(); },
+        acessos:      () => { carregarVisitantesSelect(); carregarAcessos(); },
+        dependentes:  carregarDependentes,
+        protocolos:   () => carregarProtocolos(''),
+        hidrometro:   carregarHidrometro
+    };
+    if (loaders[aba]) loaders[aba]();
+
+    // Scroll para o topo no mobile
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   ALERTA
+   ────────────────────────────────────────────────────────────────── */
+function mostrarAlerta(mensagem, tipo = 'info') {
+    const icons = { error: 'exclamation-circle', success: 'check-circle', info: 'info-circle', warning: 'exclamation-triangle' };
+    const container = document.getElementById('alertContainer');
+    container.innerHTML = `
+        <div class="alert alert-${tipo} show">
+            <i class="fas fa-${icons[tipo] || 'info-circle'}"></i>
+            <span>${mensagem}</span>
+        </div>`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { container.innerHTML = ''; }, 6000);
+}
+
+function setLoadingText(txt) {
+    const el = document.getElementById('loadingText');
+    if (el) el.textContent = txt;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   LOGOUT
+   ────────────────────────────────────────────────────────────────── */
+function fazerLogout() {
+    if (!confirm('Deseja realmente sair do portal?')) return;
+
+    fetch(window.location.origin + '/api/logout_morador.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    }).catch(() => {});
+
+    localStorage.removeItem('portal_token');
+    localStorage.removeItem('morador_id');
+    localStorage.removeItem('morador_nome');
+    localStorage.removeItem('morador_unidade');
+    localStorage.removeItem('morador_email');
+    window.location.href = window.location.origin + '/frontend/login.html';
+}
+
+function redirecionarLogin(msg) {
+    console.warn('[Portal] Redirecionando para login:', msg);
+    localStorage.removeItem('portal_token');
+    localStorage.removeItem('morador_id');
+    localStorage.removeItem('morador_nome');
+    localStorage.removeItem('morador_unidade');
+    sessionStorage.setItem('portal_msg', msg);
+    setTimeout(() => {
+        window.location.href = window.location.origin + '/frontend/login.html';
+    }, 800);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PERFIL
+   ────────────────────────────────────────────────────────────────── */
+function carregarPerfil() {
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=perfil', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.sucesso) { mostrarAlerta(data.mensagem, 'error'); return; }
+        const m = data.dados;
+        document.getElementById('perfilNome').textContent    = m.nome    || '—';
+        document.getElementById('perfilCpf').textContent     = m.cpf     || '—';
+        document.getElementById('perfilUnidade').textContent = m.unidade || '—';
+        document.getElementById('perfilEmail').textContent   = m.email   || '—';
+        document.getElementById('telefone').value = m.telefone || '';
+        document.getElementById('celular').value  = m.celular  || '';
+    })
+    .catch(err => {
+        console.error('[Portal] Erro ao carregar perfil:', err);
+        mostrarAlerta('Erro ao carregar dados do perfil.', 'error');
+    });
+}
+
+function atualizarTelefone(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSalvarTelefone');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Salvando...';
+
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=perfil', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + Portal.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            telefone: document.getElementById('telefone').value,
+            celular:  document.getElementById('celular').value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+    })
+    .catch(() => mostrarAlerta('Erro ao salvar contatos.', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Contatos';
+    });
+}
+
+function alterarSenha(e) {
+    e.preventDefault();
+    const senhaAtual    = document.getElementById('senhaAtual').value;
+    const senhaNova     = document.getElementById('senhaNova').value;
+    const senhaConfirmar = document.getElementById('senhaConfirmar').value;
+
+    if (senhaNova !== senhaConfirmar) { mostrarAlerta('As senhas não coincidem.', 'error'); return; }
+    if (senhaNova.length < 6)         { mostrarAlerta('A nova senha deve ter no mínimo 6 caracteres.', 'error'); return; }
+
+    const btn = document.getElementById('btnAlterarSenha');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Alterando...';
+
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=perfil', {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + Portal.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senha_atual: senhaAtual, senha_nova: senhaNova })
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) document.getElementById('formSenha').reset();
+    })
+    .catch(() => mostrarAlerta('Erro ao alterar senha.', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-key"></i> Alterar Senha';
+    });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   VISITANTES
+   ────────────────────────────────────────────────────────────────── */
+function carregarVisitantes() {
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=visitantes', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('listaVisitantes');
+        if (!data.sucesso || !data.dados.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Nenhum visitante cadastrado</p></div>';
+            return;
+        }
+        let html = '<div class="table-wrap"><table><thead><tr><th>Nome</th><th>Documento</th><th>Contato</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+        data.dados.forEach(v => {
+            html += `<tr>
+                <td><strong>${v.nome_completo}</strong></td>
+                <td>${v.tipo_documento}: ${v.documento}</td>
+                <td>${v.celular || v.telefone || '—'}</td>
+                <td><span class="badge badge-${v.ativo ? 'success' : 'danger'}">${v.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="excluirVisitante(${v.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    })
+    .catch(() => mostrarAlerta('Erro ao carregar visitantes.', 'error'));
+}
+
+function carregarVisitantesSelect() {
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=visitantes', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const sel = document.getElementById('acessoVisitante');
+        sel.innerHTML = '<option value="">Selecione um visitante</option>';
+        if (data.sucesso && data.dados.length) {
+            data.dados.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = `${v.nome_completo} — ${v.tipo_documento}: ${v.documento}`;
+                sel.appendChild(opt);
+            });
+        }
+    });
+}
+
+function cadastrarVisitante(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnCadastrarVisitante');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Cadastrando...';
+
+    const dados = {
+        nome_completo:  document.getElementById('visitanteNome').value,
+        tipo_documento: document.getElementById('visitanteTipoDoc').value,
+        documento:      document.getElementById('visitanteDoc').value,
+        telefone:       document.getElementById('visitanteTelefone').value,
+        celular:        document.getElementById('visitanteCelular').value,
+        email:          document.getElementById('visitanteEmail').value,
+        observacao:     document.getElementById('visitanteObs').value
+    };
+
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=visitantes', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + Portal.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) { document.getElementById('formVisitante').reset(); carregarVisitantes(); }
+    })
+    .catch(() => mostrarAlerta('Erro ao cadastrar visitante.', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Cadastrar Visitante';
+    });
+}
+
+function excluirVisitante(id) {
+    if (!confirm('Deseja realmente excluir este visitante?')) return;
+    fetch(window.location.origin + `/api/api_portal_morador.php?action=visitantes&id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) carregarVisitantes();
+    })
+    .catch(() => mostrarAlerta('Erro ao excluir visitante.', 'error'));
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   ACESSOS / QR CODE
+   ────────────────────────────────────────────────────────────────── */
+document.getElementById('acessoDataInicial').addEventListener('change', calcularDias);
+document.getElementById('acessoDataFinal').addEventListener('change', calcularDias);
+
+function calcularDias() {
+    const di = document.getElementById('acessoDataInicial').value;
+    const df = document.getElementById('acessoDataFinal').value;
+    if (di && df) {
+        const d1 = new Date(di), d2 = new Date(df);
+        if (d2 >= d1) {
+            const dias = Math.ceil(Math.abs(d2 - d1) / 86400000) + 1;
+            document.getElementById('diasNum').textContent = dias;
+            document.getElementById('diasCounter').style.display = 'block';
+        } else {
+            document.getElementById('diasCounter').style.display = 'none';
+            mostrarAlerta('A data final deve ser maior ou igual à data inicial.', 'warning');
+        }
+    }
+}
+
+function selecionarTipoAcesso(tipo) {
+    ['portaria','externo','lagoa'].forEach(t => {
+        const lbl = document.getElementById('label' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (lbl) lbl.classList.toggle('selected', t === tipo);
+        const radio = lbl ? lbl.querySelector('input') : null;
+        if (radio) radio.checked = (t === tipo);
+    });
+}
+
+function salvarAcesso(e) {
+    e.preventDefault();
+    const visitanteId = document.getElementById('acessoVisitante').value;
+    const tipoAcesso  = document.querySelector('[name="acessoTipoAcesso"]:checked')?.value;
+
+    if (!visitanteId || !tipoAcesso) {
+        mostrarAlerta('Selecione o visitante e o tipo de acesso.', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('btnGerarQR');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Gerando...';
+
+    const dados = {
+        visitante_id:    visitanteId,
+        tipo_visitante:  document.getElementById('acessoTipo').value,
+        placa:           document.getElementById('acessoPlaca').value || null,
+        modelo:          document.getElementById('acessoModelo').value || null,
+        cor:             document.getElementById('acessoCor').value || null,
+        data_inicial:    document.getElementById('acessoDataInicial').value,
+        data_final:      document.getElementById('acessoDataFinal').value,
+        tipo_acesso:     tipoAcesso,
+        morador_id:      Portal.moradorId,
+        unidade_destino: Portal.moradorUnidade
+    };
+
+    fetch(window.location.origin + '/api/api_acessos_visitantes.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + Portal.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) {
+            document.getElementById('formAcesso').reset();
+            document.getElementById('diasCounter').style.display = 'none';
+            ['portaria','externo','lagoa'].forEach(t => {
+                const lbl = document.getElementById('label' + t.charAt(0).toUpperCase() + t.slice(1));
+                if (lbl) lbl.classList.remove('selected');
+            });
+            carregarAcessos();
+        }
+    })
+    .catch(() => mostrarAlerta('Erro ao gerar acesso.', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-qrcode"></i> Gerar QR Code';
+    });
+}
+
+function carregarAcessos() {
+    fetch(window.location.origin + `/api/api_acessos_visitantes.php?morador_id=${Portal.moradorId}`, {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('listaAcessos');
+        if (!data.sucesso || !data.dados.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-qrcode"></i><p>Nenhum acesso cadastrado</p></div>';
+            return;
+        }
+        const hoje = new Date();
+        let html = '<div class="table-wrap"><table><thead><tr><th>Visitante</th><th>Período</th><th>Tipo</th><th>Veículo</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
+        data.dados.forEach(a => {
+            const di = new Date(a.data_inicial), df = new Date(a.data_final);
+            const ativo = hoje >= di && hoje <= df && a.ativo;
+            const veiculo = a.placa ? `${a.placa}${a.modelo ? ' · '+a.modelo : ''}${a.cor ? ' '+a.cor : ''}` : '—';
+            const tipoLabel = { portaria: 'Portaria', externo: 'Externo', lagoa: 'Lagoa' };
+            const tipoBadge = { portaria: 'primary', externo: 'warning', lagoa: 'success' };
+            html += `<tr>
+                <td><strong>${a.visitante_nome || '—'}</strong></td>
+                <td>${di.toLocaleDateString('pt-BR')} a ${df.toLocaleDateString('pt-BR')}<br><small style="color:var(--text-muted)">${a.dias_permanencia || '?'} dias</small></td>
+                <td><span class="badge badge-${tipoBadge[a.tipo_acesso]||'secondary'}">${tipoLabel[a.tipo_acesso]||a.tipo_acesso}</span></td>
+                <td>${veiculo}</td>
+                <td><span class="badge badge-${ativo ? 'success' : 'danger'}">${ativo ? 'Ativo' : 'Inativo'}</span></td>
+                <td style="display:flex;gap:.3rem;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="gerarQRCode(${a.id})" title="QR Code"><i class="fas fa-qrcode"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="excluirAcesso(${a.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    })
+    .catch(() => { document.getElementById('listaAcessos').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar acessos</p></div>'; });
+}
+
+function gerarQRCode(id) {
+    window.open(window.location.origin + `/api/api_acessos_visitantes.php?action=gerar_qrcode&id=${id}`, '_blank');
+}
+
+function excluirAcesso(id) {
+    if (!confirm('Deseja realmente excluir este acesso?')) return;
+    fetch(window.location.origin + `/api/api_acessos_visitantes.php?id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) carregarAcessos();
+    })
+    .catch(() => mostrarAlerta('Erro ao excluir acesso.', 'error'));
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   DEPENDENTES
+   ────────────────────────────────────────────────────────────────── */
+function carregarDependentes() {
+    fetch(window.location.origin + '/api/api_portal_dependentes.php?action=listar', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('listaDependentes');
+        if (!data.sucesso || !data.dados.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>Nenhum dependente cadastrado</p></div>';
+            return;
+        }
+        let html = '';
+        data.dados.forEach(d => {
+            const meta = [d.parentesco, d.data_nascimento, d.celular].filter(Boolean).join(' · ');
+            html += `
+            <div class="dep-card">
+                <div class="dep-avatar"><i class="fas fa-user"></i></div>
+                <div class="dep-info">
+                    <div class="dep-name">${d.nome_completo}</div>
+                    <div class="dep-meta">${meta || '—'}</div>
+                </div>
+                <div class="dep-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="abrirModalEditarDep(${JSON.stringify(d).replace(/"/g,'&quot;')})" title="Editar">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="excluirDependente(${d.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    })
+    .catch(() => mostrarAlerta('Erro ao carregar dependentes.', 'error'));
+}
+
+function cadastrarDependente(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnCadastrarDep');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Cadastrando...';
+
+    const dados = {
+        nome_completo:   document.getElementById('depNome').value,
+        parentesco:      document.getElementById('depParentesco').value,
+        cpf:             document.getElementById('depCpf').value,
+        data_nascimento: document.getElementById('depNascimento').value,
+        email:           document.getElementById('depEmail').value,
+        celular:         document.getElementById('depCelular').value,
+        observacao:      document.getElementById('depObs').value
+    };
+
+    fetch(window.location.origin + '/api/api_portal_dependentes.php?action=criar', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + Portal.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) { document.getElementById('formDependente').reset(); carregarDependentes(); }
+    })
+    .catch(() => mostrarAlerta('Erro ao cadastrar dependente.', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Cadastrar Dependente';
+    });
+}
+
+function excluirDependente(id) {
+    if (!confirm('Deseja realmente excluir este dependente?')) return;
+    fetch(window.location.origin + `/api/api_portal_dependentes.php?action=excluir&id=${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) carregarDependentes();
+    })
+    .catch(() => mostrarAlerta('Erro ao excluir dependente.', 'error'));
+}
+
+function abrirModalEditarDep(dep) {
+    document.getElementById('editDepId').value          = dep.id;
+    document.getElementById('editDepNome').value        = dep.nome_completo || '';
+    document.getElementById('editDepParentesco').value  = dep.parentesco || '';
+    document.getElementById('editDepEmail').value       = dep.email || '';
+    document.getElementById('editDepCelular').value     = dep.celular || '';
+    document.getElementById('editDepObs').value         = dep.observacao || '';
+
+    // Converter data para formato input date (yyyy-mm-dd)
+    if (dep.data_nascimento) {
+        const partes = dep.data_nascimento.split('/');
+        if (partes.length === 3) {
+            document.getElementById('editDepNascimento').value = `${partes[2]}-${partes[1]}-${partes[0]}`;
+        } else {
+            document.getElementById('editDepNascimento').value = dep.data_nascimento;
+        }
+    } else {
+        document.getElementById('editDepNascimento').value = '';
+    }
+
+    document.getElementById('modalEditarDep').classList.add('show');
+}
+
+function fecharModalDep() {
+    document.getElementById('modalEditarDep').classList.remove('show');
+}
+
+function salvarEdicaoDep(e) {
+    e.preventDefault();
+    const id  = document.getElementById('editDepId').value;
+    const btn = document.getElementById('btnSalvarDep');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span> Salvando...';
+
+    const dados = {
+        nome_completo:   document.getElementById('editDepNome').value,
+        parentesco:      document.getElementById('editDepParentesco').value,
+        data_nascimento: document.getElementById('editDepNascimento').value,
+        email:           document.getElementById('editDepEmail').value,
+        celular:         document.getElementById('editDepCelular').value,
+        observacao:      document.getElementById('editDepObs').value
+    };
+
+    fetch(window.location.origin + `/api/api_portal_dependentes.php?action=atualizar&id=${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + Portal.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+    })
+    .then(r => r.json())
+    .then(data => {
+        mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
+        if (data.sucesso) { fecharModalDep(); carregarDependentes(); }
+    })
+    .catch(() => mostrarAlerta('Erro ao atualizar dependente.', 'error'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
+    });
+}
+
+// Fechar modal ao clicar fora
+document.getElementById('modalEditarDep').addEventListener('click', function(e) {
+    if (e.target === this) fecharModalDep();
+});
+
+/* ──────────────────────────────────────────────────────────────────
+   PROTOCOLOS
+   ────────────────────────────────────────────────────────────────── */
+let filtroProtocolo = '';
+
+function filtrarProtocolos(filtro) {
+    filtroProtocolo = filtro;
+    document.querySelectorAll('.btn-filtro').forEach(b => b.classList.remove('active'));
+    const ids = { '': 'filtroTodos', 'pendente': 'filtroPendente', 'entregue': 'filtroEntregue' };
+    const el = document.getElementById(ids[filtro]);
+    if (el) el.classList.add('active');
+    carregarProtocolos(filtro);
+}
+
+function carregarProtocolos(filtro = '') {
+    const url = window.location.origin + '/api/api_morador_protocolos.php' + (filtro ? `?status=${filtro}` : '');
+    fetch(url, { headers: { 'Authorization': 'Bearer ' + Portal.token } })
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('listaProtocolos');
+        if (!data.sucesso || !data.dados.length) {
+            container.innerHTML = '<div class="empty-state"><i class="fas fa-box"></i><p>Nenhum protocolo encontrado</p></div>';
+            return;
+        }
+        let html = '';
+        data.dados.forEach(p => {
+            const statusBadge = p.status === 'entregue'
+                ? '<span class="badge badge-success"><i class="fas fa-check"></i> Entregue</span>'
+                : '<span class="badge badge-warning"><i class="fas fa-clock"></i> Pendente</span>';
+
+            html += `
+            <div class="protocolo-card">
+                <div class="protocolo-header">
+                    <div>
+                        <strong>${p.tipo_encomenda || 'Encomenda'}</strong>
+                        ${p.remetente ? `<div style="font-size:.82rem;color:var(--text-muted);margin-top:.2rem;">De: ${p.remetente}</div>` : ''}
+                    </div>
+                    ${statusBadge}
+                </div>
+                <div class="protocolo-info-row">
+                    <i class="fas fa-calendar"></i>
+                    <div>
+                        <div class="protocolo-info-label">Recebido em</div>
+                        <div class="protocolo-info-value">${p.data_hora_recebimento || '—'}</div>
+                    </div>
+                </div>
+                <div class="protocolo-info-row">
+                    <i class="fas fa-user"></i>
+                    <div>
+                        <div class="protocolo-info-label">Recebido por (Portaria)</div>
+                        <div class="protocolo-info-value">${p.recebedor_portaria || 'Não informado'}</div>
+                    </div>
+                </div>
+                ${p.codigo_nf ? `
+                <div class="protocolo-info-row">
+                    <i class="fas fa-barcode"></i>
+                    <div>
+                        <div class="protocolo-info-label">Código NF</div>
+                        <div class="protocolo-info-value">${p.codigo_nf}</div>
+                    </div>
+                </div>` : ''}
+                ${p.status === 'entregue' ? `
+                <div class="protocolo-info-row">
+                    <i class="fas fa-check-circle" style="color:var(--success)"></i>
+                    <div>
+                        <div class="protocolo-info-label">Entregue em</div>
+                        <div class="protocolo-info-value">${p.data_hora_entrega || '—'}</div>
+                    </div>
+                </div>
+                <div class="protocolo-info-row">
+                    <i class="fas fa-user-check" style="color:var(--success)"></i>
+                    <div>
+                        <div class="protocolo-info-label">Recebido por (Morador)</div>
+                        <div class="protocolo-info-value">${p.nome_recebedor_morador || 'Não informado'}</div>
+                    </div>
+                </div>` : ''}
+            </div>`;
+        });
+        container.innerHTML = html;
+    })
+    .catch(() => {
+        document.getElementById('listaProtocolos').innerHTML =
+            '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar protocolos</p></div>';
+    });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   HIDRÔMETRO
+   ────────────────────────────────────────────────────────────────── */
+function carregarHidrometro() {
+    fetch(window.location.origin + '/api/api_morador_hidrometro.php', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.sucesso) {
+            document.getElementById('dadosHidrometro').innerHTML =
+                `<div class="empty-state"><i class="fas fa-tint"></i><p>${data.mensagem}</p></div>`;
+            document.getElementById('historicoLeituras').innerHTML = '';
+            return;
+        }
+
+        const hidrometros = data.dados.hidrometros || [];
+        const leituras    = data.dados.leituras    || [];
+
+        // ── Dados do hidrômetro ──
+        if (hidrometros.length > 0) {
+            const h = hidrometros[0]; // hidrômetro ativo
+            let html = `
+            <div class="hidro-stats">
+                <div class="hidro-stat">
+                    <div class="hidro-stat-value">${h.numero_hidrometro || '—'}</div>
+                    <div class="hidro-stat-label">Número do Hidrômetro</div>
+                </div>
+                <div class="hidro-stat">
+                    <div class="hidro-stat-value">${h.numero_lacre || '—'}</div>
+                    <div class="hidro-stat-label">Número do Lacre</div>
+                </div>
+                <div class="hidro-stat">
+                    <div class="hidro-stat-value">${h.leitura_inicial != null ? parseFloat(h.leitura_inicial).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</div>
+                    <div class="hidro-stat-label">Leitura Inicial (m³)</div>
+                </div>
+                <div class="hidro-stat">
+                    <div class="hidro-stat-value"><span class="badge badge-${h.ativo ? 'success' : 'danger'}">${h.ativo ? 'Ativo' : 'Inativo'}</span></div>
+                    <div class="hidro-stat-label">Status</div>
+                </div>
+            </div>`;
+
+            if (hidrometros.length > 1) {
+                html += `<div class="alert alert-info show"><i class="fas fa-info-circle"></i>
+                    <span>Você possui <strong>${hidrometros.length - 1}</strong> hidrômetro(s) anterior(es) com leituras registradas.</span></div>`;
+            }
+            document.getElementById('dadosHidrometro').innerHTML = html;
+        } else {
+            document.getElementById('dadosHidrometro').innerHTML =
+                '<div class="empty-state"><i class="fas fa-tint"></i><p>Nenhum hidrômetro ativo encontrado</p></div>';
+        }
+
+        // ── Histórico de leituras ──
+        if (leituras.length > 0) {
+            let html = '<div class="table-wrap"><table><thead><tr><th>Data</th><th>Hidrômetro</th><th>Leit. Anterior (m³)</th><th>Leit. Atual (m³)</th><th>Consumo (m³)</th><th>Valor</th><th>Status</th></tr></thead><tbody>';
+            leituras.forEach(l => {
+                const fmt = (v) => parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const fmtBRL = (v) => parseFloat(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                html += `<tr>
+                    <td><strong>${l.data_leitura}</strong></td>
+                    <td>${l.numero_hidrometro}<br><small style="color:var(--text-muted)">Lacre: ${l.numero_lacre || 'N/A'}</small></td>
+                    <td>${fmt(l.leitura_anterior)}</td>
+                    <td>${fmt(l.leitura_atual)}</td>
+                    <td><strong>${fmt(l.consumo)}</strong></td>
+                    <td><strong style="color:var(--success)">${fmtBRL(l.valor_total)}</strong></td>
+                    <td><span class="badge badge-${l.hidrometro_ativo == 1 ? 'success' : 'secondary'}">${l.hidrometro_ativo == 1 ? 'Ativo' : 'Inativo'}</span></td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            document.getElementById('historicoLeituras').innerHTML = html;
+        } else {
+            document.getElementById('historicoLeituras').innerHTML =
+                '<div class="empty-state"><i class="fas fa-history"></i><p>Nenhuma leitura registrada</p></div>';
+        }
+    })
+    .catch(err => {
+        console.error('[Portal] Erro hidrômetro:', err);
+        document.getElementById('dadosHidrometro').innerHTML =
+            '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar dados do hidrômetro</p></div>';
+    });
+}
+</script>
+</body>
+</html>
