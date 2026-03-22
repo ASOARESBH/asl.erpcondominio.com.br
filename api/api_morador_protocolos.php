@@ -77,10 +77,10 @@ if ($metodo === 'GET') {
 
     $sql = "SELECT
                 p.id,
-                COALESCE(p.tipo_encomenda, p.descricao_mercadoria, 'Encomenda') AS tipo_encomenda,
+                COALESCE(p.descricao_mercadoria, 'Encomenda') AS tipo_encomenda,
                 p.descricao_mercadoria,
                 p.codigo_nf,
-                p.remetente,
+                p.observacao AS remetente,
                 DATE_FORMAT(p.data_hora_recebimento, '%d/%m/%Y %H:%i') AS data_hora_recebimento,
                 p.recebedor_portaria,
                 p.status,
@@ -88,11 +88,9 @@ if ($metodo === 'GET') {
                 DATE_FORMAT(p.data_hora_entrega, '%d/%m/%Y %H:%i') AS data_hora_entrega
             FROM protocolos p
             WHERE p.morador_id = ?";
-
     if ($filtro_status && in_array($filtro_status, ['pendente', 'entregue'])) {
         $sql .= " AND p.status = '" . $conexao->real_escape_string($filtro_status) . "'";
     }
-
     $sql .= " ORDER BY p.data_hora_recebimento DESC";
 
     $stmt = $conexao->prepare($sql);

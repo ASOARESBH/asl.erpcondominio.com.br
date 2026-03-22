@@ -34,19 +34,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $metodo = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
-if ($metodo !== 'GET') {
+// ── Verificar se é requisição do Portal do Morador (token Bearer) ──
+$portal_morador_id = null;
+$auth_header_av = '';
+if (function_exists('getallheaders')) {
+    $hdrs_av = getallheaders();
+    $auth_header_av = $hdrs_av['Authorization'] ?? $hdrs_av['authorization'] ?? '';
+}
+if (empty($auth_header_av)) {
+    $auth_header_av = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+}
+if (preg_match('/Bearer\s+(.+)$/i', $auth_header_av, $m_av)) {
+    $bearer_av = trim($m_av[1]);
+    $cx_av = conectar_banco();
+    $st_av = $cx_av->prepare("SELECT morador_id FROM sessoes_portal WHERE token = ? AND ativo = 1 AND data_expiracao > NOW() LIMIT 1");
+    $st_av->bind_param('s', $bearer_av);
+    $st_av->execute();
+    $rr_av = $st_av->get_result();
+    if ($rr_av->num_rows > 0) {
+        $portal_morador_id = (int)$rr_av->fetch_assoc()['morador_id'];
+    }
+    $st_av->close();
+    fechar_conexao($cx_av);
+}
+
+if ($metodo !== 'GET' && !$portal_morador_id) {
     verificarAutenticacao(true, 'operador');
 }
 
 $conexao = conectar_banco();
 
 // ========================================
-// LISTAR ACESSOS
+// LISTAR ACESSOS (portal do morador por morador_id)
 // ========================================
 if ($metodo === 'GET' && empty($action)) {
-    // Verificar autenticação para GET também
-    verificarAutenticacao(true, 'operador');
     $visitante_id = $_GET['visitante_id'] ?? null;
+    $morador_id_get = isset($_GET['morador_id']) ? (int)$_GET['morador_id'] : null;
+
+    // Se for requisição do portal do morador via Bearer, usar morador_id da sessão
+    if ($portal_morador_id) {
+        // Segurança: morador só pode ver seus próprios acessos
+        $morador_id_get = $portal_morador_id;
+        $sql = "SELECT a.*, v.nome_completo as visitante_nome, v.documento
+                FROM acessos_visitantes a
+                INNER JOIN visitantes v ON a.visitante_id = v.id
+                WHERE a.morador_id = ?
+                ORDER BY a.data_cadastro DESC";
+        $stmt = $conexao->prepare($sql);
+        $stmt->bind_param('i', $morador_id_get);
+        $stmt->execute();
+        $resultado = $stmt->get_result();
+        $acessos = [];
+        while ($row = $resultado->fetch_assoc()) {
+            $acessos[] = $row;
+        }
+        retornar_json(true, "Acessos obtidos com sucesso", $acessos);
+    }
+
+    // Requisição do ERP — verificar autenticação de sessão
+    verificarAutenticacao(true, 'operador');
     
     $sql = "SELECT a.*, v.nome_completo as visitante_nome, v.documento
             FROM acessos_visitantes a
@@ -113,7 +159,10 @@ if ($metodo === 'GET' && $action === 'obter') {
 // CADASTRAR ACESSO
 // ========================================
 if ($metodo === 'POST') {
-    verificarAutenticacao(true, 'operador');
+    // Permitir acesso via token Bearer do portal do morador
+    if (!$portal_morador_id) {
+        verificarAutenticacao(true, 'operador');
+    }
     $dados = json_decode(file_get_contents('php://input'), true);
     
     $visitante_id = $dados['visitante_id'] ?? 0;
@@ -320,7 +369,10 @@ if ($metodo === 'PUT') {
 // DELETAR ACESSO
 // ========================================
 if ($metodo === 'DELETE') {
-    verificarAutenticacao(true, 'admin');
+    // Permitir acesso via token Bearer do portal do morador
+    if (!$portal_morador_id) {
+        verificarAutenticacao(true, 'admin');
+    }
     $id = $_GET['id'] ?? 0;
     
     if (!$id) {
@@ -340,6 +392,12 @@ if ($metodo === 'DELETE') {
     
     if (!$acesso) {
         retornar_json(false, "Acesso não encontrado");
+    }
+    
+    // Segurança: morador só pode excluir seus próprios acessos
+    if ($portal_morador_id && (int)$acesso['morador_id'] !== $portal_morador_id) {
+        http_response_code(403);
+        retornar_json(false, "Sem permissão para excluir este acesso.");
     }
     
     // Excluir
