@@ -61,7 +61,8 @@
             z-index: 9999;
             transition: opacity .4s ease;
         }
-        #loadingScreen.hide { opacity: 0; pointer-events: none; }
+        #loadingScreen.hide { opacity: 0; pointer-events: none; visibility: hidden; }
+        #loadingScreen.gone { display: none !important; }
         .loading-spinner {
             width: 52px; height: 52px;
             border: 4px solid rgba(255,255,255,.25);
@@ -82,6 +83,7 @@
             box-shadow: 0 2px 12px rgba(37,99,235,.35);
             display: none;
         }
+        #mainHeader.visible { display: flex !important; align-items: center; }
         .header-inner {
             max-width: 1200px; margin: 0 auto;
             padding: 0 1.5rem;
@@ -133,6 +135,7 @@
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
         }
+        #mainNav.visible { display: block !important; overflow-x: auto; }
         #mainNav::-webkit-scrollbar { display: none; }
         .nav-inner {
             max-width: 1200px; margin: 0 auto;
@@ -170,6 +173,7 @@
             padding: 1.5rem 1.5rem 3rem;
             display: none;
         }
+        #mainContent.visible { display: block !important; }
 
         /* ============================================================
            ALERT CONTAINER
@@ -1186,17 +1190,28 @@ function verificarSessao() {
    INICIALIZAR PORTAL
    ────────────────────────────────────────────────────────────────── */
 function inicializarPortal() {
+    const loading = document.getElementById('loadingScreen');
+    const header  = document.getElementById('mainHeader');
+    const nav     = document.getElementById('mainNav');
+    const content = document.getElementById('mainContent');
+
+    // Atualizar dados do usuário no header
+    document.getElementById('headerNome').textContent    = Portal.moradorNome || 'Morador';
+    document.getElementById('headerUnidade').textContent = Portal.moradorUnidade ? 'Unidade ' + Portal.moradorUnidade : '';
+
+    // Mostrar conteúdo imediatamente via classe CSS (garante !important sobre display:none do ID)
+    header.classList.add('visible');
+    nav.classList.add('visible');
+    content.classList.add('visible');
+
+    // Iniciar fade-out da tela de loading
+    loading.classList.add('hide');
+
+    // Após a transição, remover completamente o loading do DOM
     setTimeout(() => {
-        document.getElementById('loadingScreen').classList.add('hide');
-        document.getElementById('mainHeader').style.display = '';
-        document.getElementById('mainNav').style.display = '';
-        document.getElementById('mainContent').style.display = '';
-
-        document.getElementById('headerNome').textContent    = Portal.moradorNome || 'Morador';
-        document.getElementById('headerUnidade').textContent = Portal.moradorUnidade ? 'Unidade ' + Portal.moradorUnidade : '';
-
+        loading.classList.add('gone');
         carregarPerfil();
-    }, 400);
+    }, 500);
 }
 
 /* ──────────────────────────────────────────────────────────────────
