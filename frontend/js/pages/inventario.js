@@ -3,18 +3,12 @@
  *
  * Responsabilidades:
  *  - CRUD completo de itens patrimoniais (POST, PUT, DELETE)
- *  - Listagem com filtros, paginação e exportação CSV
- *  - Relatórios por situação, status, responsável e baixas
+ *  - CRUD completo de grupos de inventário
+ *  - Listagem com filtros (incluindo grupo), paginação e exportação CSV
+ *  - Relatórios por situação, status, responsável, grupo e baixas
  *  - KPIs: total, ativos, inativos, valor total
  *
- * Padrões:
- *  - ES6 Module com export function init() / destroy()
- *  - Listeners gerenciados via _listeners[] para cleanup correto
- *  - URLs absolutas via window.location.origin
- *  - Cache local _state para evitar re-fetches desnecessários
- *  - XSS: função _esc() em todos os dados renderizados
- *
- * @version 2.0.0
+ * @version 3.0.0 — Grupos de Inventário
  */
 'use strict';
 
@@ -22,13 +16,16 @@
 // ESTADO DO MÓDULO
 // ============================================================
 const _state = {
-    itens: [],           // cache de todos os itens
-    usuarios: [],        // cache de usuários ativos
-    itensFiltrados: [],  // resultado do último filtro
+    itens: [],
+    usuarios: [],
+    grupos: [],
+    itensFiltrados: [],
     pagina: 1,
     itensPorPagina: 15,
     itemParaExcluir: null,
+    grupoParaExcluir: null,
     editandoId: null,
+    _relatorioAtual: [],
 };
 
 const _listeners = [];
@@ -38,16 +35,19 @@ const _listeners = [];
 // ============================================================
 
 export function init() {
-    console.log('[Inventario] Inicializando módulo v2.0...');
+    console.log('[Inventario] Inicializando módulo v3.0...');
 
     _setupTabs();
     _setupForm();
     _setupFiltros();
     _setupModal();
+    _setupModalGrupo();
     _setupBotaoVoltar();
+    _setupGruposInline();
+    _setupGruposTab();
 
     // Carregamento inicial
-    _carregarUsuarios().then(() => {
+    Promise.all([_carregarUsuarios(), _carregarGrupos()]).then(() => {
         _carregarInventario();
     });
 
@@ -60,12 +60,11 @@ export function destroy() {
         if (el) el.removeEventListener(event, fn);
     });
     _listeners.length = 0;
-    _state.itens = [];
-    _state.usuarios = [];
-    _state.itensFiltrados = [];
-    _state.pagina = 1;
-    _state.itemParaExcluir = null;
-    _state.editandoId = null;
+    Object.assign(_state, {
+        itens: [], usuarios: [], grupos: [], itensFiltrados: [],
+        pagina: 1, itemParaExcluir: null, grupoParaExcluir: null,
+        editandoId: null, _relatorioAtual: [],
+    });
     console.log('[Inventario] Módulo destruído.');
 }
 
@@ -89,14 +88,9 @@ function _ativarTab(tabId) {
         c.classList.toggle('active', c.id === `tab-${tabId}`)
     );
 
-    // Atualizar KPIs da aba de relatórios ao ativar
-    if (tabId === 'relatorios') {
-        _atualizarKpisRelatorio();
-    }
-    // Atualizar KPIs da aba de listagem ao ativar
-    if (tabId === 'listagem') {
-        _atualizarKpis();
-    }
+    if (tabId === 'relatorios') _atualizarKpisRelatorio();
+    if (tabId === 'listagem') _atualizarKpis();
+    if (tabId === 'grupos') _renderizarTabelaGrupos();
 }
 
 function _setupForm() {
@@ -109,9 +103,9 @@ function _setupForm() {
 
     const statusSel = document.getElementById('status');
     if (statusSel) {
-        const fnStatus = () => _toggleMotivoBaixa();
-        statusSel.addEventListener('change', fnStatus);
-        _listeners.push({ el: statusSel, event: 'change', fn: fnStatus });
+        const fn = () => _toggleMotivoBaixa();
+        statusSel.addEventListener('change', fn);
+        _listeners.push({ el: statusSel, event: 'change', fn });
     }
 
     const btnLimpar = document.getElementById('btnLimparForm');
@@ -137,7 +131,6 @@ function _setupFiltros() {
         _listeners.push({ el: btnLimpar, event: 'click', fn });
     }
 
-    // Enter nos campos de texto
     ['filtroNumeroPatrimonio', 'filtroNF'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -147,7 +140,6 @@ function _setupFiltros() {
         }
     });
 
-    // Exportar CSV
     const btnCSV = document.getElementById('btnExportarCSV');
     if (btnCSV) {
         const fn = () => _exportarCSV(_state.itensFiltrados.length ? _state.itensFiltrados : _state.itens);
@@ -155,7 +147,6 @@ function _setupFiltros() {
         _listeners.push({ el: btnCSV, event: 'click', fn });
     }
 
-    // Relatórios
     const btnGerar = document.getElementById('btnGerarRelatorio');
     if (btnGerar) {
         const fn = () => _gerarRelatorio();
@@ -177,16 +168,13 @@ function _setupModal() {
     const btnConfirmar = document.getElementById('btnConfirmarExclusao');
     const overlay = document.getElementById('modalConfirmarExclusao');
 
-    if (btnFechar) {
-        const fn = () => _fecharModal();
-        btnFechar.addEventListener('click', fn);
-        _listeners.push({ el: btnFechar, event: 'click', fn });
-    }
-    if (btnCancelar) {
-        const fn = () => _fecharModal();
-        btnCancelar.addEventListener('click', fn);
-        _listeners.push({ el: btnCancelar, event: 'click', fn });
-    }
+    [btnFechar, btnCancelar].forEach(btn => {
+        if (btn) {
+            const fn = () => _fecharModal();
+            btn.addEventListener('click', fn);
+            _listeners.push({ el: btn, event: 'click', fn });
+        }
+    });
     if (btnConfirmar) {
         const fn = () => _confirmarExclusao();
         btnConfirmar.addEventListener('click', fn);
@@ -199,12 +187,294 @@ function _setupModal() {
     }
 }
 
+function _setupModalGrupo() {
+    const btnFechar = document.getElementById('btnFecharModalExclusaoGrupo');
+    const btnCancelar = document.getElementById('btnCancelarExclusaoGrupo');
+    const btnConfirmar = document.getElementById('btnConfirmarExclusaoGrupo');
+    const overlay = document.getElementById('modalConfirmarExclusaoGrupo');
+
+    [btnFechar, btnCancelar].forEach(btn => {
+        if (btn) {
+            const fn = () => _fecharModalGrupo();
+            btn.addEventListener('click', fn);
+            _listeners.push({ el: btn, event: 'click', fn });
+        }
+    });
+    if (btnConfirmar) {
+        const fn = () => _confirmarExclusaoGrupo();
+        btnConfirmar.addEventListener('click', fn);
+        _listeners.push({ el: btnConfirmar, event: 'click', fn });
+    }
+    if (overlay) {
+        const fn = (e) => { if (e.target === overlay) _fecharModalGrupo(); };
+        overlay.addEventListener('click', fn);
+        _listeners.push({ el: overlay, event: 'click', fn });
+    }
+}
+
 function _setupBotaoVoltar() {
     const btn = document.getElementById('btnVoltarAdm');
     if (btn && window.AppRouter) {
         const fn = () => window.AppRouter.navigate('administrativa');
         btn.addEventListener('click', fn);
         _listeners.push({ el: btn, event: 'click', fn });
+    }
+}
+
+// ============================================================
+// GRUPOS — CADASTRO INLINE NO FORMULÁRIO
+// ============================================================
+
+function _setupGruposInline() {
+    const btnAbrir = document.getElementById('btnAbrirNovoGrupo');
+    const btnSalvar = document.getElementById('btnSalvarNovoGrupo');
+    const btnCancelar = document.getElementById('btnCancelarNovoGrupo');
+
+    if (btnAbrir) {
+        const fn = () => _togglePainelNovoGrupo(true);
+        btnAbrir.addEventListener('click', fn);
+        _listeners.push({ el: btnAbrir, event: 'click', fn });
+    }
+    if (btnSalvar) {
+        const fn = () => _salvarNovoGrupoInline();
+        btnSalvar.addEventListener('click', fn);
+        _listeners.push({ el: btnSalvar, event: 'click', fn });
+    }
+    if (btnCancelar) {
+        const fn = () => _togglePainelNovoGrupo(false);
+        btnCancelar.addEventListener('click', fn);
+        _listeners.push({ el: btnCancelar, event: 'click', fn });
+    }
+}
+
+function _togglePainelNovoGrupo(abrir) {
+    const painel = document.getElementById('painelNovoGrupo');
+    if (!painel) return;
+    painel.style.display = abrir ? 'block' : 'none';
+    if (abrir) {
+        const input = document.getElementById('novoGrupoNome');
+        if (input) { input.value = ''; input.focus(); }
+        const desc = document.getElementById('novoGrupoDescricao');
+        if (desc) desc.value = '';
+    }
+}
+
+async function _salvarNovoGrupoInline() {
+    const nome = document.getElementById('novoGrupoNome')?.value?.trim();
+    const descricao = document.getElementById('novoGrupoDescricao')?.value?.trim() || '';
+
+    if (!nome) {
+        _toast('Informe o nome do grupo', 'error');
+        document.getElementById('novoGrupoNome')?.focus();
+        return;
+    }
+
+    const btnSalvar = document.getElementById('btnSalvarNovoGrupo');
+    if (btnSalvar) btnSalvar.disabled = true;
+
+    try {
+        const res = await fetch(window.location.origin + '/api/api_grupos_inventario.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ nome, descricao }),
+        });
+        const data = await res.json();
+
+        if (data.sucesso) {
+            _toast(`Grupo "${_esc(nome)}" criado com sucesso!`, 'success');
+            await _carregarGrupos();
+            // Selecionar o novo grupo automaticamente
+            const sel = document.getElementById('grupoId');
+            if (sel && data.id) sel.value = data.id;
+            _togglePainelNovoGrupo(false);
+        } else {
+            _toast(data.mensagem || 'Erro ao criar grupo', 'error');
+        }
+    } catch (err) {
+        console.error('[Inventario] Erro ao criar grupo inline:', err);
+        _toast('Erro ao conectar com o servidor', 'error');
+    } finally {
+        if (btnSalvar) btnSalvar.disabled = false;
+    }
+}
+
+// ============================================================
+// GRUPOS — ABA DE GERENCIAMENTO
+// ============================================================
+
+function _setupGruposTab() {
+    const btnNovo = document.getElementById('btnNovoGrupoTab');
+    if (btnNovo) {
+        const fn = () => _abrirFormGrupoTab();
+        btnNovo.addEventListener('click', fn);
+        _listeners.push({ el: btnNovo, event: 'click', fn });
+    }
+
+    const btnSalvar = document.getElementById('btnSalvarGrupoTab');
+    if (btnSalvar) {
+        const fn = () => _salvarGrupoTab();
+        btnSalvar.addEventListener('click', fn);
+        _listeners.push({ el: btnSalvar, event: 'click', fn });
+    }
+
+    const btnCancelar = document.getElementById('btnCancelarGrupoTab');
+    if (btnCancelar) {
+        const fn = () => _fecharFormGrupoTab();
+        btnCancelar.addEventListener('click', fn);
+        _listeners.push({ el: btnCancelar, event: 'click', fn });
+    }
+}
+
+function _abrirFormGrupoTab(grupo = null) {
+    const wrapper = document.getElementById('formGrupoWrapper');
+    if (!wrapper) return;
+    wrapper.style.display = 'block';
+
+    _setEl('formGrupoTitulo', grupo ? `Editando Grupo: ${_esc(grupo.nome)}` : 'Novo Grupo');
+    _setVal('grupoEditId', grupo ? grupo.id : '');
+    _setVal('grupoNomeTab', grupo ? grupo.nome : '');
+    _setVal('grupoDescricaoTab', grupo ? (grupo.descricao || '') : '');
+
+    document.getElementById('grupoNomeTab')?.focus();
+}
+
+function _fecharFormGrupoTab() {
+    const wrapper = document.getElementById('formGrupoWrapper');
+    if (wrapper) wrapper.style.display = 'none';
+    _setVal('grupoEditId', '');
+    _setVal('grupoNomeTab', '');
+    _setVal('grupoDescricaoTab', '');
+}
+
+async function _salvarGrupoTab() {
+    const id = document.getElementById('grupoEditId')?.value || '';
+    const nome = document.getElementById('grupoNomeTab')?.value?.trim();
+    const descricao = document.getElementById('grupoDescricaoTab')?.value?.trim() || '';
+
+    if (!nome) {
+        _toast('Informe o nome do grupo', 'error');
+        document.getElementById('grupoNomeTab')?.focus();
+        return;
+    }
+
+    const btnSalvar = document.getElementById('btnSalvarGrupoTab');
+    if (btnSalvar) btnSalvar.disabled = true;
+
+    const metodo = id ? 'PUT' : 'POST';
+    const payload = id ? { id: parseInt(id), nome, descricao } : { nome, descricao };
+
+    try {
+        const res = await fetch(window.location.origin + '/api/api_grupos_inventario.php', {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.sucesso) {
+            _toast(data.mensagem || 'Grupo salvo com sucesso!', 'success');
+            _fecharFormGrupoTab();
+            await _carregarGrupos();
+            _renderizarTabelaGrupos();
+        } else {
+            _toast(data.mensagem || 'Erro ao salvar grupo', 'error');
+        }
+    } catch (err) {
+        console.error('[Inventario] Erro ao salvar grupo:', err);
+        _toast('Erro ao conectar com o servidor', 'error');
+    } finally {
+        if (btnSalvar) btnSalvar.disabled = false;
+    }
+}
+
+function _renderizarTabelaGrupos() {
+    const tbody = document.getElementById('tabelaGrupos');
+    if (!tbody) return;
+
+    if (!_state.grupos || _state.grupos.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="6"><i class="fas fa-inbox"></i> Nenhum grupo cadastrado</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = _state.grupos.map(g => {
+        const qtd = _state.itens.filter(i => String(i.grupo_id) === String(g.id)).length;
+        return `
+        <tr>
+            <td>${g.id}</td>
+            <td><strong>${_esc(g.nome)}</strong></td>
+            <td>${_esc(g.descricao || '—')}</td>
+            <td>
+                <span class="badge-inv ${g.ativo == 1 ? 'badge-success-inv' : 'badge-danger-inv'}">
+                    ${g.ativo == 1 ? 'Ativo' : 'Inativo'}
+                </span>
+                <span class="badge-inv badge-primary-inv" style="margin-left:4px;">${qtd} iten${qtd !== 1 ? 's' : ''}</span>
+            </td>
+            <td>${g.criado_em_formatado || g.criado_em || '—'}</td>
+            <td>
+                <div class="table-actions-inv">
+                    <button class="btn-edit-inv" title="Editar" onclick="window._InvPage.editarGrupo(${g.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-delete-inv" title="Excluir" onclick="window._InvPage.excluirGrupo(${g.id}, '${_esc(g.nome)}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+
+    // Expor funções para onclick inline
+    if (!window._InvPage) window._InvPage = {};
+    window._InvPage.editarGrupo = (id) => {
+        const g = _state.grupos.find(x => x.id == id);
+        if (g) _abrirFormGrupoTab(g);
+    };
+    window._InvPage.excluirGrupo = (id, nome) => _abrirModalExclusaoGrupo(id, nome);
+}
+
+function _abrirModalExclusaoGrupo(id, nome) {
+    _state.grupoParaExcluir = id;
+    _setEl('confirmarGrupoNome', _esc(nome));
+    const modal = document.getElementById('modalConfirmarExclusaoGrupo');
+    if (modal) modal.classList.add('show');
+}
+
+function _fecharModalGrupo() {
+    const modal = document.getElementById('modalConfirmarExclusaoGrupo');
+    if (modal) modal.classList.remove('show');
+    _state.grupoParaExcluir = null;
+}
+
+async function _confirmarExclusaoGrupo() {
+    if (!_state.grupoParaExcluir) return;
+
+    const btnConfirmar = document.getElementById('btnConfirmarExclusaoGrupo');
+    if (btnConfirmar) btnConfirmar.disabled = true;
+
+    try {
+        const res = await fetch(window.location.origin + '/api/api_grupos_inventario.php', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ id: _state.grupoParaExcluir }),
+        });
+        const data = await res.json();
+
+        if (data.sucesso) {
+            _toast(data.mensagem || 'Grupo excluído com sucesso!', 'success');
+            _fecharModalGrupo();
+            await _carregarGrupos();
+            _renderizarTabelaGrupos();
+        } else {
+            _toast(data.mensagem || 'Erro ao excluir grupo', 'error');
+        }
+    } catch (err) {
+        console.error('[Inventario] Erro ao excluir grupo:', err);
+        _toast('Erro ao conectar com o servidor', 'error');
+    } finally {
+        if (btnConfirmar) btnConfirmar.disabled = false;
     }
 }
 
@@ -228,6 +498,22 @@ async function _carregarUsuarios() {
     }
 }
 
+async function _carregarGrupos() {
+    try {
+        const res = await fetch(window.location.origin + '/api/api_grupos_inventario.php', {
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.sucesso) {
+            _state.grupos = data.dados || [];
+            _popularSelectGrupos();
+            console.log('[Inventario] Grupos carregados:', _state.grupos.length);
+        }
+    } catch (err) {
+        console.error('[Inventario] Erro ao carregar grupos:', err);
+    }
+}
+
 function _popularSelectUsuarios() {
     const ids = ['tutelaUsuarioId', 'filtroTutela', 'relFiltroResponsavel'];
     ids.forEach(id => {
@@ -242,10 +528,26 @@ function _popularSelectUsuarios() {
     });
 }
 
+function _popularSelectGrupos() {
+    const ids = ['grupoId', 'filtroGrupo', 'relFiltroGrupo'];
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const defaultOpt = id === 'grupoId' ? 'Sem grupo' : 'Todos os grupos';
+        const valorAtual = sel.value;
+        sel.innerHTML = `<option value="">${defaultOpt}</option>`;
+        _state.grupos.forEach(g => {
+            sel.innerHTML += `<option value="${g.id}">${_esc(g.nome)}</option>`;
+        });
+        // Restaurar valor selecionado se ainda existir
+        if (valorAtual) sel.value = valorAtual;
+    });
+}
+
 async function _carregarInventario() {
     const tbody = document.getElementById('tabelaInventario');
     if (tbody) {
-        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="9"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="10"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
     }
 
     try {
@@ -308,7 +610,7 @@ function _renderizarTabela(itens) {
     if (!tbody) return;
 
     if (!itens || itens.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="9"><i class="fas fa-inbox"></i> Nenhum item encontrado</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="10"><i class="fas fa-inbox"></i> Nenhum item encontrado</td></tr>';
         _renderizarPaginacao(0);
         return;
     }
@@ -317,10 +619,17 @@ function _renderizarTabela(itens) {
     const fim = inicio + _state.itensPorPagina;
     const paginaAtual = itens.slice(inicio, fim);
 
-    tbody.innerHTML = paginaAtual.map(item => `
+    tbody.innerHTML = paginaAtual.map(item => {
+        const grupoNome = item.grupo_nome || (item.grupo_id ? _state.grupos.find(g => g.id == item.grupo_id)?.nome : null) || '—';
+        return `
         <tr>
             <td><strong>${_esc(item.numero_patrimonio)}</strong></td>
             <td>${_esc(item.nome_item)}</td>
+            <td>
+                ${grupoNome !== '—'
+                    ? `<span class="badge-inv badge-info-inv"><i class="fas fa-layer-group" style="font-size:10px;margin-right:3px;"></i>${_esc(grupoNome)}</span>`
+                    : '<span style="color:#94a3b8;">—</span>'}
+            </td>
             <td>
                 <div style="font-size:13px;">${_esc(item.fabricante || '—')}</div>
                 <div style="font-size:11px;color:#94a3b8;">${_esc(item.modelo || '')}</div>
@@ -348,13 +657,14 @@ function _renderizarTabela(itens) {
                     </button>
                 </div>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 
     _renderizarPaginacao(itens.length);
 
-    // Expor funções para os onclick inline
-    window._InvPage = { editarItem: _editarItem, excluirItem: _abrirModalExclusao };
+    if (!window._InvPage) window._InvPage = {};
+    window._InvPage.editarItem = _editarItem;
+    window._InvPage.excluirItem = _abrirModalExclusao;
 }
 
 function _renderizarPaginacao(total) {
@@ -362,10 +672,7 @@ function _renderizarPaginacao(total) {
     if (!container) return;
 
     const totalPaginas = Math.ceil(total / _state.itensPorPagina);
-    if (totalPaginas <= 1) {
-        container.innerHTML = '';
-        return;
-    }
+    if (totalPaginas <= 1) { container.innerHTML = ''; return; }
 
     const inicio = (_state.pagina - 1) * _state.itensPorPagina + 1;
     const fim = Math.min(_state.pagina * _state.itensPorPagina, total);
@@ -381,16 +688,14 @@ function _renderizarPaginacao(total) {
     for (let p = start; p <= end; p++) {
         html += `<button class="${p === _state.pagina ? 'active' : ''}" onclick="window._InvPage.irPagina(${p})">${p}</button>`;
     }
-
     html += `<button ${_state.pagina === totalPaginas ? 'disabled' : ''} onclick="window._InvPage.irPagina(${_state.pagina + 1})"><i class="fas fa-chevron-right"></i></button>`;
     container.innerHTML = html;
 
-    if (window._InvPage) {
-        window._InvPage.irPagina = (p) => {
-            _state.pagina = p;
-            _renderizarTabela(_state.itensFiltrados.length ? _state.itensFiltrados : _state.itens);
-        };
-    }
+    if (!window._InvPage) window._InvPage = {};
+    window._InvPage.irPagina = (p) => {
+        _state.pagina = p;
+        _renderizarTabela(_state.itensFiltrados.length ? _state.itensFiltrados : _state.itens);
+    };
 }
 
 // ============================================================
@@ -403,6 +708,7 @@ function _aplicarFiltros() {
     const situacao = document.getElementById('filtroSituacao')?.value || '';
     const status = document.getElementById('filtroStatus')?.value || '';
     const tutela = document.getElementById('filtroTutela')?.value || '';
+    const grupo = document.getElementById('filtroGrupo')?.value || '';
 
     _state.itensFiltrados = _state.itens.filter(item => {
         if (numPat && !item.numero_patrimonio.toLowerCase().includes(numPat)) return false;
@@ -410,6 +716,7 @@ function _aplicarFiltros() {
         if (situacao && item.situacao !== situacao) return false;
         if (status && item.status !== status) return false;
         if (tutela && String(item.tutela_usuario_id) !== tutela) return false;
+        if (grupo && String(item.grupo_id) !== grupo) return false;
         return true;
     });
 
@@ -422,7 +729,7 @@ function _aplicarFiltros() {
 }
 
 function _limparFiltros() {
-    ['filtroNumeroPatrimonio', 'filtroNF', 'filtroSituacao', 'filtroStatus', 'filtroTutela'].forEach(id => {
+    ['filtroNumeroPatrimonio', 'filtroNF', 'filtroSituacao', 'filtroStatus', 'filtroTutela', 'filtroGrupo'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
@@ -472,10 +779,10 @@ async function _salvarItem() {
         motivo_baixa: document.getElementById('motivoBaixa')?.value?.trim() || '',
         data_baixa: document.getElementById('dataBaixa')?.value || '',
         tutela_usuario_id: document.getElementById('tutelaUsuarioId')?.value || '',
+        grupo_id: document.getElementById('grupoId')?.value || '',
         observacoes: document.getElementById('observacoes')?.value?.trim() || '',
     };
 
-    // Validações
     if (!dados.numero_patrimonio) {
         _toast('Número do patrimônio é obrigatório', 'error');
         document.getElementById('numeroPatrimonio')?.focus();
@@ -511,7 +818,6 @@ async function _salvarItem() {
             _toast(data.mensagem || 'Item salvo com sucesso!', 'success');
             _limparFormulario();
             await _carregarInventario();
-            // Navegar para listagem após salvar
             _ativarTab('listagem');
         } else {
             _toast(data.mensagem || 'Erro ao salvar item', 'error');
@@ -534,7 +840,6 @@ function _editarItem(id) {
 
     _state.editandoId = id;
 
-    // Preencher formulário
     _setVal('itemId', item.id);
     _setVal('numeroPatrimonio', item.numero_patrimonio);
     _setVal('nomeItem', item.nome_item);
@@ -549,19 +854,14 @@ function _editarItem(id) {
     _setVal('motivoBaixa', item.motivo_baixa || '');
     _setVal('dataBaixa', item.data_baixa || '');
     _setVal('tutelaUsuarioId', item.tutela_usuario_id || '');
+    _setVal('grupoId', item.grupo_id || '');
     _setVal('observacoes', item.observacoes || '');
 
     _toggleMotivoBaixa();
-
     _setEl('formTitle', `Editando Patrimônio #${_esc(item.numero_patrimonio)}`);
     _setEl('btnSalvarTexto', 'Atualizar Item');
-
-    // Navegar para aba de cadastro
     _ativarTab('cadastro');
-
-    // Scroll suave ao topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    console.log('[Inventario] Editando item ID:', id);
 }
 
 function _limparFormulario() {
@@ -573,10 +873,11 @@ function _limparFormulario() {
     _setEl('formTitle', 'Novo Item de Patrimônio');
     _setEl('btnSalvarTexto', 'Salvar Item');
     _toggleMotivoBaixa();
+    _togglePainelNovoGrupo(false);
 }
 
 // ============================================================
-// EXCLUSÃO
+// EXCLUSÃO DE ITEM
 // ============================================================
 
 function _abrirModalExclusao(id, numeroPatrimonio) {
@@ -631,31 +932,33 @@ function _gerarRelatorio() {
     const situacao = document.getElementById('relFiltroSituacao')?.value || '';
     const status = document.getElementById('relFiltroStatus')?.value || '';
     const responsavel = document.getElementById('relFiltroResponsavel')?.value || '';
+    const grupo = document.getElementById('relFiltroGrupo')?.value || '';
 
     let itens = _state.itens.filter(item => {
         if (situacao && item.situacao !== situacao) return false;
         if (status && item.status !== status) return false;
         if (responsavel && String(item.tutela_usuario_id) !== responsavel) return false;
+        if (grupo && String(item.grupo_id) !== grupo) return false;
         return true;
     });
 
-    // Filtro adicional por tipo
-    if (tipo === 'baixas') {
-        itens = itens.filter(i => i.status === 'inativo');
+    if (tipo === 'baixas') itens = itens.filter(i => i.status === 'inativo');
+    if (tipo === 'grupo' && !grupo) {
+        _toast('Selecione um grupo para filtrar por grupo', 'warning');
+        return;
     }
 
     const titulos = {
         geral: 'Relatório Geral',
+        grupo: 'Relatório por Grupo',
         situacao: 'Relatório por Situação',
         status: 'Relatório por Status',
         responsavel: 'Relatório por Responsável',
         baixas: 'Relatório de Itens Baixados',
     };
     _setEl('tituloRelatorio', titulos[tipo] || 'Relatório');
-
     _renderizarTabelaRelatorio(itens);
 
-    // Seção de baixas
     const secaoBaixas = document.getElementById('secaoBaixas');
     if (tipo === 'baixas' && secaoBaixas) {
         secaoBaixas.style.display = 'block';
@@ -664,16 +967,13 @@ function _gerarRelatorio() {
         secaoBaixas.style.display = 'none';
     }
 
-    // Atualizar KPIs com os itens filtrados
     const valorFiltrado = itens.reduce((s, i) => s + parseFloat(i.valor || 0), 0);
     _setEl('relKpiTotal', itens.length);
     _setEl('relKpiAtivos', itens.filter(i => i.status === 'ativo').length);
     _setEl('relKpiInativos', itens.filter(i => i.status === 'inativo').length);
     _setEl('relKpiValor', 'R$ ' + valorFiltrado.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
 
-    // Armazenar para exportação
     _state._relatorioAtual = itens;
-
     console.log('[Inventario] Relatório gerado:', tipo, '—', itens.length, 'itens');
 }
 
@@ -682,14 +982,17 @@ function _renderizarTabelaRelatorio(itens) {
     if (!tbody) return;
 
     if (!itens || itens.length === 0) {
-        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="8">Nenhum item encontrado com os filtros aplicados</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row-inv"><td colspan="9">Nenhum item encontrado com os filtros aplicados</td></tr>';
         return;
     }
 
-    tbody.innerHTML = itens.map(item => `
+    tbody.innerHTML = itens.map(item => {
+        const grupoNome = item.grupo_nome || (item.grupo_id ? _state.grupos.find(g => g.id == item.grupo_id)?.nome : null) || '—';
+        return `
         <tr>
             <td><strong>${_esc(item.numero_patrimonio)}</strong></td>
             <td>${_esc(item.nome_item)}</td>
+            <td>${_esc(grupoNome)}</td>
             <td>${_esc(item.fabricante || '—')}</td>
             <td>
                 <span class="badge-inv ${item.situacao === 'imobilizado' ? 'badge-primary-inv' : 'badge-warning-inv'}">
@@ -704,8 +1007,8 @@ function _renderizarTabelaRelatorio(itens) {
             <td>R$ ${parseFloat(item.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
             <td>${_esc(item.tutela_nome || '—')}</td>
             <td>${item.data_compra_formatada || item.data_compra || '—'}</td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 function _renderizarBaixas(itens) {
@@ -737,21 +1040,25 @@ function _exportarCSV(itens) {
         return;
     }
 
-    const cabecalho = ['Patrimônio', 'Nome do Item', 'Fabricante', 'Modelo', 'Nº Série', 'NF', 'Data Compra', 'Situação', 'Valor (R$)', 'Status', 'Responsável', 'Observações'];
-    const linhas = itens.map(i => [
-        i.numero_patrimonio,
-        i.nome_item,
-        i.fabricante || '',
-        i.modelo || '',
-        i.numero_serie || '',
-        i.nf || '',
-        i.data_compra || '',
-        i.situacao,
-        parseFloat(i.valor || 0).toFixed(2),
-        i.status,
-        i.tutela_nome || '',
-        (i.observacoes || '').replace(/\n/g, ' '),
-    ]);
+    const cabecalho = ['Patrimônio', 'Nome do Item', 'Grupo', 'Fabricante', 'Modelo', 'Nº Série', 'NF', 'Data Compra', 'Situação', 'Valor (R$)', 'Status', 'Responsável', 'Observações'];
+    const linhas = itens.map(i => {
+        const grupoNome = i.grupo_nome || (i.grupo_id ? _state.grupos.find(g => g.id == i.grupo_id)?.nome : '') || '';
+        return [
+            i.numero_patrimonio,
+            i.nome_item,
+            grupoNome,
+            i.fabricante || '',
+            i.modelo || '',
+            i.numero_serie || '',
+            i.nf || '',
+            i.data_compra || '',
+            i.situacao,
+            parseFloat(i.valor || 0).toFixed(2),
+            i.status,
+            i.tutela_nome || '',
+            (i.observacoes || '').replace(/\n/g, ' '),
+        ];
+    });
 
     const csv = '\uFEFF' + [cabecalho, ...linhas]
         .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';'))

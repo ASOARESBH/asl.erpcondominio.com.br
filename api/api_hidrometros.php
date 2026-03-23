@@ -25,6 +25,27 @@ header('Cache-Control: no-cache, must-revalidate');
 $metodo = $_SERVER['REQUEST_METHOD'];
 $conexao = conectar_banco();
 
+// ========== BUSCAR HISTÓRICO (deve vir ANTES do GET genérico) ==========
+if ($metodo === 'GET' && isset($_GET['historico'])) {
+    $hidrometro_id = intval($_GET['historico']);
+
+    $sql = "SELECT *, DATE_FORMAT(data_alteracao, '%d/%m/%Y %H:%i:%s') as data_formatada
+            FROM hidrometros_historico
+            WHERE hidrometro_id = $hidrometro_id
+            ORDER BY data_alteracao DESC";
+
+    $resultado = $conexao->query($sql);
+    $historico = array();
+
+    if ($resultado && $resultado->num_rows > 0) {
+        while ($row = $resultado->fetch_assoc()) {
+            $historico[] = $row;
+        }
+    }
+
+    retornar_json(true, "Histórico carregado", $historico);
+}
+
 // ========== LISTAR HIDRÔMETROS ==========
 if ($metodo === 'GET') {
     $busca = isset($_GET['busca']) ? sanitizar($conexao, $_GET['busca']) : '';
@@ -66,12 +87,14 @@ if ($metodo === 'GET') {
 if ($metodo === 'POST') {
     $dados = json_decode(file_get_contents('php://input'), true);
     
-    $morador_id = intval($dados['morador_id'] ?? 0);
-    $unidade = sanitizar($conexao, $dados['unidade'] ?? '');
+    $morador_id        = intval($dados['morador_id']        ?? 0);
+    $unidade           = sanitizar($conexao, $dados['unidade']           ?? '');
     $numero_hidrometro = sanitizar($conexao, $dados['numero_hidrometro'] ?? '');
-    $numero_lacre = sanitizar($conexao, $dados['numero_lacre'] ?? '');
-    $data_instalacao = sanitizar($conexao, $dados['data_instalacao'] ?? '');
-    
+    $numero_lacre      = sanitizar($conexao, $dados['numero_lacre']      ?? '');
+    $data_instalacao   = sanitizar($conexao, $dados['data_instalacao']   ?? '');
+    $inventario_id     = isset($dados['inventario_id']) && $dados['inventario_id'] > 0
+                         ? intval($dados['inventario_id']) : null;
+
     // Validações
     if ($morador_id <= 0) {
         retornar_json(false, "Morador é obrigatório");
@@ -97,8 +120,13 @@ if ($metodo === 'POST') {
     $stmt->close();
     
     // Inserir hidrômetro
-    $stmt = $conexao->prepare("INSERT INTO hidrometros (morador_id, unidade, numero_hidrometro, numero_lacre, data_instalacao) VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("issss", $morador_id, $unidade, $numero_hidrometro, $numero_lacre, $data_instalacao);
+    if ($inventario_id !== null) {
+        $stmt = $conexao->prepare("INSERT INTO hidrometros (morador_id, unidade, numero_hidrometro, numero_lacre, data_instalacao, inventario_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssi", $morador_id, $unidade, $numero_hidrometro, $numero_lacre, $data_instalacao, $inventario_id);
+    } else {
+        $stmt = $conexao->prepare("INSERT INTO hidrometros (morador_id, unidade, numero_hidrometro, numero_lacre, data_instalacao) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("issss", $morador_id, $unidade, $numero_hidrometro, $numero_lacre, $data_instalacao);
+    }
     
     if ($stmt->execute()) {
         $id = $conexao->insert_id;
@@ -193,25 +221,6 @@ if ($metodo === 'PUT') {
     $stmt->close();
 }
 
-// ========== BUSCAR HISTÓRICO ==========
-if ($metodo === 'GET' && isset($_GET['historico'])) {
-    $hidrometro_id = intval($_GET['historico']);
-    
-    $sql = "SELECT *, DATE_FORMAT(data_alteracao, '%d/%m/%Y %H:%i:%s') as data_formatada
-            FROM hidrometros_historico 
-            WHERE hidrometro_id = $hidrometro_id 
-            ORDER BY data_alteracao DESC";
-    
-    $resultado = $conexao->query($sql);
-    $historico = array();
-    
-    if ($resultado && $resultado->num_rows > 0) {
-        while ($row = $resultado->fetch_assoc()) {
-            $historico[] = $row;
-        }
-    }
-    
-    retornar_json(true, "Histórico carregado", $historico);
-}
+// Endpoint de histórico movido para antes do GET genérico (acima)
 
 fechar_conexao($conexao);

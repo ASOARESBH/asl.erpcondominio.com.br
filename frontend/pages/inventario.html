@@ -1,4 +1,4 @@
-<!-- Page Metadata -->
+
 <div id="page-metadata" data-title="Inventário" data-icon="fa-boxes" style="display:none;"></div>
 
 <!-- Toast Container -->
@@ -34,6 +34,9 @@
         </button>
         <button class="tab-btn-inv" data-tab="listagem">
             <i class="fas fa-list"></i> Listagem
+        </button>
+        <button class="tab-btn-inv" data-tab="grupos">
+            <i class="fas fa-layer-group"></i> Grupos
         </button>
         <button class="tab-btn-inv" data-tab="relatorios">
             <i class="fas fa-chart-bar"></i> Relatórios
@@ -104,6 +107,36 @@
                             <option value="">Sem responsável</option>
                         </select>
                     </div>
+
+                    <!-- Campo Grupo com cadastro inline -->
+                    <div class="form-group-inv">
+                        <label for="grupoId">Grupo <span class="form-hint-inv" style="display:inline;">(opcional)</span></label>
+                        <div class="grupo-field-wrapper">
+                            <select id="grupoId" style="flex:1;">
+                                <option value="">Sem grupo</option>
+                            </select>
+                            <button type="button" class="btn-icon-inv btn-add-grupo" id="btnAbrirNovoGrupo" title="Cadastrar novo grupo">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <!-- Painel inline de novo grupo -->
+                        <div id="painelNovoGrupo" class="painel-novo-grupo" style="display:none;">
+                            <div class="painel-novo-grupo-inner">
+                                <input type="text" id="novoGrupoNome" placeholder="Nome do novo grupo (ex: Hidrômetros)" maxlength="100">
+                                <input type="text" id="novoGrupoDescricao" placeholder="Descrição (opcional)" maxlength="255">
+                                <div class="painel-novo-grupo-actions">
+                                    <button type="button" class="btn-primary-inv btn-sm-inv" id="btnSalvarNovoGrupo">
+                                        <i class="fas fa-save"></i> Salvar Grupo
+                                    </button>
+                                    <button type="button" class="btn-secondary-inv btn-sm-inv" id="btnCancelarNovoGrupo">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="form-hint-inv">Classifique o item em um grupo (ex: Hidrômetros, TI, Móveis)</span>
+                    </div>
+
                     <!-- Campo condicional: Data de Baixa -->
                     <div class="form-group-inv campo-cond-inv" id="campoDataBaixa">
                         <label for="dataBaixa">Data de Baixa</label>
@@ -201,6 +234,12 @@
                     </select>
                 </div>
                 <div class="form-group-inv">
+                    <label>Grupo</label>
+                    <select id="filtroGrupo">
+                        <option value="">Todos os grupos</option>
+                    </select>
+                </div>
+                <div class="form-group-inv">
                     <label>Responsável</label>
                     <select id="filtroTutela">
                         <option value="">Todos</option>
@@ -233,6 +272,7 @@
                         <tr>
                             <th>Patrimônio</th>
                             <th>Nome do Item</th>
+                            <th>Grupo</th>
                             <th>Fabricante / Modelo</th>
                             <th>NF</th>
                             <th>Situação</th>
@@ -244,13 +284,75 @@
                     </thead>
                     <tbody id="tabelaInventario">
                         <tr class="empty-row-inv">
-                            <td colspan="9"><i class="fas fa-spinner fa-spin"></i> Carregando...</td>
+                            <td colspan="10"><i class="fas fa-spinner fa-spin"></i> Carregando...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
             <!-- Paginação -->
             <div class="pagination-bar-inv" id="paginacaoInventario"></div>
+        </div>
+    </div>
+
+    <!-- ===== ABA: GRUPOS ===== -->
+    <div id="tab-grupos" class="tab-content-inv">
+        <div class="card-inv">
+            <div class="card-header-inv">
+                <h2><i class="fas fa-layer-group"></i> Gerenciar Grupos de Inventário</h2>
+                <div class="card-header-actions-inv">
+                    <button class="btn-primary-inv btn-sm-inv" id="btnNovoGrupoTab">
+                        <i class="fas fa-plus"></i> Novo Grupo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formulário de grupo (colapsável) -->
+            <div id="formGrupoWrapper" style="display:none; padding:1.25rem; border-bottom:1px solid #e2e8f0;">
+                <h3 style="margin:0 0 1rem; font-size:1rem; color:#1e293b;">
+                    <i class="fas fa-edit"></i> <span id="formGrupoTitulo">Novo Grupo</span>
+                </h3>
+                <input type="hidden" id="grupoEditId">
+                <div class="form-grid-inv form-grid-3-inv">
+                    <div class="form-group-inv">
+                        <label for="grupoNomeTab">Nome do Grupo <span class="req">*</span></label>
+                        <input type="text" id="grupoNomeTab" placeholder="Ex: Hidrômetros" maxlength="100" required>
+                        <span class="form-hint-inv">Nome único para identificar o grupo</span>
+                    </div>
+                    <div class="form-group-inv">
+                        <label for="grupoDescricaoTab">Descrição</label>
+                        <input type="text" id="grupoDescricaoTab" placeholder="Descrição opcional do grupo" maxlength="255">
+                    </div>
+                    <div class="form-group-inv form-actions-inline-inv" style="align-self:flex-end;">
+                        <button class="btn-primary-inv" id="btnSalvarGrupoTab">
+                            <i class="fas fa-save"></i> Salvar
+                        </button>
+                        <button class="btn-secondary-inv" id="btnCancelarGrupoTab">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de grupos -->
+            <div class="table-responsive-inv">
+                <table class="data-table-inv">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nome do Grupo</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                            <th>Cadastrado em</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaGrupos">
+                        <tr class="empty-row-inv">
+                            <td colspan="6"><i class="fas fa-spinner fa-spin"></i> Carregando grupos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -299,10 +401,17 @@
                     <label>Tipo de Relatório</label>
                     <select id="tipoRelatorio">
                         <option value="geral">Relatório Geral</option>
+                        <option value="grupo">Por Grupo</option>
                         <option value="situacao">Por Situação</option>
                         <option value="status">Por Status</option>
                         <option value="responsavel">Por Responsável</option>
                         <option value="baixas">Itens Baixados</option>
+                    </select>
+                </div>
+                <div class="form-group-inv">
+                    <label>Grupo</label>
+                    <select id="relFiltroGrupo">
+                        <option value="">Todos os grupos</option>
                     </select>
                 </div>
                 <div class="form-group-inv">
@@ -349,6 +458,7 @@
                         <tr>
                             <th>Patrimônio</th>
                             <th>Nome do Item</th>
+                            <th>Grupo</th>
                             <th>Fabricante</th>
                             <th>Situação</th>
                             <th>Status</th>
@@ -359,7 +469,7 @@
                     </thead>
                     <tbody id="tabelaRelatorio">
                         <tr class="empty-row-inv">
-                            <td colspan="8">Selecione os filtros e clique em Gerar</td>
+                            <td colspan="9">Selecione os filtros e clique em Gerar</td>
                         </tr>
                     </tbody>
                 </table>
@@ -393,6 +503,28 @@
                 <i class="fas fa-trash"></i> Excluir
             </button>
             <button class="btn-secondary-inv" id="btnCancelarExclusao">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão de Grupo -->
+<div id="modalConfirmarExclusaoGrupo" class="modal-overlay-inv page-inventario">
+    <div class="modal-box-inv modal-sm-inv">
+        <div class="modal-header-inv modal-header-danger-inv">
+            <h3><i class="fas fa-exclamation-triangle"></i> Confirmar Exclusão de Grupo</h3>
+            <button class="modal-close-inv" id="btnFecharModalExclusaoGrupo">&times;</button>
+        </div>
+        <div class="modal-body-inv">
+            <p>Deseja realmente excluir o grupo <strong id="confirmarGrupoNome"></strong>?</p>
+            <p class="form-hint-inv" style="margin-top:0.5rem;">Itens vinculados a este grupo perderão o vínculo. Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="modal-footer-inv">
+            <button class="btn-danger-inv" id="btnConfirmarExclusaoGrupo">
+                <i class="fas fa-trash"></i> Excluir Grupo
+            </button>
+            <button class="btn-secondary-inv" id="btnCancelarExclusaoGrupo">
                 <i class="fas fa-times"></i> Cancelar
             </button>
         </div>

@@ -180,6 +180,38 @@
                         <label for="cad_data">Data e Hora de Instalação *</label>
                         <input type="datetime-local" id="cad_data" required>
                     </div>
+                    <div class="form-group" style="position:relative;">
+                        <label for="cad_patrimonio_busca">Nº do Patrimônio (Inventário)</label>
+                        <div style="display:flex;gap:0.5rem;align-items:center;">
+                            <input type="text" id="cad_patrimonio_busca"
+                                placeholder="Digite o nº do patrimônio..."
+                                autocomplete="off"
+                                oninput="window.HidrometroPage.buscarPatrimonio(this.value)">
+                            <button type="button" class="btn-secondary" style="white-space:nowrap;padding:0.6rem 0.9rem;"
+                                onclick="window.HidrometroPage.limparPatrimonio()" title="Limpar patrimônio">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <input type="hidden" id="cad_inventario_id">
+                        <!-- Dropdown de sugestões -->
+                        <div id="patrimonioDropdown" style="
+                            display:none;
+                            position:absolute;
+                            top:100%;
+                            left:0;
+                            right:0;
+                            background:#fff;
+                            border:1.5px solid #2563eb;
+                            border-radius:8px;
+                            box-shadow:0 8px 24px rgba(0,0,0,0.12);
+                            z-index:999;
+                            max-height:220px;
+                            overflow-y:auto;
+                        "></div>
+                        <small style="color:#64748b;font-size:11px;margin-top:3px;display:block;">
+                            Busca apenas itens <strong>Ativos</strong>, <strong>Circulantes</strong> do grupo <strong>Hidrômetros</strong>
+                        </small>
+                    </div>
                 </div>
                 <div class="btn-actions">
                     <button type="submit" class="btn-primary">
