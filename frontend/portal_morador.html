@@ -2152,16 +2152,16 @@ function carregarHidrometro() {
             let html = `
             <div class="hidro-stats">
                 <div class="hidro-stat">
-                    <div class="hidro-stat-value">${escHtml(h.numero_hidrometro || '—')}</div>
-                    <div class="hidro-stat-label">Número do Hidrômetro</div>
+                    <div class="hidro-stat-value">${escHtml(h.numero_hidrometro || '\u2014')}</div>
+                    <div class="hidro-stat-label">N\u00famero do Hidr\u00f4metro</div>
                 </div>
                 <div class="hidro-stat">
-                    <div class="hidro-stat-value">${escHtml(h.numero_lacre || '—')}</div>
-                    <div class="hidro-stat-label">Número do Lacre</div>
+                    <div class="hidro-stat-value">${escHtml(h.numero_lacre || '\u2014')}</div>
+                    <div class="hidro-stat-label">N\u00famero do Lacre</div>
                 </div>
                 <div class="hidro-stat">
-                    <div class="hidro-stat-value">${h.leitura_inicial != null ? parseFloat(h.leitura_inicial).toLocaleString('pt-BR',{minimumFractionDigits:2}) : '—'}</div>
-                    <div class="hidro-stat-label">Leitura Inicial (m³)</div>
+                    <div class="hidro-stat-value">${escHtml(h.data_instalacao || '\u2014')}</div>
+                    <div class="hidro-stat-label">Data de Instala\u00e7\u00e3o</div>
                 </div>
                 <div class="hidro-stat">
                     <div class="hidro-stat-value"><span class="badge badge-${h.ativo ? 'success' : 'danger'}">${h.ativo ? 'Ativo' : 'Inativo'}</span></div>
