@@ -98,10 +98,22 @@
 
     function renderLogout() {
         return [
+            // Botão Sair
             '<li class="nav-item" style="margin-top: 1rem;">',
             '<a href="#" class="nav-link nav-link-logout" id="btn-logout" style="color: #fca5a5;">',
             '<i class="fas fa-sign-out-alt"></i>',
             '<span>Sair</span>',
+            '</a>',
+            '</li>',
+            // Botão Abrir Chamado
+            '<li class="nav-item" style="margin-top: 0.5rem; padding: 0 0.75rem 1rem;">',
+            '<a href="https://erpcondominios.com.br/chamados/index.php"',
+            '   target="_blank" rel="noopener noreferrer"',
+            '   class="btn-abrir-chamado"',
+            '   title="Abrir chamado de suporte">',
+            '<i class="fas fa-headset"></i>',
+            '<span>Abrir Chamado</span>',
+            '<i class="fas fa-external-link-alt" style="font-size:10px;margin-left:auto;opacity:0.7;"></i>',
             '</a>',
             '</li>'
         ].join('');

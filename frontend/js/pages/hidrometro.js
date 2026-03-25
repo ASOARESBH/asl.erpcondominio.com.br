@@ -24,11 +24,14 @@ const API_MORADORES    = window.location.origin + '/api/api_moradores.php';
 // ============================================================
 
 let _state = {
-    hidrometros    : [],
+    hidrometros    : [],   // lista completa (após ordenação)
     unidades       : [],
     moradores      : [],
     buscarTimer    : null,
     currentTab     : 'cadastro',
+    // Paginação
+    currentPage    : 1,
+    perPage        : 20,
     // Referência ao handler para remoção no destroy()
     _modalClickRef : null,
 };
@@ -75,6 +78,8 @@ export function init() {
         buscarPatrimonio    : buscarPatrimonio,
         limparPatrimonio    : limparPatrimonio,
         selecionarPatrimonio: selecionarPatrimonio,
+        irParaPagina        : irParaPagina,
+        alterarPerPage      : alterarPerPage,
     };
 
     console.log('[Hidrometro] Módulo pronto.');
@@ -90,7 +95,7 @@ export function destroy() {
     // Garante que o body scroll seja restaurado
     document.body.style.overflow = '';
     delete window.HidrometroPage;
-    _state = { hidrometros: [], unidades: [], moradores: [], buscarTimer: null, currentTab: 'cadastro', _modalClickRef: null };
+    _state = { hidrometros: [], unidades: [], moradores: [], buscarTimer: null, currentTab: 'cadastro', currentPage: 1, perPage: 20, _modalClickRef: null };
 }
 
 // ============================================================
@@ -237,7 +242,8 @@ async function _carregarHidrometros(busca = '') {
         const data = await _apiCall(url);
         if (!data.sucesso) throw new Error(data.mensagem);
 
-        _state.hidrometros = data.dados || [];
+        _state.hidrometros = _ordenarHidrometros(data.dados || []);
+        _state.currentPage = 1;  // reset página ao recarregar
         _renderTabela(_state.hidrometros);
         _atualizarKPIs(_state.hidrometros);
         console.log(`[Hidrometro] ${_state.hidrometros.length} hidrômetros carregados.`);
@@ -258,7 +264,44 @@ async function _carregarHidrometros(busca = '') {
 }
 
 // ============================================================
-// RENDER TABELA
+// ORDENAÇÃO
+// ============================================================
+
+/**
+ * Ordena a lista de hidrômetros:
+ *  1º Unidades que contêm "adm" ou "administrativo" (case-insensitive)
+ *  2º Demais unidades, ordenadas numericamente (extraí o primeiro número encontrado)
+ *     e alfabética como desempate.
+ */
+function _ordenarHidrometros(lista) {
+    const isAdm = str => /adm/i.test(str || '');
+
+    // Extrai o primeiro número de uma string para ordenação numérica
+    const numericKey = str => {
+        const m = (str || '').match(/(\d+)/);
+        return m ? parseInt(m[1], 10) : Infinity;
+    };
+
+    return [...lista].sort((a, b) => {
+        const admA = isAdm(a.unidade);
+        const admB = isAdm(b.unidade);
+
+        // Administrativos sempre primeiro
+        if (admA && !admB) return -1;
+        if (!admA && admB) return  1;
+
+        // Ambos administrativos ou ambos normais: ordenação numérica
+        const nA = numericKey(a.unidade);
+        const nB = numericKey(b.unidade);
+        if (nA !== nB) return nA - nB;
+
+        // Desempate alfabético
+        return (a.unidade || '').localeCompare(b.unidade || '', 'pt-BR', { numeric: true });
+    });
+}
+
+// ============================================================
+// RENDER TABELA (com paginação)
 // ============================================================
 
 function _renderTabela(lista) {
@@ -273,10 +316,23 @@ function _renderTabela(lista) {
                     <p>Nenhum hidrômetro encontrado</p>
                 </td>
             </tr>`;
+        _renderPaginacao(0);
         return;
     }
 
-    tbody.innerHTML = lista.map(h => {
+    const total      = lista.length;
+    const perPage    = _state.perPage;
+    const totalPages = Math.ceil(total / perPage);
+
+    // Garante que currentPage está dentro dos limites
+    if (_state.currentPage < 1)           _state.currentPage = 1;
+    if (_state.currentPage > totalPages)  _state.currentPage = totalPages;
+
+    const start  = (_state.currentPage - 1) * perPage;
+    const end    = Math.min(start + perPage, total);
+    const pagina = lista.slice(start, end);
+
+    tbody.innerHTML = pagina.map(h => {
         const ativo = h.ativo == 1;
         const badge = ativo
             ? '<span class="badge badge-active"><i class="fas fa-check"></i> Ativo</span>'
@@ -308,6 +364,105 @@ function _renderTabela(lista) {
                 </td>
             </tr>`;
     }).join('');
+
+    _renderPaginacao(total);
+}
+
+// ============================================================
+// PAGINAÇÃO
+// ============================================================
+
+function _renderPaginacao(total) {
+    // Garante que o container de paginação existe; cria se necessário
+    let container = document.getElementById('paginacaoHidrometros');
+    if (!container) {
+        const tableCard = document.querySelector('.page-hidrometro .table-container')?.closest('.page-card');
+        if (tableCard) {
+            container = document.createElement('div');
+            container.id = 'paginacaoHidrometros';
+            container.className = 'hidrometro-pagination';
+            tableCard.appendChild(container);
+        }
+    }
+    if (!container) return;
+
+    const perPage    = _state.perPage;
+    const totalPages = Math.ceil(total / perPage);
+    const current    = _state.currentPage;
+
+    if (totalPages <= 1) {
+        container.innerHTML = total > 0
+            ? `<div class="pagination-info">Exibindo <strong>${total}</strong> hidrômetro${total !== 1 ? 's' : ''}</div>`
+            : '';
+        return;
+    }
+
+    // Gera os botões de página com janela deslizante
+    const pages = [];
+    const delta = 2;
+    const left  = Math.max(1, current - delta);
+    const right = Math.min(totalPages, current + delta);
+
+    if (left > 1) {
+        pages.push(1);
+        if (left > 2) pages.push('...');
+    }
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < totalPages) {
+        if (right < totalPages - 1) pages.push('...');
+        pages.push(totalPages);
+    }
+
+    const inicio = (current - 1) * perPage + 1;
+    const fim    = Math.min(current * perPage, total);
+
+    container.innerHTML = `
+        <div class="pagination-info">
+            Exibindo <strong>${inicio}–${fim}</strong> de <strong>${total}</strong> hidrômetros
+        </div>
+        <div class="pagination-controls">
+            <button class="page-btn" ${current === 1 ? 'disabled' : ''}
+                onclick="window.HidrometroPage.irParaPagina(${current - 1})" title="Página anterior">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            ${pages.map(p => p === '...'
+                ? '<span class="page-ellipsis">…</span>'
+                : `<button class="page-btn ${p === current ? 'active' : ''}"
+                    onclick="window.HidrometroPage.irParaPagina(${p})">${p}</button>`
+            ).join('')}
+            <button class="page-btn" ${current === totalPages ? 'disabled' : ''}
+                onclick="window.HidrometroPage.irParaPagina(${current + 1})" title="Próxima página">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        <div class="pagination-perpage">
+            <label>Por página:
+                <select onchange="window.HidrometroPage.alterarPerPage(this.value)">
+                    ${[10, 20, 50, 100].map(n =>
+                        `<option value="${n}" ${n === perPage ? 'selected' : ''}>${n}</option>`
+                    ).join('')}
+                </select>
+            </label>
+        </div>`;
+}
+
+function irParaPagina(pagina) {
+    const total      = _state.hidrometros.length;
+    const totalPages = Math.ceil(total / _state.perPage);
+    const p          = parseInt(pagina, 10);
+    if (isNaN(p) || p < 1 || p > totalPages) return;
+    _state.currentPage = p;
+    _renderTabela(_state.hidrometros);
+    // Scroll suave até o topo da tabela
+    document.getElementById('listaHidrometros')
+        ?.closest('.page-card')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function alterarPerPage(valor) {
+    _state.perPage     = parseInt(valor, 10) || 20;
+    _state.currentPage = 1;
+    _renderTabela(_state.hidrometros);
 }
 
 // ============================================================
