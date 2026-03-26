@@ -1,10 +1,11 @@
 /**
  * Módulo: Contas a Receber
  * Padrão SPA — layout-base.html?page=contas_receber
+ * @version 1.1.0 — corrigido para usar ?acao= e FormData (padrão da API PHP)
  */
 'use strict';
 
-const API = '../api/api_contas_receber.php';
+const API        = '../api/api_contas_receber.php';
 const API_PLANOS = '../api/api_planos_contas.php';
 
 let _state = {
@@ -13,52 +14,57 @@ let _state = {
     carregando: false
 };
 
-// ─── Inicialização ───────────────────────────────────────────────────────
+// ─── Ciclo de Vida ───────────────────────────────────────────────────────────
 export function init() {
-    console.log('[ContasReceber] Init');
+    console.log('[ContasReceber] Init v1.1');
     _bindForm();
     _bindRecebimento();
-    carregarPlanos();
-    carregar();
+    _carregarPlanos();
+    _carregar();
+    // Expor globalmente para uso nos botões inline do HTML
+    window.ContasReceber = {
+        carregar: _carregar,
+        filtrar,
+        editar,
+        excluir,
+        limparForm,
+        abrirModalRecebimento,
+        fecharModal
+    };
 }
 
 export function destroy() {
     console.log('[ContasReceber] Destroy');
     _state = { lista: [], editandoId: null, carregando: false };
+    delete window.ContasReceber;
 }
 
-// ─── Bind de eventos ─────────────────────────────────────────────────────
+// ─── Bind de eventos ─────────────────────────────────────────────────────────
 function _bindForm() {
     const form = document.getElementById('cr_formCadastro');
     if (!form) return;
-    form.addEventListener('submit', e => {
-        e.preventDefault();
-        _salvar();
-    });
+    form.addEventListener('submit', e => { e.preventDefault(); _salvar(); });
 }
 
 function _bindRecebimento() {
     const form = document.getElementById('cr_formRecebimento');
     if (!form) return;
-    form.addEventListener('submit', e => {
-        e.preventDefault();
-        _registrarRecebimento();
-    });
+    form.addEventListener('submit', e => { e.preventDefault(); _registrarRecebimento(); });
 }
 
-// ─── Carregar Planos de Contas ────────────────────────────────────────────
-async function carregarPlanos() {
+// ─── Carregar Planos de Contas ────────────────────────────────────────────────
+async function _carregarPlanos() {
     try {
-        const r = await fetch(API_PLANOS);
+        const r = await fetch(`${API_PLANOS}?acao=listar`);
         const d = await r.json();
         const sel = document.getElementById('cr_selectPlano');
         if (!sel) return;
         sel.innerHTML = '<option value="">Selecione um plano...</option>';
-        const lista = d.dados || d.data || d || [];
+        const lista = Array.isArray(d.dados) ? d.dados : [];
         lista.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = p.nome || p.descricao || p.name;
+            opt.textContent = `${p.codigo ? p.codigo + ' — ' : ''}${p.nome || p.descricao || p.name}`;
             sel.appendChild(opt);
         });
     } catch (err) {
@@ -66,8 +72,8 @@ async function carregarPlanos() {
     }
 }
 
-// ─── Carregar Contas ──────────────────────────────────────────────────────
-async function carregar() {
+// ─── Carregar Contas ──────────────────────────────────────────────────────────
+async function _carregar() {
     if (_state.carregando) return;
     _state.carregando = true;
 
@@ -77,11 +83,14 @@ async function carregar() {
     try {
         const filtro = document.getElementById('cr_filtroStatus');
         const status = filtro ? filtro.value : '';
-        const url = status ? `${API}?status=${encodeURIComponent(status)}` : API;
+        const url = status
+            ? `${API}?acao=listar&status=${encodeURIComponent(status)}`
+            : `${API}?acao=listar`;
+
         const r = await fetch(url);
         const d = await r.json();
 
-        _state.lista = d.dados || d.data || d || [];
+        _state.lista = Array.isArray(d.dados) ? d.dados : [];
         _renderTabela();
         _calcularKPIs();
     } catch (err) {
@@ -92,11 +101,9 @@ async function carregar() {
     }
 }
 
-function filtrar() {
-    carregar();
-}
+function filtrar() { _carregar(); }
 
-// ─── Renderizar Tabela ────────────────────────────────────────────────────
+// ─── Renderizar Tabela ────────────────────────────────────────────────────────
 function _renderTabela() {
     const tbody = document.getElementById('cr_corpoTabela');
     if (!tbody) return;
@@ -107,9 +114,10 @@ function _renderTabela() {
     }
 
     tbody.innerHTML = _state.lista.map(c => {
-        const badge = _badgeStatus(c.status);
-        const venc = _formatarData(c.data_vencimento);
-        const atrasada = c.status === 'PENDENTE' && new Date(c.data_vencimento) < new Date() ? ' style="color:#dc2626;font-weight:600;"' : '';
+        const badge   = _badgeStatus(c.status);
+        const venc    = _formatarData(c.data_vencimento);
+        const atrasada = c.status === 'PENDENTE' && new Date(c.data_vencimento) < new Date()
+            ? ' style="color:#dc2626;font-weight:600;"' : '';
         return `
         <tr>
             <td>${_esc(c.numero_documento || '-')}</td>
@@ -120,13 +128,16 @@ function _renderTabela() {
             <td>${badge}</td>
             <td class="acoes-cell">
                 ${c.status === 'PENDENTE' || c.status === 'PARCIAL' ? `
-                <button class="btn btn-xs btn-success" title="Registrar Recebimento" onclick="ContasReceber.abrirModalRecebimento(${c.id})">
+                <button class="btn btn-xs btn-success" title="Registrar Recebimento"
+                    onclick="ContasReceber.abrirModalRecebimento(${c.id})">
                     <i class="fas fa-hand-holding-usd"></i>
                 </button>` : ''}
-                <button class="btn btn-xs btn-outline" title="Editar" onclick="ContasReceber.editar(${c.id})">
+                <button class="btn btn-xs btn-outline" title="Editar"
+                    onclick="ContasReceber.editar(${c.id})">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-xs btn-danger" title="Excluir" onclick="ContasReceber.excluir(${c.id})">
+                <button class="btn btn-xs btn-danger" title="Excluir"
+                    onclick="ContasReceber.excluir(${c.id})">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -134,7 +145,7 @@ function _renderTabela() {
     }).join('');
 }
 
-// ─── Calcular KPIs ────────────────────────────────────────────────────────
+// ─── Calcular KPIs ────────────────────────────────────────────────────────────
 function _calcularKPIs() {
     let aReceber = 0, recebido = 0, atrasadas = 0;
     const hoje = new Date();
@@ -150,12 +161,12 @@ function _calcularKPIs() {
         }
     });
 
-    _setEl('cr_totalReceber', _formatarMoeda(aReceber));
-    _setEl('cr_totalRecebido', _formatarMoeda(recebido));
+    _setEl('cr_totalReceber',    _formatarMoeda(aReceber));
+    _setEl('cr_totalRecebido',   _formatarMoeda(recebido));
     _setEl('cr_contasAtrasadas', atrasadas);
 }
 
-// ─── Salvar Conta ─────────────────────────────────────────────────────────
+// ─── Salvar Conta ─────────────────────────────────────────────────────────────
 async function _salvar() {
     const form = document.getElementById('cr_formCadastro');
     if (!form) return;
@@ -163,25 +174,25 @@ async function _salvar() {
     const btn = document.getElementById('cr_btnSalvar');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'; }
 
-    const dados = Object.fromEntries(new FormData(form));
+    // A API usa $_POST (não JSON), então enviamos FormData com acao
+    const fd = new FormData(form);
+    const acao = _state.editandoId ? 'atualizar' : 'cadastrar';
+    fd.append('acao', acao);
+    if (_state.editandoId) fd.append('id', _state.editandoId);
 
     try {
-        const metodo = _state.editandoId ? 'PUT' : 'POST';
-        const url = _state.editandoId ? `${API}?id=${_state.editandoId}` : API;
-
-        const r = await fetch(url, {
-            method: metodo,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dados)
-        });
+        const r = await fetch(API, { method: 'POST', body: fd });
         const d = await r.json();
 
-        if (d.sucesso || d.success) {
-            _mostrarAlerta(_state.editandoId ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!', 'success');
+        if (d.sucesso) {
+            _mostrarAlerta(
+                _state.editandoId ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!',
+                'success'
+            );
             limparForm();
-            carregar();
+            _carregar();
         } else {
-            _mostrarAlerta(d.mensagem || d.message || 'Erro ao salvar conta.', 'danger');
+            _mostrarAlerta(d.mensagem || 'Erro ao salvar conta.', 'danger');
         }
     } catch (err) {
         console.error('[ContasReceber] Erro ao salvar:', err);
@@ -191,7 +202,7 @@ async function _salvar() {
     }
 }
 
-// ─── Editar ───────────────────────────────────────────────────────────────
+// ─── Editar ───────────────────────────────────────────────────────────────────
 function editar(id) {
     const conta = _state.lista.find(c => c.id == id);
     if (!conta) return;
@@ -211,19 +222,23 @@ function editar(id) {
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ─── Excluir ──────────────────────────────────────────────────────────────
+// ─── Excluir ──────────────────────────────────────────────────────────────────
 async function excluir(id) {
     if (!confirm('Deseja realmente excluir esta conta?')) return;
 
+    const fd = new FormData();
+    fd.append('acao', 'deletar');
+    fd.append('id', id);
+
     try {
-        const r = await fetch(`${API}?id=${id}`, { method: 'DELETE' });
+        const r = await fetch(API, { method: 'POST', body: fd });
         const d = await r.json();
 
-        if (d.sucesso || d.success) {
+        if (d.sucesso) {
             _mostrarAlerta('Conta excluída com sucesso!', 'success');
-            carregar();
+            _carregar();
         } else {
-            _mostrarAlerta(d.mensagem || d.message || 'Erro ao excluir.', 'danger');
+            _mostrarAlerta(d.mensagem || 'Erro ao excluir.', 'danger');
         }
     } catch (err) {
         console.error('[ContasReceber] Erro ao excluir:', err);
@@ -231,17 +246,16 @@ async function excluir(id) {
     }
 }
 
-// ─── Modal de Recebimento ─────────────────────────────────────────────────
+// ─── Modal de Recebimento ─────────────────────────────────────────────────────
 function abrirModalRecebimento(id) {
     const modal = document.getElementById('cr_modalRecebimento');
     if (!modal) return;
 
-    const hoje = new Date().toISOString().split('T')[0];
     const formRec = document.getElementById('cr_formRecebimento');
     if (formRec) {
         formRec.reset();
-        const dataPag = formRec.elements['data_pagamento'];
-        if (dataPag) dataPag.value = hoje;
+        const dataRec = formRec.elements['data_recebimento'];
+        if (dataRec) dataRec.value = new Date().toISOString().split('T')[0];
     }
     document.getElementById('cr_receberId').value = id;
     modal.style.display = 'flex';
@@ -256,23 +270,23 @@ async function _registrarRecebimento() {
     const form = document.getElementById('cr_formRecebimento');
     if (!form) return;
 
-    const dados = Object.fromEntries(new FormData(form));
-    const id = dados.id || document.getElementById('cr_receberId').value;
+    const fd = new FormData(form);
+    fd.append('acao', 'receber');
+    // Garantir que o id está no FormData (vem do hidden cr_receberId)
+    if (!fd.get('id')) {
+        fd.append('id', document.getElementById('cr_receberId').value);
+    }
 
     try {
-        const r = await fetch(`${API}?id=${id}&acao=receber`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dados)
-        });
+        const r = await fetch(API, { method: 'POST', body: fd });
         const d = await r.json();
 
-        if (d.sucesso || d.success) {
+        if (d.sucesso) {
             fecharModal();
             _mostrarAlerta('Recebimento registrado com sucesso!', 'success');
-            carregar();
+            _carregar();
         } else {
-            _mostrarAlerta(d.mensagem || d.message || 'Erro ao registrar recebimento.', 'danger');
+            _mostrarAlerta(d.mensagem || 'Erro ao registrar recebimento.', 'danger');
         }
     } catch (err) {
         console.error('[ContasReceber] Erro ao registrar recebimento:', err);
@@ -280,7 +294,7 @@ async function _registrarRecebimento() {
     }
 }
 
-// ─── Limpar Formulário ────────────────────────────────────────────────────
+// ─── Limpar Formulário ────────────────────────────────────────────────────────
 function limparForm() {
     const form = document.getElementById('cr_formCadastro');
     if (form) form.reset();
@@ -289,12 +303,12 @@ function limparForm() {
     if (btn) btn.innerHTML = '<i class="fas fa-save"></i> Cadastrar Conta';
 }
 
-// ─── Utilitários ──────────────────────────────────────────────────────────
+// ─── Utilitários ──────────────────────────────────────────────────────────────
 function _badgeStatus(status) {
     const mapa = {
-        'PENDENTE':  ['badge-pendente', 'Pendente'],
-        'RECEBIDO':  ['badge-recebido', 'Recebido'],
-        'PARCIAL':   ['badge-parcial', 'Parcial'],
+        'PENDENTE':  ['badge-pendente',  'Pendente'],
+        'RECEBIDO':  ['badge-recebido',  'Recebido'],
+        'PARCIAL':   ['badge-parcial',   'Parcial'],
         'CANCELADO': ['badge-cancelado', 'Cancelado']
     };
     const [cls, label] = mapa[status] || ['badge-pendente', status || '-'];
@@ -313,7 +327,11 @@ function _formatarData(d) {
 }
 
 function _esc(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 function _setEl(id, val) {
@@ -326,9 +344,4 @@ function _mostrarAlerta(msg, tipo) {
     if (!c) return;
     c.innerHTML = `<div class="alert alert-${tipo}" style="margin-bottom:1rem;">${_esc(msg)}</div>`;
     setTimeout(() => { if (c) c.innerHTML = ''; }, 5000);
-}
-
-// ─── Registro Global ─────────────────────────────────────────────────────────
-if (typeof window !== 'undefined') {
-window.ContasReceber = { carregar, filtrar, editar, excluir, limparForm, abrirModalRecebimento, fecharModal };
 }

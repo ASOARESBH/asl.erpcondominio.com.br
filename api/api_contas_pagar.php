@@ -257,7 +257,7 @@ if ($acao === 'pagar' && $metodo === 'POST') {
     $sql_update = "UPDATE contas_pagar SET valor_pago = ?, saldo_devedor = ?, status = ?, data_pagamento = ?, forma_pagamento = ?, data_atualizacao = NOW() WHERE id = ?";
     
     $stmt_update = $conexao->prepare($sql_update);
-    $stmt_update->bind_param("ddssi", $novo_valor_pago, $novo_saldo, $novo_status, $data_pagamento_final, $id);
+    $stmt_update->bind_param("ddsssi", $novo_valor_pago, $novo_saldo, $novo_status, $data_pagamento_final, $forma_pagamento, $id);
     
     if ($stmt_update->execute()) {
         $stmt_update->close();
@@ -268,6 +268,47 @@ if ($acao === 'pagar' && $metodo === 'POST') {
         $stmt_update->close();
         fechar_conexao($conexao);
         retornar_json(false, 'Erro ao registrar pagamento: ' . $erro);
+    }
+}
+
+// ========== ATUALIZAR CONTA A PAGAR ==========
+if ($acao === 'atualizar' && $metodo === 'POST') {
+    $id = intval($_POST['id'] ?? 0);
+    $numero_documento = trim($_POST['numero_documento'] ?? '');
+    $fornecedor_nome  = trim($_POST['fornecedor_nome'] ?? '');
+    $plano_conta_id   = intval($_POST['plano_conta_id'] ?? 0);
+    $descricao        = trim($_POST['descricao'] ?? '');
+    $valor_original   = floatval($_POST['valor_original'] ?? 0);
+    $data_emissao     = trim($_POST['data_emissao'] ?? '');
+    $data_vencimento  = trim($_POST['data_vencimento'] ?? '');
+    $observacoes      = trim($_POST['observacoes'] ?? '');
+
+    if ($id <= 0) {
+        fechar_conexao($conexao);
+        retornar_json(false, 'ID inválido');
+    }
+    if (empty($numero_documento) || empty($fornecedor_nome) || $plano_conta_id <= 0 || $valor_original <= 0 || empty($data_vencimento)) {
+        fechar_conexao($conexao);
+        retornar_json(false, 'Preencha todos os campos obrigatórios');
+    }
+
+    $sql_upd = "UPDATE contas_pagar SET numero_documento=?, fornecedor_nome=?, plano_conta_id=?, descricao=?, valor_original=?, data_emissao=?, data_vencimento=?, observacoes=?, data_atualizacao=NOW() WHERE id=?";
+    $stmt_upd = $conexao->prepare($sql_upd);
+    $stmt_upd->bind_param('ssisdsssi',
+        $numero_documento, $fornecedor_nome, $plano_conta_id,
+        $descricao, $valor_original, $data_emissao,
+        $data_vencimento, $observacoes, $id
+    );
+
+    if ($stmt_upd->execute()) {
+        $stmt_upd->close();
+        fechar_conexao($conexao);
+        retornar_json(true, 'Conta atualizada com sucesso');
+    } else {
+        $erro = $stmt_upd->error;
+        $stmt_upd->close();
+        fechar_conexao($conexao);
+        retornar_json(false, 'Erro ao atualizar: ' . $erro);
     }
 }
 

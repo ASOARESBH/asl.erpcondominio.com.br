@@ -1,7 +1,7 @@
 /**
  * contas_pagar.js — Módulo de Contas a Pagar
  * Padrão SPA — layout-base.html?page=contas_pagar
- * @version 1.0.0
+ * @version 1.1.0 — corrigido para usar ?acao= e FormData (padrão da API PHP)
  */
 'use strict';
 
@@ -12,63 +12,62 @@ const _state = {
     carregando: false
 };
 
-const _listeners = [];
-
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const API       = '../api/api_contas_pagar.php';
+const API        = '../api/api_contas_pagar.php';
 const API_PLANOS = '../api/api_planos_contas.php';
 
 // ─── Ciclo de Vida ────────────────────────────────────────────────────────────
 export function init() {
-    console.log('[ContasPagar] Inicializando módulo v1.0...');
+    console.log('[ContasPagar] Init v1.1');
     _bindForm();
     _bindPagamento();
     _carregarPlanos();
     _carregar();
     // Expor globalmente para uso nos botões inline do HTML
-    window.ContasPagar = { carregar: _carregar, filtrar, editar, excluir, limparForm, abrirModalPagamento, fecharModal };
+    window.ContasPagar = {
+        carregar: _carregar,
+        filtrar,
+        editar,
+        excluir,
+        limparForm,
+        abrirModalPagamento,
+        fecharModal
+    };
     console.log('[ContasPagar] Módulo pronto.');
 }
 
 export function destroy() {
-    console.log('[ContasPagar] Destruindo módulo...');
-    _listeners.forEach(({ el, event, fn }) => { if (el) el.removeEventListener(event, fn); });
-    _listeners.length = 0;
+    console.log('[ContasPagar] Destroy');
     Object.assign(_state, { lista: [], editandoId: null, carregando: false });
     delete window.ContasPagar;
-    console.log('[ContasPagar] Módulo destruído.');
 }
 
 // ─── Bind de eventos ─────────────────────────────────────────────────────────
 function _bindForm() {
     const form = document.getElementById('cp_formCadastro');
     if (!form) return;
-    const fn = e => { e.preventDefault(); _salvar(); };
-    form.addEventListener('submit', fn);
-    _listeners.push({ el: form, event: 'submit', fn });
+    form.addEventListener('submit', e => { e.preventDefault(); _salvar(); });
 }
 
 function _bindPagamento() {
     const form = document.getElementById('cp_formPagamento');
     if (!form) return;
-    const fn = e => { e.preventDefault(); _registrarPagamento(); };
-    form.addEventListener('submit', fn);
-    _listeners.push({ el: form, event: 'submit', fn });
+    form.addEventListener('submit', e => { e.preventDefault(); _registrarPagamento(); });
 }
 
 // ─── Carregar Planos de Contas ────────────────────────────────────────────────
 async function _carregarPlanos() {
     try {
-        const r = await fetch(API_PLANOS);
+        const r = await fetch(`${API_PLANOS}?acao=listar`);
         const d = await r.json();
         const sel = document.getElementById('cp_selectPlano');
         if (!sel) return;
         sel.innerHTML = '<option value="">Selecione um plano...</option>';
-        const lista = d.dados || d.data || d || [];
+        const lista = Array.isArray(d.dados) ? d.dados : [];
         lista.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.textContent = p.nome || p.descricao || p.name;
+            opt.textContent = `${p.codigo ? p.codigo + ' — ' : ''}${p.nome || p.descricao || p.name}`;
             sel.appendChild(opt);
         });
     } catch (err) {
@@ -87,11 +86,14 @@ async function _carregar() {
     try {
         const filtro = document.getElementById('cp_filtroStatus');
         const status = filtro ? filtro.value : '';
-        const url = status ? `${API}?status=${encodeURIComponent(status)}` : API;
+        const url = status
+            ? `${API}?acao=listar&status=${encodeURIComponent(status)}`
+            : `${API}?acao=listar`;
+
         const r = await fetch(url);
         const d = await r.json();
 
-        _state.lista = d.dados || d.data || d || [];
+        _state.lista = Array.isArray(d.dados) ? d.dados : [];
         _renderTabela();
         _calcularKPIs();
     } catch (err) {
@@ -115,27 +117,30 @@ function _renderTabela() {
     }
 
     tbody.innerHTML = _state.lista.map(c => {
-        const badge = _badgeStatus(c.status);
-        const venc  = _formatarData(c.data_vencimento);
+        const badge    = _badgeStatus(c.status);
+        const venc     = _formatarData(c.data_vencimento);
         const atrasada = c.status === 'PENDENTE' && new Date(c.data_vencimento) < new Date()
             ? ' style="color:#dc2626;font-weight:600;"' : '';
         return `
         <tr>
             <td>${_esc(c.numero_documento || '-')}</td>
-            <td>${_esc(c.fornecedor || c.descricao || '-')}</td>
-            <td>${_esc(c.plano_nome || '-')}</td>
+            <td>${_esc(c.fornecedor_nome || '-')}</td>
+            <td>${_esc(c.descricao || '-')}</td>
             <td${atrasada}>${_formatarMoeda(c.valor_original)}</td>
             <td${atrasada}>${venc}</td>
             <td>${badge}</td>
             <td class="acoes-cell">
                 ${c.status === 'PENDENTE' || c.status === 'PARCIAL' ? `
-                <button class="btn btn-xs btn-success" title="Registrar Pagamento" onclick="ContasPagar.abrirModalPagamento(${c.id})">
+                <button class="btn btn-xs btn-success" title="Registrar Pagamento"
+                    onclick="ContasPagar.abrirModalPagamento(${c.id})">
                     <i class="fas fa-money-bill-wave"></i>
                 </button>` : ''}
-                <button class="btn btn-xs btn-outline" title="Editar" onclick="ContasPagar.editar(${c.id})">
+                <button class="btn btn-xs btn-outline" title="Editar"
+                    onclick="ContasPagar.editar(${c.id})">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn btn-xs btn-danger" title="Excluir" onclick="ContasPagar.excluir(${c.id})">
+                <button class="btn btn-xs btn-danger" title="Excluir"
+                    onclick="ContasPagar.excluir(${c.id})">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -159,8 +164,8 @@ function _calcularKPIs() {
         }
     });
 
-    _setEl('cp_totalPendente',  _formatarMoeda(pendente));
-    _setEl('cp_totalPago',      _formatarMoeda(pago));
+    _setEl('cp_totalPendente',   _formatarMoeda(pendente));
+    _setEl('cp_totalPago',       _formatarMoeda(pago));
     _setEl('cp_contasAtrasadas', atrasadas);
 }
 
@@ -172,25 +177,25 @@ async function _salvar() {
     const btn = document.getElementById('cp_btnSalvar');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'; }
 
-    const dados = Object.fromEntries(new FormData(form));
+    // A API usa $_POST (não JSON), então enviamos FormData com acao
+    const fd = new FormData(form);
+    const acao = _state.editandoId ? 'atualizar' : 'cadastrar';
+    fd.append('acao', acao);
+    if (_state.editandoId) fd.append('id', _state.editandoId);
 
     try {
-        const metodo = _state.editandoId ? 'PUT' : 'POST';
-        const url    = _state.editandoId ? `${API}?id=${_state.editandoId}` : API;
-
-        const r = await fetch(url, {
-            method: metodo,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dados)
-        });
+        const r = await fetch(API, { method: 'POST', body: fd });
         const d = await r.json();
 
-        if (d.sucesso || d.success) {
-            _mostrarAlerta(_state.editandoId ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!', 'success');
+        if (d.sucesso) {
+            _mostrarAlerta(
+                _state.editandoId ? 'Conta atualizada com sucesso!' : 'Conta cadastrada com sucesso!',
+                'success'
+            );
             limparForm();
             _carregar();
         } else {
-            _mostrarAlerta(d.mensagem || d.message || 'Erro ao salvar conta.', 'danger');
+            _mostrarAlerta(d.mensagem || 'Erro ao salvar conta.', 'danger');
         }
     } catch (err) {
         console.error('[ContasPagar] Erro ao salvar:', err);
@@ -224,15 +229,19 @@ function editar(id) {
 async function excluir(id) {
     if (!confirm('Deseja realmente excluir esta conta?')) return;
 
+    const fd = new FormData();
+    fd.append('acao', 'deletar');
+    fd.append('id', id);
+
     try {
-        const r = await fetch(`${API}?id=${id}`, { method: 'DELETE' });
+        const r = await fetch(API, { method: 'POST', body: fd });
         const d = await r.json();
 
-        if (d.sucesso || d.success) {
+        if (d.sucesso) {
             _mostrarAlerta('Conta excluída com sucesso!', 'success');
             _carregar();
         } else {
-            _mostrarAlerta(d.mensagem || d.message || 'Erro ao excluir.', 'danger');
+            _mostrarAlerta(d.mensagem || 'Erro ao excluir.', 'danger');
         }
     } catch (err) {
         console.error('[ContasPagar] Erro ao excluir:', err);
@@ -245,12 +254,11 @@ function abrirModalPagamento(id) {
     const modal = document.getElementById('cp_modalPagamento');
     if (!modal) return;
 
-    const hoje = new Date().toISOString().split('T')[0];
     const formPag = document.getElementById('cp_formPagamento');
     if (formPag) {
         formPag.reset();
         const dataPag = formPag.elements['data_pagamento'];
-        if (dataPag) dataPag.value = hoje;
+        if (dataPag) dataPag.value = new Date().toISOString().split('T')[0];
     }
     document.getElementById('cp_pagarId').value = id;
     modal.style.display = 'flex';
@@ -265,23 +273,23 @@ async function _registrarPagamento() {
     const form = document.getElementById('cp_formPagamento');
     if (!form) return;
 
-    const dados = Object.fromEntries(new FormData(form));
-    const id    = dados.id || document.getElementById('cp_pagarId').value;
+    const fd = new FormData(form);
+    fd.append('acao', 'pagar');
+    // Garantir que o id está no FormData (vem do hidden cp_pagarId)
+    if (!fd.get('id')) {
+        fd.append('id', document.getElementById('cp_pagarId').value);
+    }
 
     try {
-        const r = await fetch(`${API}?id=${id}&acao=pagar`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dados)
-        });
+        const r = await fetch(API, { method: 'POST', body: fd });
         const d = await r.json();
 
-        if (d.sucesso || d.success) {
+        if (d.sucesso) {
             fecharModal();
             _mostrarAlerta('Pagamento registrado com sucesso!', 'success');
             _carregar();
         } else {
-            _mostrarAlerta(d.mensagem || d.message || 'Erro ao registrar pagamento.', 'danger');
+            _mostrarAlerta(d.mensagem || 'Erro ao registrar pagamento.', 'danger');
         }
     } catch (err) {
         console.error('[ContasPagar] Erro ao registrar pagamento:', err);
