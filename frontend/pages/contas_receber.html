@@ -3,6 +3,12 @@
 
 <div class="page-wrapper page-contas-receber">
 
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1><i class="fas fa-arrow-down" style="color:#059669;margin-right:10px;"></i>Contas a Receber</h1>
+        <p>Gestão de receitas e recebimentos do condomínio</p>
+    </div>
+
     <!-- Submenu Financeiro -->
     <nav class="page-card financeiro-submenu" aria-label="Navegação financeira">
         <a href="#" onclick="AppRouter.navigate('financeiro'); return false;" class="submenu-link">
@@ -19,39 +25,33 @@
         </a>
     </nav>
 
-    <!-- KPIs -->
-    <div class="stats-grid cr-stats">
-        <div class="page-card kpi-card">
-            <div class="kpi-content">
-                <h3>Total a Receber</h3>
-                <div class="value receita" id="cr_totalReceber">R$ 0,00</div>
-            </div>
-            <div class="kpi-icon receita"><i class="fas fa-clock"></i></div>
+    <!-- KPI Cards -->
+    <div class="stats-grid">
+        <div class="kpi-card kpi-pendente page-card">
+            <div class="kpi-label">Total a Receber</div>
+            <div class="kpi-value" id="cr_totalReceber">R$ 0,00</div>
+            <div class="kpi-icon-row"><i class="fas fa-clock"></i></div>
         </div>
-        <div class="page-card kpi-card">
-            <div class="kpi-content">
-                <h3>Total Recebido</h3>
-                <div class="value receita" id="cr_totalRecebido">R$ 0,00</div>
-            </div>
-            <div class="kpi-icon receita"><i class="fas fa-check-circle"></i></div>
+        <div class="kpi-card kpi-recebido page-card">
+            <div class="kpi-label">Total Recebido</div>
+            <div class="kpi-value" id="cr_totalRecebido">R$ 0,00</div>
+            <div class="kpi-icon-row"><i class="fas fa-check-circle"></i></div>
         </div>
-        <div class="page-card kpi-card">
-            <div class="kpi-content">
-                <h3>Contas Atrasadas</h3>
-                <div class="value" id="cr_contasAtrasadas" style="color:#dc2626;">0</div>
+        <div class="kpi-card kpi-atrasado page-card">
+            <div class="kpi-label">Contas Atrasadas</div>
+            <div class="kpi-value" id="cr_contasAtrasadas">0</div>
+            <div class="kpi-alert-bar" id="cr_alertBar" style="display:none;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>Existem contas vencidas</span>
             </div>
-            <div class="kpi-icon" style="background:#fee2e2;color:#dc2626;"><i class="fas fa-exclamation-circle"></i></div>
         </div>
     </div>
 
-    <!-- Alerta -->
-    <div id="cr_alertContainer"></div>
-
     <!-- Formulário de Cadastro -->
     <div class="page-card cr-form-card">
-        <div class="card-header-row">
-            <h2><i class="fas fa-plus-circle" style="color:#16a34a;"></i> Nova Conta a Receber</h2>
-        </div>
+        <h2 class="section-title" id="cr_formTitle">
+            <i class="fas fa-plus-circle"></i> Nova Conta a Receber
+        </h2>
 
         <form id="cr_formCadastro" autocomplete="off">
             <div class="form-grid-2">
@@ -112,24 +112,27 @@
 
     <!-- Listagem -->
     <div class="page-card">
-        <div class="card-header-row">
-            <h2><i class="fas fa-table"></i> Contas a Receber</h2>
-            <div class="cr-filtros">
-                <select id="cr_filtroStatus" class="form-control form-control-sm" onchange="ContasReceber.filtrar()">
-                    <option value="">Todos os status</option>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+            <h2 class="section-title" style="margin-bottom:0;">
+                <i class="fas fa-list"></i> Contas Cadastradas
+            </h2>
+            <div class="filter-bar" style="margin-bottom:0;">
+                <label>Status:</label>
+                <select id="cr_filtroStatus" class="form-control-sm" onchange="ContasReceber.filtrar()">
+                    <option value="">Todos</option>
                     <option value="PENDENTE">Pendente</option>
                     <option value="RECEBIDO">Recebido</option>
                     <option value="PARCIAL">Parcial</option>
                     <option value="CANCELADO">Cancelado</option>
                 </select>
-                <button class="btn btn-sm btn-outline" onclick="ContasReceber.carregar()">
+                <button class="btn btn-outline btn-xs" onclick="ContasReceber.carregar()">
                     <i class="fas fa-sync-alt"></i> Atualizar
                 </button>
             </div>
         </div>
 
         <div class="table-container">
-            <table class="data-table">
+            <table>
                 <thead>
                     <tr>
                         <th>Documento</th>

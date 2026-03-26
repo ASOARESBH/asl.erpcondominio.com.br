@@ -167,6 +167,10 @@ function _calcularKPIs() {
     _setEl('cp_totalPendente',   _formatarMoeda(pendente));
     _setEl('cp_totalPago',       _formatarMoeda(pago));
     _setEl('cp_contasAtrasadas', atrasadas);
+
+    // Barra de alerta de contas atrasadas
+    const alertBar = document.getElementById('cp_alertBar');
+    if (alertBar) alertBar.style.display = atrasadas > 0 ? 'flex' : 'none';
 }
 
 // ─── Salvar Conta ─────────────────────────────────────────────────────────────
@@ -343,8 +347,11 @@ function _setEl(id, val) {
 }
 
 function _mostrarAlerta(msg, tipo) {
-    const c = document.getElementById('cp_alertContainer');
-    if (!c) return;
-    c.innerHTML = `<div class="alert alert-${tipo}" style="margin-bottom:1rem;">${_esc(msg)}</div>`;
-    setTimeout(() => { if (c) c.innerHTML = ''; }, 5000);
+    // Usar toast flutuante (sem cp_alertContainer que foi removido do HTML)
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${tipo}`;
+    toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;min-width:280px;max-width:400px;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
 }
