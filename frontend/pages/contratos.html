@@ -1,29 +1,550 @@
-<!-- Page Metadata -->
-<div id="page-metadata" data-title="Contratos" data-icon="fa-file-contract" style="display:none;"></div>
+<!-- ============================================================
+     MÓDULO: CONTRATOS
+     Layout: SPA Fragment — carregado pelo app-router.js
+     ============================================================ -->
+<div class="ctr-wrapper">
 
-<div class="page-wrapper page-contratos">
-
-  <!-- Breadcrumb -->
-  <nav class="stub-breadcrumb">
-    <span data-page="administrativa"><i class="fas fa-briefcase"></i> Administrativo</span>
-    <span class="stub-sep"><i class="fas fa-chevron-right"></i></span>
-    <span>Contratos</span>
-  </nav>
-
-  <!-- Page Header -->
+  <!-- ── Page Header ─────────────────────────────────────────── -->
   <div class="page-header">
-    <h1><i class="fas fa-file-contract"></i> Contratos</h1>
-    <p>Controle de contratos com fornecedores, vigências e renovações</p>
+    <div class="page-header-content">
+      <h1 class="page-title"><i class="fas fa-file-contract"></i> Contratos</h1>
+      <p class="page-subtitle">Gestão de contratos de prestação de serviços e vendas</p>
+    </div>
   </div>
 
-  <!-- Em desenvolvimento -->
-  <div class="page-card stub-card">
-    <i class="fas fa-file-contract stub-icon"></i>
-    <h3>Módulo em Desenvolvimento</h3>
-    <p>O módulo de Contratos estará disponível em breve.</p>
-    <button class="stub-btn-back" data-page="administrativa">
-      <i class="fas fa-arrow-left"></i> Voltar ao Administrativo
+  <!-- ── KPI Cards ───────────────────────────────────────────── -->
+  <div class="ctr-kpi-grid">
+    <div class="ctr-kpi-card ctr-kpi-blue">
+      <div class="ctr-kpi-label">Total de Contratos</div>
+      <div class="ctr-kpi-value" id="ctr_kpiTotal">—</div>
+    </div>
+    <div class="ctr-kpi-card ctr-kpi-green">
+      <div class="ctr-kpi-label">Ativos</div>
+      <div class="ctr-kpi-value" id="ctr_kpiAtivos">—</div>
+    </div>
+    <div class="ctr-kpi-card ctr-kpi-yellow">
+      <div class="ctr-kpi-label">Aguardando Início</div>
+      <div class="ctr-kpi-value" id="ctr_kpiAguardando">—</div>
+    </div>
+    <div class="ctr-kpi-card ctr-kpi-red">
+      <div class="ctr-kpi-label">Encerrados</div>
+      <div class="ctr-kpi-value" id="ctr_kpiEncerrados">—</div>
+    </div>
+    <div class="ctr-kpi-card ctr-kpi-purple">
+      <div class="ctr-kpi-label">Valor Total Ativo</div>
+      <div class="ctr-kpi-value" id="ctr_kpiValor">—</div>
+    </div>
+  </div>
+
+  <!-- ── Alerta de vencimentos próximos ──────────────────────── -->
+  <div id="ctr_alertBar" class="ctr-alert-bar" style="display:none">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span id="ctr_alertMsg"></span>
+  </div>
+
+  <!-- ── Abas ────────────────────────────────────────────────── -->
+  <div class="ctr-tabs">
+    <button class="ctr-tab active" data-tab="contratos">
+      <i class="fas fa-file-contract"></i> Contratos
+    </button>
+    <button class="ctr-tab" data-tab="documentos">
+      <i class="fas fa-paperclip"></i> Documentos
+      <span id="ctr_badgeDocs" class="ctr-badge" style="display:none">0</span>
+    </button>
+    <button class="ctr-tab" data-tab="orcamentos">
+      <i class="fas fa-balance-scale"></i> Orçamentos
+      <span id="ctr_badgeOrc" class="ctr-badge ctr-badge-warn" style="display:none">0</span>
+    </button>
+    <button class="ctr-tab" data-tab="relatorios">
+      <i class="fas fa-chart-bar"></i> Relatórios
     </button>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       ABA: CONTRATOS
+       ══════════════════════════════════════════════════════════ -->
+  <div id="ctr_tabContratos" class="ctr-tab-content active">
+
+    <!-- Toolbar -->
+    <div class="ctr-toolbar">
+      <div class="ctr-filters">
+        <input type="text" id="ctr_filtroTexto" class="form-control form-control-sm"
+               placeholder="Buscar por fornecedor ou número..." style="width:240px">
+        <select id="ctr_filtroStatus" class="form-control form-control-sm">
+          <option value="">Todos os status</option>
+          <option value="ativo">Ativo</option>
+          <option value="aguardando">Aguardando</option>
+          <option value="encerrado">Encerrado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+        <select id="ctr_filtroTipo" class="form-control form-control-sm">
+          <option value="">Todos os tipos</option>
+          <option value="prestacao_servico">Prestação de Serviço</option>
+          <option value="venda">Venda</option>
+        </select>
+        <button id="ctr_btnFiltrar" class="btn btn-sm btn-primary">
+          <i class="fas fa-search"></i> Filtrar
+        </button>
+        <button id="ctr_btnLimpar" class="btn btn-sm btn-secondary">
+          <i class="fas fa-times"></i> Limpar
+        </button>
+      </div>
+      <button id="ctr_btnNovo" class="btn btn-sm btn-success">
+        <i class="fas fa-plus"></i> Novo Contrato
+      </button>
+    </div>
+
+    <!-- Tabela -->
+    <div class="ctr-table-wrapper">
+      <table class="ctr-table">
+        <thead>
+          <tr>
+            <th>Nº Contrato</th>
+            <th>Fornecedor</th>
+            <th>Tipo</th>
+            <th>Nome</th>
+            <th>Recorrência</th>
+            <th>Valor Total</th>
+            <th>Vigência</th>
+            <th>Status</th>
+            <th>Docs</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="ctr_tbody">
+          <tr><td colspan="10" class="ctr-empty">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginação -->
+    <div class="ctr-pagination" id="ctr_pagination"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ABA: DOCUMENTOS
+       ══════════════════════════════════════════════════════════ -->
+  <div id="ctr_tabDocumentos" class="ctr-tab-content" style="display:none">
+    <div class="ctr-section-header">
+      <div>
+        <h3 class="ctr-section-title"><i class="fas fa-paperclip"></i> Documentos do Contrato</h3>
+        <p class="ctr-section-sub" id="ctr_docContratoBadge">Selecione um contrato na aba Contratos para gerenciar documentos</p>
+      </div>
+      <button id="ctr_btnUploadDoc" class="btn btn-sm btn-primary" disabled>
+        <i class="fas fa-upload"></i> Enviar Documento
+      </button>
+    </div>
+
+    <!-- Limite visual -->
+    <div id="ctr_docLimite" class="ctr-doc-limite" style="display:none">
+      <div class="ctr-doc-limite-bar">
+        <div class="ctr-doc-limite-fill" id="ctr_docLimiteFill"></div>
+      </div>
+      <span id="ctr_docLimiteText">0 / 4 documentos</span>
+    </div>
+
+    <!-- Grid de documentos -->
+    <div class="ctr-doc-grid" id="ctr_docGrid">
+      <div class="ctr-doc-empty">
+        <i class="fas fa-folder-open"></i>
+        <p>Nenhum documento enviado ainda</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ABA: ORÇAMENTOS
+       ══════════════════════════════════════════════════════════ -->
+  <div id="ctr_tabOrcamentos" class="ctr-tab-content" style="display:none">
+    <div class="ctr-section-header">
+      <div>
+        <h3 class="ctr-section-title"><i class="fas fa-balance-scale"></i> Orçamentos do Contrato</h3>
+        <p class="ctr-section-sub" id="ctr_orcContratoBadge">Selecione um contrato na aba Contratos para gerenciar orçamentos</p>
+      </div>
+      <button id="ctr_btnNovoOrc" class="btn btn-sm btn-primary" disabled>
+        <i class="fas fa-plus"></i> Adicionar Orçamento
+      </button>
+    </div>
+
+    <!-- Alerta mínimo 3 -->
+    <div id="ctr_orcAlerta" class="ctr-orc-alerta" style="display:none">
+      <i class="fas fa-exclamation-circle"></i>
+      <span id="ctr_orcAlertaMsg">São necessários pelo menos 3 orçamentos para este contrato.</span>
+    </div>
+
+    <!-- Tabela de orçamentos -->
+    <div class="ctr-table-wrapper">
+      <table class="ctr-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fornecedor</th>
+            <th>Descrição</th>
+            <th>Valor</th>
+            <th>Justificativa</th>
+            <th>Data</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="ctr_orcTbody">
+          <tr><td colspan="7" class="ctr-empty">Selecione um contrato para ver os orçamentos</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       ABA: RELATÓRIOS
+       ══════════════════════════════════════════════════════════ -->
+  <div id="ctr_tabRelatorios" class="ctr-tab-content" style="display:none">
+    <div class="ctr-relatorio-grid">
+
+      <!-- Relatório 1: Contratos Ativos -->
+      <div class="ctr-relatorio-card">
+        <div class="ctr-relatorio-header ctr-rel-green">
+          <i class="fas fa-check-circle"></i>
+          <h4>Contratos Ativos</h4>
+        </div>
+        <div class="ctr-relatorio-body">
+          <p>Lista todos os contratos com status <strong>Ativo</strong>, com valor e dias restantes de vigência.</p>
+          <div class="ctr-relatorio-filtros">
+            <select id="ctr_relAtivoTipo" class="form-control form-control-sm">
+              <option value="">Todos os tipos</option>
+              <option value="prestacao_servico">Prestação de Serviço</option>
+              <option value="venda">Venda</option>
+            </select>
+          </div>
+          <button class="btn btn-sm btn-success ctr-btn-relatorio" data-rel="ativos">
+            <i class="fas fa-file-export"></i> Gerar Relatório
+          </button>
+        </div>
+      </div>
+
+      <!-- Relatório 2: Vencimentos -->
+      <div class="ctr-relatorio-card">
+        <div class="ctr-relatorio-header ctr-rel-yellow">
+          <i class="fas fa-calendar-exclamation"></i>
+          <h4>Vencimentos Próximos</h4>
+        </div>
+        <div class="ctr-relatorio-body">
+          <p>Parcelas de contas a pagar geradas por contratos com vencimento nos próximos dias.</p>
+          <div class="ctr-relatorio-filtros">
+            <select id="ctr_relVencDias" class="form-control form-control-sm">
+              <option value="30">Próximos 30 dias</option>
+              <option value="60">Próximos 60 dias</option>
+              <option value="90">Próximos 90 dias</option>
+            </select>
+          </div>
+          <button class="btn btn-sm btn-warning ctr-btn-relatorio" data-rel="vencimentos">
+            <i class="fas fa-file-export"></i> Gerar Relatório
+          </button>
+        </div>
+      </div>
+
+      <!-- Relatório 3: Por Fornecedor -->
+      <div class="ctr-relatorio-card">
+        <div class="ctr-relatorio-header ctr-rel-blue">
+          <i class="fas fa-building"></i>
+          <h4>Por Fornecedor</h4>
+        </div>
+        <div class="ctr-relatorio-body">
+          <p>Agrupa contratos por fornecedor, mostrando total de contratos e valor acumulado.</p>
+          <div class="ctr-relatorio-filtros"></div>
+          <button class="btn btn-sm btn-primary ctr-btn-relatorio" data-rel="por_fornecedor">
+            <i class="fas fa-file-export"></i> Gerar Relatório
+          </button>
+        </div>
+      </div>
+
+      <!-- Relatório 4: Financeiro -->
+      <div class="ctr-relatorio-card">
+        <div class="ctr-relatorio-header ctr-rel-purple">
+          <i class="fas fa-dollar-sign"></i>
+          <h4>Financeiro</h4>
+        </div>
+        <div class="ctr-relatorio-body">
+          <p>Cruzamento entre contratos e contas a pagar: total lançado, pago e pendente por período.</p>
+          <div class="ctr-relatorio-filtros">
+            <input type="date" id="ctr_relFinIni" class="form-control form-control-sm">
+            <input type="date" id="ctr_relFinFim" class="form-control form-control-sm">
+          </div>
+          <button class="btn btn-sm btn-purple ctr-btn-relatorio" data-rel="financeiro">
+            <i class="fas fa-file-export"></i> Gerar Relatório
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Área de resultado do relatório -->
+    <div id="ctr_relResultado" style="display:none">
+      <div class="ctr-relatorio-resultado-header">
+        <h4 id="ctr_relTitulo"></h4>
+        <button id="ctr_btnExportarCSV" class="btn btn-sm btn-secondary">
+          <i class="fas fa-download"></i> Exportar CSV
+        </button>
+      </div>
+      <div id="ctr_relSummary" class="ctr-rel-summary"></div>
+      <div class="ctr-table-wrapper">
+        <table class="ctr-table" id="ctr_relTable">
+          <thead id="ctr_relThead"></thead>
+          <tbody id="ctr_relTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.ctr-wrapper -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODAL: CADASTRO / EDIÇÃO DE CONTRATO
+     ══════════════════════════════════════════════════════════════ -->
+<div id="ctr_modalContrato" class="ctr-modal-overlay" style="display:none">
+  <div class="ctr-modal ctr-modal-lg">
+    <div class="ctr-modal-header">
+      <h3 id="ctr_modalTitulo"><i class="fas fa-file-contract"></i> Novo Contrato</h3>
+      <button class="ctr-modal-close" id="ctr_btnFecharModal">&times;</button>
+    </div>
+    <div class="ctr-modal-body">
+      <form id="ctr_formContrato" novalidate>
+        <input type="hidden" id="ctr_fId" name="id">
+
+        <!-- Fornecedor (busca) -->
+        <div class="ctr-form-section">
+          <h4 class="ctr-form-section-title"><i class="fas fa-building"></i> Fornecedor</h4>
+          <div class="ctr-form-row">
+            <div class="ctr-form-group ctr-fg-full">
+              <label>Buscar Fornecedor <span class="req">*</span></label>
+              <div class="ctr-fornecedor-search">
+                <input type="text" id="ctr_fFornecedorBusca" class="form-control"
+                       placeholder="Digite nome ou CNPJ do fornecedor...">
+                <div id="ctr_fornecedorSugestoes" class="ctr-sugestoes" style="display:none"></div>
+              </div>
+              <input type="hidden" id="ctr_fFornecedorId"   name="fornecedor_id">
+              <input type="hidden" id="ctr_fFornecedorNome" name="fornecedor_nome">
+              <input type="hidden" id="ctr_fFornecedorCnpj" name="fornecedor_cnpj">
+              <div id="ctr_fornecedorSelecionado" class="ctr-fornecedor-selecionado" style="display:none">
+                <i class="fas fa-check-circle"></i>
+                <span id="ctr_fornecedorSelecionadoNome"></span>
+                <button type="button" id="ctr_btnLimparFornecedor" class="ctr-btn-limpar-forn">&times;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dados do Contrato -->
+        <div class="ctr-form-section">
+          <h4 class="ctr-form-section-title"><i class="fas fa-info-circle"></i> Dados do Contrato</h4>
+          <div class="ctr-form-row">
+            <div class="ctr-form-group">
+              <label>Tipo de Serviço <span class="req">*</span></label>
+              <select id="ctr_fTipoServico" name="tipo_servico" class="form-control" required>
+                <option value="">Selecione...</option>
+                <option value="prestacao_servico">Prestação de Serviço</option>
+                <option value="venda">Venda</option>
+              </select>
+            </div>
+            <div class="ctr-form-group ctr-fg-wide">
+              <label>Nome do Contrato <span class="req">*</span></label>
+              <input type="text" id="ctr_fNome" name="nome_contrato" class="form-control"
+                     placeholder="Ex: Locação de Máquina de Café" required>
+            </div>
+          </div>
+          <div class="ctr-form-row">
+            <div class="ctr-form-group">
+              <label>Data de Início <span class="req">*</span></label>
+              <input type="date" id="ctr_fDataInicio" name="data_inicio" class="form-control" required>
+            </div>
+            <div class="ctr-form-group">
+              <label>Data de Fim <span class="req">*</span></label>
+              <input type="date" id="ctr_fDataFim" name="data_fim" class="form-control" required>
+            </div>
+            <div class="ctr-form-group">
+              <label>Recorrência <span class="req">*</span></label>
+              <select id="ctr_fRecorrencia" name="recorrencia" class="form-control" required>
+                <option value="">Selecione...</option>
+                <option value="unica">Única</option>
+                <option value="mensal">Mensal</option>
+                <option value="anual">Anual</option>
+                <option value="diaria">Diária</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Financeiro -->
+        <div class="ctr-form-section">
+          <h4 class="ctr-form-section-title"><i class="fas fa-dollar-sign"></i> Financeiro</h4>
+          <div class="ctr-form-row">
+            <div class="ctr-form-group">
+              <label>Valor Total (R$) <span class="req">*</span></label>
+              <input type="number" id="ctr_fValor" name="valor_total" class="form-control"
+                     step="0.01" min="0.01" placeholder="0,00" required>
+            </div>
+            <div class="ctr-form-group">
+              <label>Data de Vencimento <span class="req">*</span></label>
+              <input type="date" id="ctr_fVencimento" name="data_vencimento" class="form-control" required>
+            </div>
+            <div class="ctr-form-group ctr-fg-wide">
+              <label>Plano de Contas <span class="req">*</span></label>
+              <select id="ctr_fPlanoContas" name="plano_conta_id" class="form-control" required>
+                <option value="">Carregando planos...</option>
+              </select>
+            </div>
+          </div>
+          <!-- Preview de parcelas -->
+          <div id="ctr_previewParcelas" class="ctr-preview-parcelas" style="display:none">
+            <i class="fas fa-info-circle"></i>
+            <span id="ctr_previewParcelasText"></span>
+          </div>
+        </div>
+
+        <!-- Observações -->
+        <div class="ctr-form-section">
+          <div class="ctr-form-group ctr-fg-full">
+            <label>Observações</label>
+            <textarea id="ctr_fObs" name="observacoes" class="form-control" rows="3"
+                      placeholder="Informações adicionais sobre o contrato..."></textarea>
+          </div>
+        </div>
+
+      </form>
+    </div>
+    <div class="ctr-modal-footer">
+      <button type="button" id="ctr_btnCancelarModal" class="btn btn-secondary">Cancelar</button>
+      <button type="button" id="ctr_btnSalvarContrato" class="btn btn-primary">
+        <i class="fas fa-save"></i> <span id="ctr_btnSalvarText">Gerar Contrato</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODAL: UPLOAD DE DOCUMENTO
+     ══════════════════════════════════════════════════════════════ -->
+<div id="ctr_modalDoc" class="ctr-modal-overlay" style="display:none">
+  <div class="ctr-modal">
+    <div class="ctr-modal-header">
+      <h3><i class="fas fa-upload"></i> Enviar Documento</h3>
+      <button class="ctr-modal-close" id="ctr_btnFecharModalDoc">&times;</button>
+    </div>
+    <div class="ctr-modal-body">
+      <form id="ctr_formDoc" novalidate>
+        <input type="hidden" id="ctr_docContratoId" name="contrato_id">
+        <div class="ctr-form-group">
+          <label>Nome do Documento <span class="req">*</span></label>
+          <input type="text" id="ctr_docNome" name="nome_documento" class="form-control"
+                 placeholder="Ex: Contrato Assinado, Aditivo 01..." required>
+        </div>
+        <div class="ctr-form-group">
+          <label>Tipo do Documento <span class="req">*</span></label>
+          <select id="ctr_docTipo" name="tipo_documento" class="form-control" required>
+            <option value="">Selecione...</option>
+            <option value="contrato">Contrato</option>
+            <option value="aditivo">Aditivo</option>
+            <option value="ata">Ata</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div class="ctr-form-group">
+          <label>Arquivo <span class="req">*</span></label>
+          <div class="ctr-upload-area" id="ctr_uploadArea">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Clique ou arraste o arquivo aqui</p>
+            <small>JPG, PNG, PDF, DOC, DOCX — máx. 10 MB</small>
+            <input type="file" id="ctr_docArquivo" name="arquivo" class="ctr-file-input"
+                   accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+          </div>
+          <div id="ctr_uploadPreview" class="ctr-upload-preview" style="display:none">
+            <i class="fas fa-file" id="ctr_uploadIcon"></i>
+            <span id="ctr_uploadNome"></span>
+            <span id="ctr_uploadTamanho" class="ctr-upload-size"></span>
+            <button type="button" id="ctr_btnRemoverArquivo" class="ctr-btn-remover">&times;</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="ctr-modal-footer">
+      <button type="button" id="ctr_btnCancelarDoc" class="btn btn-secondary">Cancelar</button>
+      <button type="button" id="ctr_btnSalvarDoc" class="btn btn-primary">
+        <i class="fas fa-upload"></i> Enviar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODAL: ORÇAMENTO
+     ══════════════════════════════════════════════════════════════ -->
+<div id="ctr_modalOrc" class="ctr-modal-overlay" style="display:none">
+  <div class="ctr-modal">
+    <div class="ctr-modal-header">
+      <h3><i class="fas fa-balance-scale"></i> <span id="ctr_orcModalTitulo">Novo Orçamento</span></h3>
+      <button class="ctr-modal-close" id="ctr_btnFecharModalOrc">&times;</button>
+    </div>
+    <div class="ctr-modal-body">
+      <form id="ctr_formOrc" novalidate>
+        <input type="hidden" id="ctr_orcId"         name="id">
+        <input type="hidden" id="ctr_orcContratoId" name="contrato_id">
+        <div class="ctr-form-group">
+          <label>Fornecedor do Orçamento <span class="req">*</span></label>
+          <input type="text" id="ctr_orcFornecedor" name="fornecedor" class="form-control"
+                 placeholder="Nome do fornecedor que apresentou o orçamento" required>
+        </div>
+        <div class="ctr-form-group">
+          <label>Descrição <span class="req">*</span></label>
+          <textarea id="ctr_orcDescricao" name="descricao" class="form-control" rows="3"
+                    placeholder="Descreva o serviço ou produto orçado..." required></textarea>
+        </div>
+        <div class="ctr-form-group">
+          <label>Valor (R$) <span class="req">*</span></label>
+          <input type="number" id="ctr_orcValor" name="valor" class="form-control"
+                 step="0.01" min="0.01" placeholder="0,00" required>
+        </div>
+        <!-- Justificativa (aparece quando valor > valor do contrato) -->
+        <div id="ctr_orcJustificativaGroup" class="ctr-form-group ctr-justificativa-group" style="display:none">
+          <label class="ctr-label-warn">
+            <i class="fas fa-exclamation-triangle"></i>
+            Justificativa Obrigatória <span class="req">*</span>
+          </label>
+          <p class="ctr-justificativa-aviso">O valor deste orçamento é superior ao valor do contrato. Informe a justificativa.</p>
+          <textarea id="ctr_orcJustificativa" name="justificativa" class="form-control" rows="3"
+                    placeholder="Justifique por que este orçamento supera o valor do contrato..."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="ctr-modal-footer">
+      <button type="button" id="ctr_btnCancelarOrc" class="btn btn-secondary">Cancelar</button>
+      <button type="button" id="ctr_btnSalvarOrc" class="btn btn-primary">
+        <i class="fas fa-save"></i> Salvar Orçamento
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODAL: CONFIRMAÇÃO DE EXCLUSÃO
+     ══════════════════════════════════════════════════════════════ -->
+<div id="ctr_modalConfirm" class="ctr-modal-overlay" style="display:none">
+  <div class="ctr-modal ctr-modal-sm">
+    <div class="ctr-modal-header ctr-modal-header-danger">
+      <h3><i class="fas fa-trash-alt"></i> Confirmar Exclusão</h3>
+      <button class="ctr-modal-close" id="ctr_btnFecharConfirm">&times;</button>
+    </div>
+    <div class="ctr-modal-body">
+      <p id="ctr_confirmMsg">Tem certeza que deseja excluir este item?</p>
+    </div>
+    <div class="ctr-modal-footer">
+      <button type="button" id="ctr_btnCancelarConfirm" class="btn btn-secondary">Cancelar</button>
+      <button type="button" id="ctr_btnConfirmarExclusao" class="btn btn-danger">
+        <i class="fas fa-trash-alt"></i> Excluir
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast de notificação -->
+<div id="ctr_toast" class="ctr-toast" style="display:none">
+  <i id="ctr_toastIcon" class="fas fa-check-circle"></i>
+  <span id="ctr_toastMsg"></span>
 </div>
