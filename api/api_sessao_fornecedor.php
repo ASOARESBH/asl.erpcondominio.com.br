@@ -1,12 +1,26 @@
 <?php
 /**
  * API de Gerenciamento de Sessão do Fornecedor
- * 
+ *
  * Ações disponíveis:
  * - verificar: Verifica se fornecedor está logado
  * - dados: Retorna dados do fornecedor logado
  * - logout: Faz logout do fornecedor
+ * - atualizar_perfil: Atualiza email/senha/telefone/endereco
  */
+
+// ⚠️ session_start() ANTES de qualquer header ou include
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once 'config.php';
+require_once 'auth_helper.php';
+
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 
 // Função para retornar JSON
 if (!function_exists('retornar_json')) {
@@ -19,17 +33,43 @@ if (!function_exists('retornar_json')) {
     }
 }
 
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+// Função de log de debug do fornecedor (reutilizável em todas as APIs)
+if (!function_exists('log_fornecedor')) {
+    function log_fornecedor(string $tipo, string $descricao, ?string $usuario = null, array $extra = []): void {
+        $ip         = $_SERVER['REMOTE_ADDR']     ?? '0.0.0.0';
+        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'desconhecido';
+        $session_id = session_id() ?: 'sem-sessao';
+        $timestamp  = date('Y-m-d H:i:s');
 
-// Iniciar sessão
-session_start();
+        try {
+            $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+            if (!$conn->connect_error) {
+                $conn->set_charset('utf8mb4');
+                $desc_completa = $descricao;
+                if (!empty($extra)) $desc_completa .= ' | DEBUG: ' . json_encode($extra, JSON_UNESCAPED_UNICODE);
+                $desc_completa .= ' | UA: ' . substr($user_agent, 0, 120) . ' | SID: ' . $session_id;
+                $stmt = $conn->prepare("INSERT INTO logs_sistema (tipo, descricao, usuario, ip, data_hora) VALUES (?, ?, ?, ?, ?)");
+                if ($stmt) {
+                    $stmt->bind_param('sssss', $tipo, $desc_completa, $usuario, $ip, $timestamp);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+                $conn->close();
+            }
+        } catch (Exception $e) {
+            error_log('[log_fornecedor] ' . $e->getMessage());
+        }
 
-// Incluir arquivo de configuração
-require_once 'config.php';
-require_once 'auth_helper.php';
+        $log_dir = '/var/log/erp_auth/';
+        if (!is_dir($log_dir)) @mkdir($log_dir, 0755, true);
+        $linha = json_encode([
+            'timestamp' => $timestamp, 'tipo' => $tipo, 'usuario' => $usuario,
+            'ip' => $ip, 'session_id' => $session_id, 'descricao' => $descricao,
+            'extra' => $extra, 'user_agent' => $user_agent,
+        ], JSON_UNESCAPED_UNICODE) . "\n";
+        @file_put_contents($log_dir . 'fornecedor_' . date('Y-m-d') . '.log', $linha, FILE_APPEND | LOCK_EX);
+    }
+}
 
 // Obter ação
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
@@ -38,34 +78,52 @@ $metodo = $_SERVER['REQUEST_METHOD'];
 try {
     switch ($acao) {
         case 'verificar':
+            log_fornecedor('SESSAO_VERIFICAR', 'Verificação de sessão solicitada',
+                $_SESSION['fornecedor_email'] ?? null, [
+                    'session_id'        => session_id(),
+                    'fornecedor_id'     => $_SESSION['fornecedor_id']     ?? 'não definido',
+                    'fornecedor_logado' => $_SESSION['fornecedor_logado'] ?? 'não definido',
+                ]);
             verificarSessao();
             break;
-            
+
         case 'dados':
+            log_fornecedor('SESSAO_DADOS', 'Dados do fornecedor solicitados',
+                $_SESSION['fornecedor_email'] ?? null, ['session_id' => session_id()]);
             obterDadosFornecedor();
             break;
-            
+
         case 'logout':
+            log_fornecedor('LOGOUT', 'Logout solicitado',
+                $_SESSION['fornecedor_email'] ?? null, ['session_id' => session_id()]);
             fazerLogout();
             break;
 
         case 'atualizar_perfil':
+            log_fornecedor('PERFIL_ATUALIZAR', 'Atualização de perfil solicitada',
+                $_SESSION['fornecedor_email'] ?? null, ['session_id' => session_id()]);
             atualizarPerfil();
             break;
-            
+
         default:
+            log_fornecedor('ACAO_INVALIDA', "Ação inválida na sessão: '$acao'",
+                $_SESSION['fornecedor_email'] ?? null, [
+                    'metodo'  => $_SERVER['REQUEST_METHOD'],
+                    'get'     => $_GET,
+                    'post'    => array_keys($_POST),
+                ]);
             http_response_code(400);
-            echo json_encode([
-                'sucesso' => false,
-                'mensagem' => 'Ação inválida ou não especificada'
-            ]);
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Ação inválida ou não especificada'], JSON_UNESCAPED_UNICODE);
     }
 } catch (Exception $e) {
+    log_fornecedor('EXCECAO', 'Exceção não tratada na sessão: ' . $e->getMessage(),
+        $_SESSION['fornecedor_email'] ?? null, [
+            'acao' => $acao,
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
     http_response_code(500);
-    echo json_encode([
-        'sucesso' => false,
-        'mensagem' => 'Erro no servidor: ' . $e->getMessage()
-    ]);
+    echo json_encode(['sucesso' => false, 'mensagem' => 'Erro no servidor: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
 }
 
 /**

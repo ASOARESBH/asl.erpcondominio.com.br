@@ -4,6 +4,11 @@
 // =====================================================
 // Gerencia pedidos, aprovações e avaliações
 
+// ⚠️ session_start() ANTES de qualquer include
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once 'config.php';
 require_once 'auth_helper.php';
 
@@ -29,24 +34,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Sessão já pode ter sido iniciada por auth_helper; evitar duplo session_start
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// Função de log de debug do fornecedor
+if (!function_exists('log_fornecedor')) {
+    function log_fornecedor(string $tipo, string $descricao, ?string $usuario = null, array $extra = []): void {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $session_id = session_id() ?: 'sem-sessao';
+        $timestamp  = date('Y-m-d H:i:s');
+        try {
+            $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+            if (!$conn->connect_error) {
+                $conn->set_charset('utf8mb4');
+                $desc = $descricao . (!empty($extra) ? ' | DEBUG: ' . json_encode($extra, JSON_UNESCAPED_UNICODE) : '') . ' | SID: ' . $session_id;
+                $stmt = $conn->prepare("INSERT INTO logs_sistema (tipo, descricao, usuario, ip, data_hora) VALUES (?, ?, ?, ?, ?)");
+                if ($stmt) { $stmt->bind_param('sssss', $tipo, $desc, $usuario, $ip, $timestamp); $stmt->execute(); $stmt->close(); }
+                $conn->close();
+            }
+        } catch (Exception $e) { error_log('[log_fornecedor] ' . $e->getMessage()); }
+        $log_dir = '/var/log/erp_auth/';
+        if (!is_dir($log_dir)) @mkdir($log_dir, 0755, true);
+        @file_put_contents($log_dir . 'fornecedor_' . date('Y-m-d') . '.log',
+            json_encode(['timestamp' => $timestamp, 'tipo' => $tipo, 'usuario' => $usuario,
+                'ip' => $ip, 'session_id' => $session_id, 'descricao' => $descricao, 'extra' => $extra,
+            ], JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND | LOCK_EX);
+    }
 }
 
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'];
 
 // Verificar autenticação: aceita sessão do ERP (usuario_logado) OU sessão do fornecedor
-$is_erp     = isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true;
-$is_fornecedor = isset($_SESSION['fornecedor_id']) && intval($_SESSION['fornecedor_id']) > 0;
+$is_erp        = isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true;
+$is_fornecedor = isset($_SESSION['fornecedor_id'])  && intval($_SESSION['fornecedor_id']) > 0;
 
 if (!$is_erp && !$is_fornecedor) {
+    log_fornecedor('PEDIDOS_AUTH_ERRO', "Acesso negado sem sessão válida. Acao: $acao", null, [
+        'session_id'        => session_id(),
+        'session_keys'      => array_keys($_SESSION),
+        'usuario_logado'    => $_SESSION['usuario_logado']    ?? 'não definido',
+        'fornecedor_id'     => $_SESSION['fornecedor_id']     ?? 'não definido',
+        'fornecedor_logado' => $_SESSION['fornecedor_logado'] ?? 'não definido',
+    ]);
     http_response_code(401);
     echo json_encode([
-        'sucesso' => false,
+        'sucesso'  => false,
         'mensagem' => 'Autenticação necessária. Faça login novamente.',
-        'codigo' => 'AUTH_REQUIRED'
+        'codigo'   => 'AUTH_REQUIRED'
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
