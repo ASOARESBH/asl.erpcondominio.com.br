@@ -29,16 +29,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-session_start();
-
-// Verificar autenticação
-verificarAutenticacao(true, 'operador');
+// Sessão já pode ter sido iniciada por auth_helper; evitar duplo session_start
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'];
 
-// Para operações de escrita, verificar permissão
-if ($metodo !== 'GET') {
+// Verificar autenticação: aceita sessão do ERP (usuario_logado) OU sessão do fornecedor
+$is_erp     = isset($_SESSION['usuario_logado']) && $_SESSION['usuario_logado'] === true;
+$is_fornecedor = isset($_SESSION['fornecedor_id']) && intval($_SESSION['fornecedor_id']) > 0;
+
+if (!$is_erp && !$is_fornecedor) {
+    http_response_code(401);
+    echo json_encode([
+        'sucesso' => false,
+        'mensagem' => 'Autenticação necessária. Faça login novamente.',
+        'codigo' => 'AUTH_REQUIRED'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Para operações de escrita do ERP, verificar permissão
+if ($metodo !== 'GET' && $is_erp) {
     verificarPermissao('operador');
 }
 
@@ -471,7 +485,8 @@ try {
     
     // ========== OBTER MÉDIA DE AVALIAÇÃO DO FORNECEDOR ==========
     if ($acao === 'media_fornecedor' && $metodo === 'GET') {
-        $fornecedor_id = intval($_GET['fornecedor_id'] ?? 0);
+        // Aceita fornecedor_id via GET (admin ERP) ou via sessão do fornecedor logado
+        $fornecedor_id = intval($_GET['fornecedor_id'] ?? $_SESSION['fornecedor_id'] ?? 0);
         
         if ($fornecedor_id <= 0) {
             throw new Exception('Fornecedor inválido');
