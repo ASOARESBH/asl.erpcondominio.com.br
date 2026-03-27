@@ -90,13 +90,16 @@ function listarTodos($conexao) {
 }
 
 function alternarStatus($conexao) {
-    $dados = json_decode(file_get_contents('php://input'), true);
-    
-    if (!is_array($dados) || !isset($dados['id'])) {
-        resposta(false, 'Dados invalidos');
+    // Suporta FormData ($_POST) e JSON (php://input)
+    if (!empty($_POST['id'])) {
+        $id = intval($_POST['id']);
+    } else {
+        $dados = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($dados) || !isset($dados['id'])) {
+            resposta(false, 'Dados invalidos');
+        }
+        $id = intval($dados['id']);
     }
-    
-    $id = intval($dados['id']);
     
     if ($id <= 0) {
         resposta(false, 'ID invalido');
@@ -129,13 +132,16 @@ function alternarStatus($conexao) {
 }
 
 function alternarAprovacao($conexao) {
-    $dados = json_decode(file_get_contents('php://input'), true);
-    
-    if (!is_array($dados) || !isset($dados['id'])) {
-        resposta(false, 'Dados invalidos');
+    // Suporta FormData ($_POST) e JSON (php://input)
+    if (!empty($_POST['id'])) {
+        $id = intval($_POST['id']);
+    } else {
+        $dados = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($dados) || !isset($dados['id'])) {
+            resposta(false, 'Dados invalidos');
+        }
+        $id = intval($dados['id']);
     }
-    
-    $id = intval($dados['id']);
     
     if ($id <= 0) {
         resposta(false, 'ID invalido');

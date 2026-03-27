@@ -461,11 +461,13 @@ function _limparFiltrosForn() {
 async function _aprovarFornecedor(id) {
     _confirm('Aprovar Fornecedor', 'Deseja aprovar este fornecedor?', async () => {
         try {
+            const fd = new FormData();
+            fd.append('acao', 'alternar_aprovacao');
+            fd.append('id', parseInt(id));
             const res = await fetch(_api('api_admin_fornecedores.php'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ acao: 'alternar_aprovacao', id: parseInt(id) }),
+                body: fd,
             });
             const data = await res.json();
             if (data.sucesso) {
@@ -485,11 +487,13 @@ async function _aprovarFornecedor(id) {
 async function _rejeitarFornecedor(id) {
     _confirm('Rejeitar Fornecedor', 'Deseja rejeitar este fornecedor? A aprovação será removida.', async () => {
         try {
+            const fd = new FormData();
+            fd.append('acao', 'alternar_aprovacao');
+            fd.append('id', parseInt(id));
             const res = await fetch(_api('api_admin_fornecedores.php'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ acao: 'alternar_aprovacao', id: parseInt(id) }),
+                body: fd,
             });
             const data = await res.json();
             if (data.sucesso) {
@@ -511,11 +515,13 @@ async function _toggleStatusFornecedor(id, atoAtual) {
     const msg = ativo ? 'Desativar este fornecedor?' : 'Ativar este fornecedor?';
     _confirm(ativo ? 'Desativar Fornecedor' : 'Ativar Fornecedor', msg, async () => {
         try {
+            const fd = new FormData();
+            fd.append('acao', 'alternar_status');
+            fd.append('id', parseInt(id));
             const res = await fetch(_api('api_admin_fornecedores.php'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ acao: 'alternar_status', id: parseInt(id) }),
+                body: fd,
             });
             const data = await res.json();
             if (data.sucesso) {
