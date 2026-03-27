@@ -60,6 +60,18 @@ try {
         case 'estatisticas':
             obterEstatisticas($conexao);
             break;
+        case 'cadastrar':
+            cadastrarFornecedor($conexao);
+            break;
+        case 'atualizar':
+            atualizarFornecedor($conexao);
+            break;
+        case 'buscar':
+            buscarFornecedor($conexao);
+            break;
+        case 'deletar':
+            deletarFornecedor($conexao);
+            break;
         default:
             resposta(false, 'Acao invalida: ' . $acao);
     }
@@ -173,6 +185,147 @@ function alternarAprovacao($conexao) {
     mysqli_stmt_close($stmt);
 }
 
+// ─── CADASTRAR FORNECEDOR (pelo admin) ────────────────────────────────────────
+function cadastrarFornecedor($conexao) {
+    $cpf_cnpj             = trim($_POST['cpf_cnpj'] ?? '');
+    $nome_estabelecimento = trim($_POST['nome_estabelecimento'] ?? '');
+    $nome_responsavel     = trim($_POST['nome_responsavel'] ?? '');
+    $ramo_atividade_id    = intval($_POST['ramo_atividade_id'] ?? 0);
+    $email                = trim($_POST['email'] ?? '');
+    $senha                = trim($_POST['senha'] ?? '');
+    $telefone             = trim($_POST['telefone'] ?? '');
+    $endereco             = trim($_POST['endereco'] ?? '');
+    $ativo                = intval($_POST['ativo'] ?? 1);
+    $aprovado             = intval($_POST['aprovado'] ?? 0);
+
+    if (empty($cpf_cnpj))             { resposta(false, 'CPF/CNPJ e obrigatorio.'); }
+    if (empty($nome_estabelecimento)) { resposta(false, 'Nome do estabelecimento e obrigatorio.'); }
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) { resposta(false, 'E-mail valido e obrigatorio.'); }
+    if (strlen($senha) < 6)           { resposta(false, 'Senha deve ter no minimo 6 caracteres.'); }
+    if ($ramo_atividade_id <= 0)      { resposta(false, 'Ramo de atividade e obrigatorio.'); }
+
+    $stmt = mysqli_prepare($conexao, 'SELECT id FROM fornecedores WHERE cpf_cnpj = ?');
+    mysqli_stmt_bind_param($stmt, 's', $cpf_cnpj);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_store_result($stmt);
+    if (mysqli_stmt_num_rows($stmt) > 0) { mysqli_stmt_close($stmt); resposta(false, 'CPF/CNPJ ja cadastrado.'); }
+    mysqli_stmt_close($stmt);
+
+    $stmt = mysqli_prepare($conexao, 'SELECT id FROM fornecedores WHERE email = ?');
+    mysqli_stmt_bind_param($stmt, 's', $email);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_store_result($stmt);
+    if (mysqli_stmt_num_rows($stmt) > 0) { mysqli_stmt_close($stmt); resposta(false, 'E-mail ja cadastrado.'); }
+    mysqli_stmt_close($stmt);
+
+    $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
+    $sql = 'INSERT INTO fornecedores (cpf_cnpj, nome_estabelecimento, nome_responsavel, ramo_atividade_id, email, senha, telefone, endereco, ativo, aprovado, data_cadastro) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())';
+    $stmt = mysqli_prepare($conexao, $sql);
+    if (!$stmt) { resposta(false, 'Erro ao preparar cadastro: ' . mysqli_error($conexao)); }
+    mysqli_stmt_bind_param($stmt, 'sssissssii',
+        $cpf_cnpj, $nome_estabelecimento, $nome_responsavel,
+        $ramo_atividade_id, $email, $senha_hash,
+        $telefone, $endereco, $ativo, $aprovado
+    );
+    if (mysqli_stmt_execute($stmt)) {
+        $novo_id = mysqli_insert_id($conexao);
+        registrar_log('FORNECEDOR_CADASTRO_ADMIN', 'Admin cadastrou fornecedor: ' . $nome_estabelecimento . ' (' . $email . ')');
+        resposta(true, 'Fornecedor cadastrado com sucesso!', array('id' => $novo_id));
+    } else {
+        resposta(false, 'Erro ao cadastrar: ' . mysqli_error($conexao));
+    }
+    mysqli_stmt_close($stmt);
+}
+
+// ─── ATUALIZAR FORNECEDOR ─────────────────────────────────────────────────────
+function atualizarFornecedor($conexao) {
+    $id                   = intval($_POST['id'] ?? 0);
+    $cpf_cnpj             = trim($_POST['cpf_cnpj'] ?? '');
+    $nome_estabelecimento = trim($_POST['nome_estabelecimento'] ?? '');
+    $nome_responsavel     = trim($_POST['nome_responsavel'] ?? '');
+    $ramo_atividade_id    = intval($_POST['ramo_atividade_id'] ?? 0);
+    $email                = trim($_POST['email'] ?? '');
+    $senha                = trim($_POST['senha'] ?? '');
+    $telefone             = trim($_POST['telefone'] ?? '');
+    $endereco             = trim($_POST['endereco'] ?? '');
+    $ativo                = intval($_POST['ativo'] ?? 1);
+    $aprovado             = intval($_POST['aprovado'] ?? 0);
+
+    if ($id <= 0)                     { resposta(false, 'ID invalido.'); }
+    if (empty($nome_estabelecimento)) { resposta(false, 'Nome do estabelecimento e obrigatorio.'); }
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) { resposta(false, 'E-mail valido e obrigatorio.'); }
+
+    $stmt = mysqli_prepare($conexao, 'SELECT id FROM fornecedores WHERE email = ? AND id != ?');
+    mysqli_stmt_bind_param($stmt, 'si', $email, $id);
+    mysqli_stmt_execute($stmt);
+    mysqli_stmt_store_result($stmt);
+    if (mysqli_stmt_num_rows($stmt) > 0) { mysqli_stmt_close($stmt); resposta(false, 'E-mail ja em uso por outro fornecedor.'); }
+    mysqli_stmt_close($stmt);
+
+    if (!empty($senha)) {
+        if (strlen($senha) < 6) { resposta(false, 'Nova senha deve ter no minimo 6 caracteres.'); }
+        $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
+        $sql = 'UPDATE fornecedores SET cpf_cnpj=?, nome_estabelecimento=?, nome_responsavel=?, ramo_atividade_id=?, email=?, senha=?, telefone=?, endereco=?, ativo=?, aprovado=?, data_atualizacao=NOW() WHERE id=?';
+        $stmt = mysqli_prepare($conexao, $sql);
+        mysqli_stmt_bind_param($stmt, 'sssissssiii',
+            $cpf_cnpj, $nome_estabelecimento, $nome_responsavel,
+            $ramo_atividade_id, $email, $senha_hash,
+            $telefone, $endereco, $ativo, $aprovado, $id
+        );
+    } else {
+        $sql = 'UPDATE fornecedores SET cpf_cnpj=?, nome_estabelecimento=?, nome_responsavel=?, ramo_atividade_id=?, email=?, telefone=?, endereco=?, ativo=?, aprovado=?, data_atualizacao=NOW() WHERE id=?';
+        $stmt = mysqli_prepare($conexao, $sql);
+        mysqli_stmt_bind_param($stmt, 'sssisssiii',
+            $cpf_cnpj, $nome_estabelecimento, $nome_responsavel,
+            $ramo_atividade_id, $email,
+            $telefone, $endereco, $ativo, $aprovado, $id
+        );
+    }
+    if (!$stmt) { resposta(false, 'Erro ao preparar atualizacao: ' . mysqli_error($conexao)); }
+    if (mysqli_stmt_execute($stmt)) {
+        registrar_log('FORNECEDOR_ATUALIZADO_ADMIN', 'Admin atualizou fornecedor ID ' . $id);
+        resposta(true, 'Fornecedor atualizado com sucesso!');
+    } else {
+        resposta(false, 'Erro ao atualizar: ' . mysqli_error($conexao));
+    }
+    mysqli_stmt_close($stmt);
+}
+
+// ─── BUSCAR FORNECEDOR POR ID ─────────────────────────────────────────────────
+function buscarFornecedor($conexao) {
+    $id = intval($_GET['id'] ?? $_POST['id'] ?? 0);
+    if ($id <= 0) { resposta(false, 'ID invalido.'); }
+    $sql = 'SELECT f.*, r.nome as ramo_nome FROM fornecedores f LEFT JOIN ramos_atividade r ON f.ramo_atividade_id = r.id WHERE f.id = ?';
+    $stmt = mysqli_prepare($conexao, $sql);
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    mysqli_stmt_execute($stmt);
+    $res  = mysqli_stmt_get_result($stmt);
+    $forn = mysqli_fetch_assoc($res);
+    mysqli_stmt_close($stmt);
+    if ($forn) {
+        unset($forn['senha']);
+        resposta(true, 'Fornecedor encontrado.', $forn);
+    } else {
+        resposta(false, 'Fornecedor nao encontrado.');
+    }
+}
+
+// ─── DELETAR (soft delete) ────────────────────────────────────────────────────
+function deletarFornecedor($conexao) {
+    $id = intval($_POST['id'] ?? 0);
+    if ($id <= 0) { resposta(false, 'ID invalido.'); }
+    $stmt = mysqli_prepare($conexao, 'UPDATE fornecedores SET ativo=0, data_atualizacao=NOW() WHERE id=?');
+    mysqli_stmt_bind_param($stmt, 'i', $id);
+    if (mysqli_stmt_execute($stmt)) {
+        registrar_log('FORNECEDOR_DELETADO_ADMIN', 'Admin desativou fornecedor ID ' . $id);
+        resposta(true, 'Fornecedor desativado com sucesso.');
+    } else {
+        resposta(false, 'Erro ao desativar: ' . mysqli_error($conexao));
+    }
+    mysqli_stmt_close($stmt);
+}
+
+// ─── ESTATÍSTICAS ─────────────────────────────────────────────────────────────
 function obterEstatisticas($conexao) {
     $sql = 'SELECT COUNT(*) as total_fornecedores, SUM(CASE WHEN ativo = 1 THEN 1 ELSE 0 END) as fornecedores_ativos, SUM(CASE WHEN ativo = 0 THEN 1 ELSE 0 END) as fornecedores_inativos, SUM(CASE WHEN aprovado = 1 THEN 1 ELSE 0 END) as fornecedores_aprovados, SUM(CASE WHEN aprovado = 0 THEN 1 ELSE 0 END) as fornecedores_pendentes FROM fornecedores';
     
