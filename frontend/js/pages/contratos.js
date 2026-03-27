@@ -1,721 +1,960 @@
 /**
- * MÓDULO: CONTRATOS
- * Padrão: ES6 SPA — export init / destroy
+ * ═══════════════════════════════════════════════════════════════════
+ * MODULO: CONTRATOS — Controller ES6
+ * Fluxo: Lista → Detalhe (Dados | Documentos | Orcamentos) + Relatorios
+ * Padrao: export { init, destroy }
+ * ═══════════════════════════════════════════════════════════════════
  */
 
-const _state = {
-  lista: [], pagina: 1, porPagina: 15,
-  filtros: { texto: '', status: '', tipo: '' },
-  contratoAtivo: null, planos: [],
-  relDados: [], relColunas: [], relTitulo: '',
-  _listeners: [], _searchTimer: null, _confirmCallback: null,
+const TAG = '[Contratos]';
+const API = '../api/api_contratos.php';
+const API_FORN = '../api/api_admin_fornecedores.php';
+const API_PLANOS = '../api/api_planos_contas.php';
+
+/* ── Estado ──────────────────────────────────────────────────────── */
+let _state = {
+    lista: [],
+    planos: [],
+    contratoAtual: null,
+    documentos: [],
+    orcamentos: [],
+    pagina: 1,
+    porPagina: 15,
+    _listeners: []
 };
 
-const _esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const _fmt = v => Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-const _fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
-
-function _api(path, opts = {}) {
-  return fetch(`${window.location.origin}/api/${path}`, opts).then(r => r.json());
-}
+/* ── Helpers ─────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const log = (...a) => console.log(TAG, ...a);
+const warn = (...a) => console.warn(TAG, ...a);
+const err = (...a) => console.error(TAG, ...a);
 
 function _on(el, ev, fn) {
-  if (!el) return;
-  el.addEventListener(ev, fn);
-  _state._listeners.push({ el, ev, fn });
+    if (!el) return;
+    el.addEventListener(ev, fn);
+    _state._listeners.push({ el, ev, fn });
 }
 
 function _toast(msg, tipo = 'success') {
-  const t = document.getElementById('ctr_toast');
-  const i = document.getElementById('ctr_toastIcon');
-  const m = document.getElementById('ctr_toastMsg');
-  if (!t) return;
-  i.className = tipo === 'success' ? 'fas fa-check-circle' : tipo === 'error' ? 'fas fa-times-circle' : 'fas fa-info-circle';
-  t.className = `ctr-toast ctr-toast-${tipo}`;
-  m.textContent = msg;
-  t.style.display = 'flex';
-  setTimeout(() => { t.style.display = 'none'; }, 4000);
+    const t = $('ctr_toast');
+    if (!t) return;
+    t.className = `ctr-toast ctr-toast-${tipo}`;
+    t.innerHTML = `<i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'times-circle' : 'info-circle'}"></i> ${msg}`;
+    t.style.display = 'flex';
+    setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+function _money(v) {
+    return parseFloat(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function _dateBR(d) {
+    if (!d) return '-';
+    const p = d.split('-');
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
+function _parseMoney(s) {
+    if (!s) return 0;
+    return parseFloat(String(s).replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function _esc(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function _tipoLabel(t) {
+    return t === 'prestacao_servico' ? 'Prestacao de Servico' : t === 'venda' ? 'Venda' : t || '-';
+}
+
+function _recLabel(r) {
+    const m = { unica: 'Unica', mensal: 'Mensal', anual: 'Anual', diaria: 'Diaria' };
+    return m[r] || r || '-';
 }
 
 function _statusBadge(s) {
-  const map = {
-    ativo:      '<span class="ctr-badge-status ctr-status-ativo">Ativo</span>',
-    aguardando: '<span class="ctr-badge-status ctr-status-aguardando">Aguardando</span>',
-    encerrado:  '<span class="ctr-badge-status ctr-status-encerrado">Encerrado</span>',
-    cancelado:  '<span class="ctr-badge-status ctr-status-cancelado">Cancelado</span>',
-  };
-  return map[s] || `<span class="ctr-badge-status">${_esc(s)}</span>`;
+    const m = {
+        ativo: ['Ativo', 'ctr-status-green'],
+        aguardando: ['Aguardando', 'ctr-status-yellow'],
+        encerrado: ['Encerrado', 'ctr-status-red'],
+        cancelado: ['Cancelado', 'ctr-status-gray']
+    };
+    const [label, cls] = m[s] || [s, 'ctr-status-gray'];
+    return `<span class="ctr-status ${cls}">${label}</span>`;
 }
 
-function _tipoBadge(t) {
-  return t === 'prestacao_servico'
-    ? '<span class="ctr-badge-tipo ctr-tipo-servico"><i class="fas fa-tools"></i> Serviço</span>'
-    : '<span class="ctr-badge-tipo ctr-tipo-venda"><i class="fas fa-shopping-cart"></i> Venda</span>';
+/* ── API Fetch ───────────────────────────────────────────────────── */
+async function _fetch(url, opts = {}) {
+    log('FETCH', url, opts.method || 'GET');
+    try {
+        const r = await fetch(url, { credentials: 'include', ...opts });
+        const text = await r.text();
+        log('RESPONSE status:', r.status, 'body:', text.substring(0, 300));
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            err('JSON parse error:', e, 'raw:', text.substring(0, 500));
+            return { sucesso: false, mensagem: 'Resposta invalida do servidor' };
+        }
+    } catch (e) {
+        err('FETCH error:', e);
+        return { sucesso: false, mensagem: 'Erro de conexao: ' + e.message };
+    }
 }
 
-function _recorrenciaLabel(r) {
-  return { unica:'Única', mensal:'Mensal', anual:'Anual', diaria:'Diária' }[r] || r;
+async function _post(acao, dados = {}) {
+    const fd = new FormData();
+    fd.append('acao', acao);
+    for (const [k, v] of Object.entries(dados)) {
+        if (v instanceof File) fd.append(k, v);
+        else fd.append(k, v ?? '');
+    }
+    return _fetch(API, { method: 'POST', body: fd });
 }
 
-// ─── Init / Destroy ───────────────────────────────────────────────────────────
-export async function init() {
-  console.log('[Contratos] Init');
-  Object.assign(_state, {
-    lista: [], pagina: 1, filtros: { texto:'', status:'', tipo:'' },
-    contratoAtivo: null, planos: [], relDados: [], relColunas: [], relTitulo: '',
-    _listeners: [], _searchTimer: null, _confirmCallback: null,
-  });
-  _bindTabs();
-  _bindToolbar();
-  _bindModalContrato();
-  _bindModalDoc();
-  _bindModalOrc();
-  _bindModalConfirm();
-  await Promise.all([_carregarPlanos(), _carregar()]);
+async function _get(acao, params = {}) {
+    const qs = new URLSearchParams({ acao, ...params });
+    return _fetch(`${API}?${qs}`);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   INIT / DESTROY
+   ═══════════════════════════════════════════════════════════════════ */
+export function init() {
+    log('Init');
+    _bindEvents();
+    _carregarPlanos();
+    _carregarLista();
 }
 
 export function destroy() {
-  console.log('[Contratos] Destroy');
-  _state._listeners.forEach(({ el, ev, fn }) => el.removeEventListener(ev, fn));
-  _state._listeners = [];
-  if (_state._searchTimer) clearTimeout(_state._searchTimer);
+    log('Destroy');
+    _state._listeners.forEach(({ el, ev, fn }) => el.removeEventListener(ev, fn));
+    _state._listeners = [];
+    _state = { lista: [], planos: [], contratoAtual: null, documentos: [], orcamentos: [], pagina: 1, porPagina: 15, _listeners: [] };
 }
 
-// ─── Abas ─────────────────────────────────────────────────────────────────────
-function _bindTabs() {
-  document.querySelectorAll('.ctr-tab').forEach(btn => {
-    _on(btn, 'click', () => {
-      document.querySelectorAll('.ctr-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const tab = btn.dataset.tab;
-      document.querySelectorAll('.ctr-tab-content').forEach(c => c.style.display = 'none');
-      const key = tab.charAt(0).toUpperCase() + tab.slice(1);
-      const el = document.getElementById(`ctr_tab${key}`);
-      if (el) el.style.display = 'block';
-      if (tab === 'documentos' && _state.contratoAtivo) _carregarDocs(_state.contratoAtivo.id);
-      if (tab === 'orcamentos' && _state.contratoAtivo) _carregarOrcamentos(_state.contratoAtivo.id);
+/* ═══════════════════════════════════════════════════════════════════
+   BIND EVENTS
+   ═══════════════════════════════════════════════════════════════════ */
+function _bindEvents() {
+    // Abas globais
+    document.querySelectorAll('.ctr-tab-global').forEach(tab => {
+        _on(tab, 'click', () => _switchGlobalTab(tab.dataset.tab));
     });
-  });
+
+    // Abas detalhe
+    document.querySelectorAll('.ctr-tab-detalhe').forEach(tab => {
+        _on(tab, 'click', () => _switchDetalheTab(tab.dataset.subtab));
+    });
+
+    // Filtros
+    _on($('ctr_btnFiltrar'), 'click', () => { _state.pagina = 1; _carregarLista(); });
+    _on($('ctr_btnLimpar'), 'click', _limparFiltros);
+
+    // Novo contrato
+    _on($('ctr_btnNovo'), 'click', _abrirModalNovo);
+
+    // Modal
+    _on($('ctr_modalClose'), 'click', _fecharModal);
+    _on($('ctr_btnCancelar'), 'click', _fecharModal);
+    _on($('ctr_modalOverlay'), 'click', e => { if (e.target === $('ctr_modalOverlay')) _fecharModal(); });
+    _on($('ctr_btnSalvar'), 'click', _salvarContrato);
+
+    // Fornecedor autocomplete
+    _on($('ctr_formFornecedorBusca'), 'input', _buscarFornecedor);
+    _on($('ctr_fornecedorLimpar'), 'click', _limparFornecedor);
+
+    // Preview parcelas
+    _on($('ctr_formRecorrencia'), 'change', _calcularParcelas);
+    _on($('ctr_formInicio'), 'change', _calcularParcelas);
+    _on($('ctr_formFim'), 'change', _calcularParcelas);
+    _on($('ctr_formValor'), 'input', _calcularParcelas);
+
+    // Detalhe: voltar
+    _on($('ctr_btnVoltar'), 'click', _voltarParaLista);
+
+    // Detalhe: editar / excluir
+    _on($('ctr_btnEditar'), 'click', _editarContrato);
+    _on($('ctr_btnExcluir'), 'click', _confirmarExclusao);
+
+    // Modal excluir
+    _on($('ctr_modalExcluirClose'), 'click', () => { $('ctr_modalExcluirOverlay').style.display = 'none'; });
+    _on($('ctr_btnExcluirCancelar'), 'click', () => { $('ctr_modalExcluirOverlay').style.display = 'none'; });
+    _on($('ctr_btnExcluirConfirmar'), 'click', _excluirContrato);
+
+    // Documentos
+    _on($('ctr_btnUploadDoc'), 'click', _uploadDocumento);
+
+    // Orcamentos
+    _on($('ctr_btnSalvarOrc'), 'click', _salvarOrcamento);
+    _on($('ctr_btnCancelarOrc'), 'click', _cancelarEdicaoOrc);
+    _on($('ctr_orcValor'), 'input', _verificarValorOrcamento);
+
+    // Relatorios
+    _on($('ctr_btnRelAtivos'), 'click', () => _gerarRelatorio('ativos'));
+    _on($('ctr_btnRelVenc'), 'click', () => _gerarRelatorio('vencimentos'));
+    _on($('ctr_btnRelFornecedor'), 'click', () => _gerarRelatorio('por_fornecedor'));
+    _on($('ctr_btnRelFinanceiro'), 'click', () => _gerarRelatorio('financeiro'));
+    _on($('ctr_btnExportCSV'), 'click', _exportarCSV);
 }
 
-// ─── Toolbar ─────────────────────────────────────────────────────────────────
-function _bindToolbar() {
-  _on(document.getElementById('ctr_btnNovo'),    'click', () => _abrirModalContrato());
-  _on(document.getElementById('ctr_btnFiltrar'), 'click', _aplicarFiltros);
-  _on(document.getElementById('ctr_btnLimpar'),  'click', _limparFiltros);
-  const txt = document.getElementById('ctr_filtroTexto');
-  _on(txt, 'keyup', () => {
-    clearTimeout(_state._searchTimer);
-    _state._searchTimer = setTimeout(_aplicarFiltros, 400);
-  });
-  document.querySelectorAll('.ctr-btn-relatorio').forEach(btn => {
-    _on(btn, 'click', () => _gerarRelatorio(btn.dataset.rel));
-  });
-  _on(document.getElementById('ctr_btnExportarCSV'), 'click', _exportarCSV);
+/* ═══════════════════════════════════════════════════════════════════
+   NAVEGACAO DE ABAS
+   ═══════════════════════════════════════════════════════════════════ */
+function _switchGlobalTab(tab) {
+    log('switchGlobalTab:', tab);
+    document.querySelectorAll('.ctr-tab-global').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.ctr-tab-global[data-tab="${tab}"]`)?.classList.add('active');
+
+    $('ctr_secLista').style.display = tab === 'lista' ? '' : 'none';
+    $('ctr_secDetalhe').style.display = 'none';
+    $('ctr_secRelatorios').style.display = tab === 'relatorios' ? '' : 'none';
 }
 
-function _aplicarFiltros() {
-  _state.filtros.texto  = document.getElementById('ctr_filtroTexto')?.value.trim() || '';
-  _state.filtros.status = document.getElementById('ctr_filtroStatus')?.value || '';
-  _state.filtros.tipo   = document.getElementById('ctr_filtroTipo')?.value || '';
-  _state.pagina = 1;
-  _carregar();
+function _switchDetalheTab(subtab) {
+    log('switchDetalheTab:', subtab);
+    document.querySelectorAll('.ctr-tab-detalhe').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.ctr-tab-detalhe[data-subtab="${subtab}"]`)?.classList.add('active');
+
+    $('ctr_subDados').style.display = subtab === 'dados' ? '' : 'none';
+    $('ctr_subDocs').style.display = subtab === 'documentos' ? '' : 'none';
+    $('ctr_subOrc').style.display = subtab === 'orcamentos' ? '' : 'none';
 }
 
-function _limparFiltros() {
-  ['ctr_filtroTexto','ctr_filtroStatus','ctr_filtroTipo'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  _state.filtros = { texto:'', status:'', tipo:'' };
-  _state.pagina = 1;
-  _carregar();
+function _voltarParaLista() {
+    log('voltarParaLista');
+    _state.contratoAtual = null;
+    $('ctr_secDetalhe').style.display = 'none';
+    $('ctr_secLista').style.display = '';
+    document.querySelectorAll('.ctr-tab-global').forEach(t => t.classList.remove('active'));
+    $('ctr_tabLista')?.classList.add('active');
+    $('ctr_secRelatorios').style.display = 'none';
+    _carregarLista();
 }
 
-// ─── Lista de Contratos ───────────────────────────────────────────────────────
-async function _carregar() {
-  const tbody = document.getElementById('ctr_tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="ctr-empty"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
-  const params = new URLSearchParams({
-    acao: 'listar', pagina: _state.pagina, limite: _state.porPagina,
-    texto: _state.filtros.texto, status: _state.filtros.status, tipo: _state.filtros.tipo,
-  });
-  try {
-    const d = await _api(`api_contratos.php?${params}`);
-    if (!d.sucesso) { _toast(d.mensagem || 'Erro ao carregar', 'error'); return; }
-    _state.lista = Array.isArray(d.dados) ? d.dados : [];
-    _renderTabela();
-    _renderPaginacao(d.total || _state.lista.length);
-    _atualizarKPIs(d.kpis || {});
-    _verificarAlertas(d.alertas || []);
-  } catch (e) {
-    console.error('[Contratos] Erro:', e);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="ctr-empty ctr-empty-error">Erro ao carregar contratos</td></tr>';
-  }
-}
-
-function _renderTabela() {
-  const tbody = document.getElementById('ctr_tbody');
-  if (!tbody) return;
-  if (!_state.lista.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="ctr-empty"><i class="fas fa-folder-open"></i> Nenhum contrato encontrado</td></tr>';
-    return;
-  }
-  tbody.innerHTML = _state.lista.map(c => `
-    <tr>
-      <td><strong class="ctr-numero">${_esc(c.numero_contrato)}</strong></td>
-      <td><div class="ctr-fornecedor-cell"><strong>${_esc(c.fornecedor_nome)}</strong><small>${_esc(c.fornecedor_cnpj||'')}</small></div></td>
-      <td>${_tipoBadge(c.tipo_servico)}</td>
-      <td>${_esc(c.nome_contrato)}</td>
-      <td>${_recorrenciaLabel(c.recorrencia)}</td>
-      <td><strong>${_fmt(c.valor_total)}</strong></td>
-      <td><div class="ctr-vigencia-cell"><span>${_fmtDate(c.data_inicio)}</span><small>até ${_fmtDate(c.data_fim)}</small>${c.dias_restantes!=null?`<small class="${c.dias_restantes<30?'ctr-dias-alerta':'ctr-dias-ok'}">${c.dias_restantes>=0?c.dias_restantes+' dias':'Encerrado'}</small>`:''}</div></td>
-      <td>${_statusBadge(c.status_calculado||c.status)}</td>
-      <td><span class="ctr-docs-count ${parseInt(c.total_docs)>0?'ctr-docs-ok':'ctr-docs-zero'}"><i class="fas fa-paperclip"></i> ${c.total_docs||0}</span></td>
-      <td><div class="ctr-acoes">
-        <button class="btn-ctr-acao btn-ctr-docs" title="Documentos" data-id="${c.id}"><i class="fas fa-paperclip"></i></button>
-        <button class="btn-ctr-acao btn-ctr-orc"  title="Orçamentos" data-id="${c.id}"><i class="fas fa-balance-scale"></i></button>
-        <button class="btn-ctr-acao btn-ctr-edit" title="Editar"     data-id="${c.id}"><i class="fas fa-edit"></i></button>
-        <button class="btn-ctr-acao btn-ctr-del"  title="Cancelar"   data-id="${c.id}" data-nome="${_esc(c.numero_contrato)}"><i class="fas fa-ban"></i></button>
-      </div></td>
-    </tr>
-  `).join('');
-
-  tbody.querySelectorAll('.btn-ctr-edit').forEach(b => _on(b,'click',()=>_abrirModalContrato(+b.dataset.id)));
-  tbody.querySelectorAll('.btn-ctr-del').forEach(b  => _on(b,'click',()=>_confirmarCancelamento(+b.dataset.id,b.dataset.nome)));
-  tbody.querySelectorAll('.btn-ctr-docs').forEach(b => _on(b,'click',()=>_irParaDocs(+b.dataset.id)));
-  tbody.querySelectorAll('.btn-ctr-orc').forEach(b  => _on(b,'click',()=>_irParaOrcamentos(+b.dataset.id)));
-}
-
-function _renderPaginacao(total) {
-  const el = document.getElementById('ctr_pagination');
-  if (!el) return;
-  const totalPag = Math.ceil(total / _state.porPagina);
-  if (totalPag <= 1) { el.innerHTML = ''; return; }
-  el.innerHTML = Array.from({length:totalPag},(_,i)=>`<button class="ctr-pag-btn ${i+1===_state.pagina?'active':''}" data-pag="${i+1}">${i+1}</button>`).join('');
-  el.querySelectorAll('.ctr-pag-btn').forEach(b => _on(b,'click',()=>{ _state.pagina=+b.dataset.pag; _carregar(); }));
-}
-
-function _atualizarKPIs(k) {
-  const s = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-  s('ctr_kpiTotal',      k.total      ?? '0');
-  s('ctr_kpiAtivos',     k.ativos     ?? '0');
-  s('ctr_kpiAguardando', k.aguardando ?? '0');
-  s('ctr_kpiEncerrados', k.encerrados ?? '0');
-  s('ctr_kpiValor',      k.valor_total ? _fmt(k.valor_total) : 'R$ 0,00');
-}
-
-function _verificarAlertas(alertas) {
-  const bar = document.getElementById('ctr_alertBar');
-  const msg = document.getElementById('ctr_alertMsg');
-  if (!bar) return;
-  if (alertas.length) { msg.textContent = alertas[0]; bar.style.display = 'flex'; }
-  else bar.style.display = 'none';
-}
-
-// ─── Planos de Contas ─────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════
+   CARREGAR PLANOS DE CONTAS
+   ═══════════════════════════════════════════════════════════════════ */
 async function _carregarPlanos() {
-  try {
-    const d = await _api('api_planos_contas.php?acao=listar');
-    _state.planos = Array.isArray(d.dados) ? d.dados : (Array.isArray(d) ? d : []);
-    const sel = document.getElementById('ctr_fPlanoContas');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione o plano de contas...</option>' +
-      _state.planos.map(p => `<option value="${p.id}">${_esc((p.codigo?p.codigo+' - ':'')+( p.nome||p.descricao||''))}</option>`).join('');
-  } catch(e) { console.error('[Contratos] Planos:', e); }
-}
-
-// ─── Modal Contrato ───────────────────────────────────────────────────────────
-function _bindModalContrato() {
-  _on(document.getElementById('ctr_btnFecharModal'),    'click', _fecharModalContrato);
-  _on(document.getElementById('ctr_btnCancelarModal'),  'click', _fecharModalContrato);
-  _on(document.getElementById('ctr_btnSalvarContrato'), 'click', _salvarContrato);
-  const busca = document.getElementById('ctr_fFornecedorBusca');
-  _on(busca, 'input', () => {
-    clearTimeout(_state._searchTimer);
-    _state._searchTimer = setTimeout(() => _buscarFornecedor(busca.value), 350);
-  });
-  _on(document.getElementById('ctr_btnLimparFornecedor'), 'click', _limparFornecedorSelecionado);
-  ['ctr_fRecorrencia','ctr_fValor','ctr_fDataInicio','ctr_fDataFim'].forEach(id => {
-    _on(document.getElementById(id), id==='ctr_fValor'?'input':'change', _atualizarPreviewParcelas);
-  });
-  _on(document.getElementById('ctr_modalContrato'), 'click', e => { if(e.target.id==='ctr_modalContrato') _fecharModalContrato(); });
-}
-
-async function _abrirModalContrato(id = null) {
-  const modal = document.getElementById('ctr_modalContrato');
-  document.getElementById('ctr_formContrato')?.reset();
-  document.getElementById('ctr_fId').value = '';
-  _limparFornecedorSelecionado();
-  document.getElementById('ctr_previewParcelas').style.display = 'none';
-  if (_state.planos.length === 0) await _carregarPlanos();
-
-  if (id) {
-    document.getElementById('ctr_modalTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar Contrato';
-    document.getElementById('ctr_btnSalvarText').textContent = 'Salvar Alterações';
+    log('carregarPlanos');
     try {
-      const d = await _api(`api_contratos.php?acao=buscar&id=${id}`);
-      if (!d.sucesso) { _toast('Erro ao carregar contrato','error'); return; }
-      const c = d.dados;
-      document.getElementById('ctr_fId').value           = c.id;
-      document.getElementById('ctr_fFornecedorId').value  = c.fornecedor_id;
-      document.getElementById('ctr_fFornecedorNome').value= c.fornecedor_nome;
-      document.getElementById('ctr_fFornecedorCnpj').value= c.fornecedor_cnpj||'';
-      document.getElementById('ctr_fornecedorSelecionadoNome').textContent = c.fornecedor_nome;
-      document.getElementById('ctr_fornecedorSelecionado').style.display = 'flex';
-      document.getElementById('ctr_fFornecedorBusca').style.display = 'none';
-      ['TipoServico','Nome','DataInicio','DataFim','Recorrencia','Valor','Vencimento','PlanoContas','Obs'].forEach(k => {
-        const map = {TipoServico:'tipo_servico',Nome:'nome_contrato',DataInicio:'data_inicio',DataFim:'data_fim',Recorrencia:'recorrencia',Valor:'valor_total',Vencimento:'data_vencimento',PlanoContas:'plano_conta_id',Obs:'observacoes'};
-        const el = document.getElementById(`ctr_f${k}`);
-        if (el) el.value = c[map[k]] || '';
-      });
-      _atualizarPreviewParcelas();
-    } catch(e) { _toast('Erro ao carregar contrato','error'); return; }
-  } else {
-    document.getElementById('ctr_modalTitulo').innerHTML = '<i class="fas fa-file-contract"></i> Novo Contrato';
-    document.getElementById('ctr_btnSalvarText').textContent = 'Gerar Contrato';
-    document.getElementById('ctr_fDataInicio').value = new Date().toISOString().split('T')[0];
-  }
-  modal.style.display = 'flex';
+        const d = await _fetch(`${API_PLANOS}?acao=listar`);
+        const lista = Array.isArray(d) ? d : Array.isArray(d?.dados) ? d.dados : [];
+        _state.planos = lista;
+        const sel = $('ctr_formPlano');
+        if (sel) {
+            sel.innerHTML = '<option value="">Selecione o plano de contas...</option>';
+            lista.forEach(p => {
+                sel.innerHTML += `<option value="${p.id}">${_esc(p.codigo)} - ${_esc(p.nome)}</option>`;
+            });
+        }
+        log('planos carregados:', lista.length);
+    } catch (e) {
+        err('Erro ao carregar planos:', e);
+    }
 }
 
-function _fecharModalContrato() {
-  document.getElementById('ctr_modalContrato').style.display = 'none';
-  const sug = document.getElementById('ctr_fornecedorSugestoes');
-  if (sug) sug.style.display = 'none';
+/* ═══════════════════════════════════════════════════════════════════
+   CARREGAR LISTA DE CONTRATOS + KPIs
+   ═══════════════════════════════════════════════════════════════════ */
+async function _carregarLista() {
+    log('carregarLista pagina:', _state.pagina);
+    const busca = $('ctr_fBusca')?.value || '';
+    const status = $('ctr_fStatus')?.value || '';
+    const tipo = $('ctr_fTipo')?.value || '';
+
+    const d = await _get('listar', { busca, status, tipo_servico: tipo, pagina: _state.pagina, por_pagina: _state.porPagina });
+    const lista = Array.isArray(d?.dados) ? d.dados : Array.isArray(d) ? d : [];
+    _state.lista = lista;
+    log('lista carregada:', lista.length);
+
+    _renderTabela(lista);
+    _calcularKPIs(lista);
 }
 
-async function _buscarFornecedor(q) {
-  const sug = document.getElementById('ctr_fornecedorSugestoes');
-  if (!sug) return;
-  if (q.length < 2) { sug.style.display = 'none'; return; }
-  try {
-    const d = await _api(`api_admin_fornecedores.php?acao=listar&busca=${encodeURIComponent(q)}&limite=8`);
-    const lista = Array.isArray(d.dados) ? d.dados : [];
-    if (!lista.length) { sug.style.display = 'none'; return; }
-    sug.innerHTML = lista.map(f => `<div class="ctr-sugestao-item" data-id="${f.id}" data-nome="${_esc(f.nome_estabelecimento)}" data-cnpj="${_esc(f.cpf_cnpj||'')}"><strong>${_esc(f.nome_estabelecimento)}</strong><small>${_esc(f.cpf_cnpj||'')}</small></div>`).join('');
-    sug.style.display = 'block';
-    sug.querySelectorAll('.ctr-sugestao-item').forEach(item => {
-      _on(item, 'click', () => {
-        document.getElementById('ctr_fFornecedorId').value   = item.dataset.id;
-        document.getElementById('ctr_fFornecedorNome').value = item.dataset.nome;
-        document.getElementById('ctr_fFornecedorCnpj').value = item.dataset.cnpj;
-        document.getElementById('ctr_fornecedorSelecionadoNome').textContent = item.dataset.nome;
-        document.getElementById('ctr_fornecedorSelecionado').style.display = 'flex';
-        document.getElementById('ctr_fFornecedorBusca').style.display = 'none';
-        sug.style.display = 'none';
-      });
+function _calcularKPIs(lista) {
+    let total = lista.length, ativos = 0, aguardando = 0, encerrados = 0, valorAtivo = 0, vencendo30 = 0;
+    const hoje = new Date();
+    const em30 = new Date(); em30.setDate(em30.getDate() + 30);
+
+    lista.forEach(c => {
+        const s = _calcStatus(c);
+        if (s === 'ativo') { ativos++; valorAtivo += parseFloat(c.valor_total || 0); }
+        if (s === 'aguardando') aguardando++;
+        if (s === 'encerrado') encerrados++;
+        if (s === 'ativo' && c.data_fim) {
+            const fim = new Date(c.data_fim);
+            if (fim <= em30) vencendo30++;
+        }
     });
-  } catch(e) { sug.style.display = 'none'; }
+
+    const s = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+    s('ctr_kpiTotal', total);
+    s('ctr_kpiAtivos', ativos);
+    s('ctr_kpiAguardando', aguardando);
+    s('ctr_kpiEncerrados', encerrados);
+    s('ctr_kpiValor', _money(valorAtivo));
+
+    const alertBar = $('ctr_alertBar');
+    if (vencendo30 > 0 && alertBar) {
+        alertBar.style.display = 'flex';
+        $('ctr_alertText').textContent = `${vencendo30} contrato(s) vencem nos proximos 30 dias!`;
+    } else if (alertBar) {
+        alertBar.style.display = 'none';
+    }
 }
 
-function _limparFornecedorSelecionado() {
-  ['ctr_fFornecedorId','ctr_fFornecedorNome','ctr_fFornecedorCnpj'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-  document.getElementById('ctr_fornecedorSelecionado').style.display = 'none';
-  const b = document.getElementById('ctr_fFornecedorBusca');
-  if (b) { b.style.display=''; b.value=''; b.focus(); }
+function _calcStatus(c) {
+    const hoje = new Date().toISOString().split('T')[0];
+    if (c.status === 'cancelado') return 'cancelado';
+    if (c.data_inicio > hoje) return 'aguardando';
+    if (c.data_fim < hoje) return 'encerrado';
+    return 'ativo';
 }
 
-function _atualizarPreviewParcelas() {
-  const rec=document.getElementById('ctr_fRecorrencia')?.value;
-  const val=parseFloat(document.getElementById('ctr_fValor')?.value||0);
-  const ini=document.getElementById('ctr_fDataInicio')?.value;
-  const fim=document.getElementById('ctr_fDataFim')?.value;
-  const prev=document.getElementById('ctr_previewParcelas');
-  const txt=document.getElementById('ctr_previewParcelasText');
-  if (!prev||!txt||!rec||!val||!ini||!fim) { if(prev) prev.style.display='none'; return; }
-  const dI=new Date(ini), dF=new Date(fim);
-  let qtd=1;
-  if (rec==='mensal') qtd=Math.max(1,Math.round((dF-dI)/(1000*60*60*24*30)));
-  else if (rec==='anual') qtd=Math.max(1,Math.round((dF-dI)/(1000*60*60*24*365)));
-  else if (rec==='diaria') qtd=Math.max(1,Math.round((dF-dI)/(1000*60*60*24)));
-  txt.textContent = rec==='unica' ? `1 lançamento de ${_fmt(val)} será gerado em Contas a Pagar` : `${qtd} parcela(s) de ${_fmt(val/qtd)} serão geradas em Contas a Pagar`;
-  prev.style.display='flex';
+/* ═══════════════════════════════════════════════════════════════════
+   RENDER TABELA
+   ═══════════════════════════════════════════════════════════════════ */
+function _renderTabela(lista) {
+    const tbody = $('ctr_tbody');
+    const empty = $('ctr_empty');
+    if (!tbody) return;
+
+    if (!lista.length) {
+        tbody.innerHTML = '';
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    tbody.innerHTML = lista.map(c => {
+        const status = _calcStatus(c);
+        const docCount = parseInt(c.doc_count || 0);
+        const orcCount = parseInt(c.orc_count || 0);
+        return `<tr class="ctr-row-clickable" data-id="${c.id}">
+            <td><strong>${_esc(c.numero_contrato)}</strong></td>
+            <td>${_esc(c.fornecedor_nome || c.nome_estabelecimento || '-')}</td>
+            <td>${_tipoLabel(c.tipo_servico)}</td>
+            <td>${_esc(c.nome)}</td>
+            <td>${_recLabel(c.recorrencia)}</td>
+            <td>${_money(c.valor_total)}</td>
+            <td>${_dateBR(c.data_inicio)} a ${_dateBR(c.data_fim)}</td>
+            <td>${_statusBadge(status)}</td>
+            <td><span class="ctr-badge-count">${docCount}/4</span></td>
+            <td><span class="ctr-badge-count ${orcCount < 3 ? 'ctr-badge-warn' : 'ctr-badge-ok'}">${orcCount}/3</span></td>
+            <td>
+                <button class="ctr-btn-icon ctr-btn-view" title="Ver Detalhe" data-id="${c.id}"><i class="fas fa-eye"></i></button>
+                <button class="ctr-btn-icon ctr-btn-edit" title="Editar" data-id="${c.id}"><i class="fas fa-edit"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('.ctr-row-clickable').forEach(row => {
+        row.addEventListener('click', e => {
+            if (e.target.closest('button')) return;
+            _abrirDetalhe(parseInt(row.dataset.id));
+        });
+    });
+    tbody.querySelectorAll('.ctr-btn-view').forEach(btn => {
+        btn.addEventListener('click', () => _abrirDetalhe(parseInt(btn.dataset.id)));
+    });
+    tbody.querySelectorAll('.ctr-btn-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const c = _state.lista.find(x => x.id == btn.dataset.id);
+            if (c) _abrirModalEditar(c);
+        });
+    });
 }
 
-async function _salvarContrato() {
-  const btn=document.getElementById('ctr_btnSalvarContrato');
-  const id=document.getElementById('ctr_fId')?.value;
-  const fornId=document.getElementById('ctr_fFornecedorId')?.value;
-  if (!fornId) { _toast('Selecione um fornecedor','error'); return; }
-  const tipo=document.getElementById('ctr_fTipoServico')?.value;
-  if (!tipo) { _toast('Selecione o tipo de serviço','error'); return; }
-  const nome=document.getElementById('ctr_fNome')?.value.trim();
-  if (!nome) { _toast('Informe o nome do contrato','error'); return; }
-  const ini=document.getElementById('ctr_fDataInicio')?.value;
-  const fim=document.getElementById('ctr_fDataFim')?.value;
-  if (!ini||!fim) { _toast('Informe as datas de início e fim','error'); return; }
-  if (new Date(fim)<new Date(ini)) { _toast('Data de fim deve ser posterior à data de início','error'); return; }
-  const rec=document.getElementById('ctr_fRecorrencia')?.value;
-  if (!rec) { _toast('Selecione a recorrência','error'); return; }
-  const valor=parseFloat(document.getElementById('ctr_fValor')?.value||0);
-  if (!valor||valor<=0) { _toast('Informe o valor total','error'); return; }
-  const venc=document.getElementById('ctr_fVencimento')?.value;
-  if (!venc) { _toast('Informe a data de vencimento','error'); return; }
-  const plano=document.getElementById('ctr_fPlanoContas')?.value;
-  if (!plano) { _toast('Selecione o plano de contas','error'); return; }
+/* ═══════════════════════════════════════════════════════════════════
+   DETALHE DO CONTRATO
+   ═══════════════════════════════════════════════════════════════════ */
+async function _abrirDetalhe(id) {
+    log('abrirDetalhe id:', id);
+    const d = await _get('buscar', { id });
+    if (!d?.sucesso && !d?.dados) {
+        _toast(d?.mensagem || 'Erro ao buscar contrato', 'error');
+        return;
+    }
+    const c = d.dados || d;
+    _state.contratoAtual = c;
 
-  const fd=new FormData();
-  fd.append('acao', id?'atualizar':'cadastrar');
-  if (id) fd.append('id',id);
-  fd.append('fornecedor_id',   fornId);
-  fd.append('fornecedor_nome', document.getElementById('ctr_fFornecedorNome')?.value||'');
-  fd.append('fornecedor_cnpj', document.getElementById('ctr_fFornecedorCnpj')?.value||'');
-  fd.append('tipo_servico',    tipo);
-  fd.append('nome_contrato',   nome);
-  fd.append('data_inicio',     ini);
-  fd.append('data_fim',        fim);
-  fd.append('recorrencia',     rec);
-  fd.append('valor_total',     valor);
-  fd.append('data_vencimento', venc);
-  fd.append('plano_conta_id',  plano);
-  fd.append('observacoes',     document.getElementById('ctr_fObs')?.value||'');
+    $('ctr_secLista').style.display = 'none';
+    $('ctr_secRelatorios').style.display = 'none';
+    $('ctr_secDetalhe').style.display = '';
 
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Salvando...';
-  try {
-    const d=await _api('api_contratos.php',{method:'POST',body:fd});
-    if (d.sucesso) {
-      _toast(d.mensagem||'Contrato salvo!','success');
-      _fecharModalContrato();
-      await _carregar();
-      if (!id&&d.contrato_id) _irParaDocs(d.contrato_id);
-    } else _toast(d.mensagem||'Erro ao salvar','error');
-  } catch(e) { _toast('Erro de comunicação','error'); }
-  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> <span id="ctr_btnSalvarText">Gerar Contrato</span>'; }
+    const status = _calcStatus(c);
+    $('ctr_detalheTitulo').textContent = `${c.numero_contrato} — ${c.nome}`;
+    const badgeEl = $('ctr_detalheStatus');
+    badgeEl.textContent = status === 'ativo' ? 'Ativo' : status === 'aguardando' ? 'Aguardando' : status === 'encerrado' ? 'Encerrado' : 'Cancelado';
+    badgeEl.className = `ctr-badge ${status === 'ativo' ? 'ctr-badge-green' : status === 'aguardando' ? 'ctr-badge-yellow' : 'ctr-badge-red'}`;
+
+    $('ctr_dFornecedor').textContent = c.fornecedor_nome || c.nome_estabelecimento || '-';
+    $('ctr_dCnpj').textContent = c.fornecedor_cnpj || c.cpf_cnpj || '-';
+    $('ctr_dNumero').textContent = c.numero_contrato;
+    $('ctr_dTipo').textContent = _tipoLabel(c.tipo_servico);
+    $('ctr_dNome').textContent = c.nome;
+    $('ctr_dRecorrencia').textContent = _recLabel(c.recorrencia);
+    $('ctr_dInicio').textContent = _dateBR(c.data_inicio);
+    $('ctr_dFim').textContent = _dateBR(c.data_fim);
+    $('ctr_dVencimento').textContent = _dateBR(c.data_vencimento);
+    $('ctr_dPlano').textContent = c.plano_conta_nome || c.plano_conta_id || '-';
+    $('ctr_dValor').textContent = _money(c.valor_total);
+
+    if (c.observacoes) {
+        $('ctr_cardObs').style.display = '';
+        $('ctr_dObs').textContent = c.observacoes;
+    } else {
+        $('ctr_cardObs').style.display = 'none';
+    }
+
+    _switchDetalheTab('dados');
+    _carregarDocumentos(c.id);
+    _carregarOrcamentos(c.id);
 }
 
-// ─── Documentos ───────────────────────────────────────────────────────────────
-function _irParaDocs(id) {
-  _state.contratoAtivo = _state.lista.find(c=>c.id==id)||{id};
-  document.querySelectorAll('.ctr-tab').forEach(b=>b.classList.remove('active'));
-  document.querySelector('.ctr-tab[data-tab="documentos"]')?.classList.add('active');
-  document.querySelectorAll('.ctr-tab-content').forEach(c=>c.style.display='none');
-  const el=document.getElementById('ctr_tabDocumentos'); if(el) el.style.display='block';
-  _carregarDocs(id);
+/* ═══════════════════════════════════════════════════════════════════
+   DOCUMENTOS
+   ═══════════════════════════════════════════════════════════════════ */
+async function _carregarDocumentos(contratoId) {
+    log('carregarDocumentos contratoId:', contratoId);
+    const d = await _get('listar_documentos', { contrato_id: contratoId });
+    const lista = Array.isArray(d?.dados) ? d.dados : Array.isArray(d) ? d : [];
+    _state.documentos = lista;
+
+    const count = lista.length;
+    $('ctr_docCount').textContent = count;
+    $('ctr_badgeDocs').textContent = count;
+
+    const pct = (count / 4) * 100;
+    const bar = $('ctr_docProgressBar');
+    if (bar) {
+        bar.style.width = pct + '%';
+        bar.className = `ctr-doc-progress-bar ${count >= 4 ? 'ctr-progress-full' : count >= 2 ? 'ctr-progress-mid' : ''}`;
+    }
+
+    const form = $('ctr_docUploadForm');
+    if (form) form.style.display = count >= 4 ? 'none' : '';
+
+    const tbody = $('ctr_docTbody');
+    const empty = $('ctr_docEmpty');
+    if (!tbody) return;
+
+    if (!lista.length) {
+        tbody.innerHTML = '';
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    tbody.innerHTML = lista.map((doc, i) => {
+        const ext = (doc.arquivo_nome || '').split('.').pop().toUpperCase();
+        const icon = ext === 'PDF' ? 'fa-file-pdf' : ext === 'DOC' || ext === 'DOCX' ? 'fa-file-word' : 'fa-file-image';
+        const tamanho = doc.tamanho ? (parseFloat(doc.tamanho) / 1024).toFixed(1) + ' KB' : '-';
+        return `<tr>
+            <td>${i + 1}</td>
+            <td>${_esc(doc.nome)}</td>
+            <td>${_esc(doc.tipo_documento || '-')}</td>
+            <td><i class="fas ${icon}"></i> ${_esc(doc.arquivo_nome || '-')}</td>
+            <td>${tamanho}</td>
+            <td>${_dateBR(doc.created_at?.split(' ')[0] || doc.data_upload)}</td>
+            <td>
+                <a href="../uploads/contratos/${doc.arquivo_nome}" target="_blank" class="ctr-btn-icon" title="Baixar"><i class="fas fa-download"></i></a>
+                <button class="ctr-btn-icon ctr-btn-danger-icon ctr-doc-del" data-id="${doc.id}" title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('.ctr-doc-del').forEach(btn => {
+        btn.addEventListener('click', () => _excluirDocumento(parseInt(btn.dataset.id)));
+    });
 }
 
-async function _carregarDocs(contratoId) {
-  const grid=document.getElementById('ctr_docGrid');
-  if (!grid) return;
-  const contrato=_state.lista.find(c=>c.id==contratoId)||_state.contratoAtivo;
-  const badge=document.getElementById('ctr_docContratoBadge');
-  if (badge&&contrato) badge.textContent=`Contrato: ${contrato.numero_contrato||'#'+contratoId} — ${contrato.nome_contrato||''}`;
-  const btnUp=document.getElementById('ctr_btnUploadDoc');
-  if (btnUp) { btnUp.disabled=false; btnUp.dataset.contratoId=contratoId; }
-  grid.innerHTML='<div class="ctr-doc-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
-  try {
-    const d=await _api(`api_contratos.php?acao=listar_docs&contrato_id=${contratoId}`);
-    const docs=Array.isArray(d.dados)?d.dados:[];
-    _renderDocs(docs,contratoId);
-    _atualizarLimiteDocs(docs.length);
-  } catch(e) { grid.innerHTML='<div class="ctr-doc-empty"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar</p></div>'; }
+async function _uploadDocumento() {
+    const contratoId = _state.contratoAtual?.id;
+    if (!contratoId) { _toast('Selecione um contrato primeiro', 'error'); return; }
+
+    const nome = $('ctr_docNome')?.value?.trim();
+    const tipo = $('ctr_docTipo')?.value;
+    const fileInput = $('ctr_docArquivo');
+    const arquivo = fileInput?.files?.[0];
+
+    if (!nome || !tipo || !arquivo) {
+        _toast('Preencha nome, tipo e selecione um arquivo', 'error');
+        return;
+    }
+
+    if (_state.documentos.length >= 4) {
+        _toast('Limite de 4 documentos atingido', 'error');
+        return;
+    }
+
+    log('uploadDocumento:', nome, tipo, arquivo.name);
+    const fd = new FormData();
+    fd.append('acao', 'upload_documento');
+    fd.append('contrato_id', contratoId);
+    fd.append('nome', nome);
+    fd.append('tipo_documento', tipo);
+    fd.append('arquivo', arquivo);
+
+    const d = await _fetch(API, { method: 'POST', body: fd });
+    if (d?.sucesso) {
+        _toast('Documento enviado com sucesso');
+        $('ctr_docNome').value = '';
+        $('ctr_docTipo').value = '';
+        fileInput.value = '';
+        _carregarDocumentos(contratoId);
+    } else {
+        _toast(d?.mensagem || 'Erro ao enviar documento', 'error');
+    }
 }
 
-function _renderDocs(docs,contratoId) {
-  const grid=document.getElementById('ctr_docGrid'); if(!grid) return;
-  if (!docs.length) { grid.innerHTML='<div class="ctr-doc-empty"><i class="fas fa-folder-open"></i><p>Nenhum documento enviado</p></div>'; return; }
-  const ico={pdf:'fa-file-pdf',doc:'fa-file-word',docx:'fa-file-word',jpg:'fa-file-image',jpeg:'fa-file-image',png:'fa-file-image'};
-  grid.innerHTML=docs.map(doc=>{
-    const ext=(doc.nome_arquivo||'').split('.').pop().toLowerCase();
-    return `<div class="ctr-doc-card"><div class="ctr-doc-icon"><i class="fas ${ico[ext]||'fa-file'}"></i></div><div class="ctr-doc-info"><strong>${_esc(doc.nome_documento)}</strong><small>${_esc(doc.tipo_documento||'')} — ${_fmtDate(doc.data_upload)}</small><small>${_esc(doc.nome_arquivo||'')}</small></div><div class="ctr-doc-acoes"><a href="${window.location.origin}/uploads/contratos/${_esc(doc.nome_arquivo)}" target="_blank" class="btn-ctr-acao btn-ctr-view" title="Visualizar"><i class="fas fa-eye"></i></a><button class="btn-ctr-acao btn-ctr-del-doc" data-id="${doc.id}" data-contrato="${contratoId}"><i class="fas fa-trash"></i></button></div></div>`;
-  }).join('');
-  grid.querySelectorAll('.btn-ctr-del-doc').forEach(b=>_on(b,'click',()=>_confirmarExclusaoDoc(+b.dataset.id,+b.dataset.contrato)));
+async function _excluirDocumento(docId) {
+    if (!confirm('Excluir este documento?')) return;
+    log('excluirDocumento:', docId);
+    const d = await _post('excluir_documento', { documento_id: docId });
+    if (d?.sucesso) {
+        _toast('Documento excluido');
+        _carregarDocumentos(_state.contratoAtual?.id);
+    } else {
+        _toast(d?.mensagem || 'Erro ao excluir', 'error');
+    }
 }
 
-function _atualizarLimiteDocs(qtd) {
-  const lim=document.getElementById('ctr_docLimite');
-  const fill=document.getElementById('ctr_docLimiteFill');
-  const txt=document.getElementById('ctr_docLimiteText');
-  if (!lim) return;
-  lim.style.display='flex';
-  if (fill) { fill.style.width=Math.min(100,(qtd/4)*100)+'%'; fill.className=`ctr-doc-limite-fill ${qtd>=4?'ctr-limite-cheio':qtd>=3?'ctr-limite-quase':''}`; }
-  if (txt) txt.textContent=`${qtd} / 4 documentos`;
-  const btnUp=document.getElementById('ctr_btnUploadDoc'); if(btnUp) btnUp.disabled=qtd>=4;
-}
-
-function _bindModalDoc() {
-  _on(document.getElementById('ctr_btnUploadDoc'),     'click', _abrirModalDoc);
-  _on(document.getElementById('ctr_btnFecharModalDoc'),'click', _fecharModalDoc);
-  _on(document.getElementById('ctr_btnCancelarDoc'),   'click', _fecharModalDoc);
-  _on(document.getElementById('ctr_btnSalvarDoc'),     'click', _salvarDoc);
-  _on(document.getElementById('ctr_modalDoc'),         'click', e=>{ if(e.target.id==='ctr_modalDoc') _fecharModalDoc(); });
-  const area=document.getElementById('ctr_uploadArea');
-  const input=document.getElementById('ctr_docArquivo');
-  _on(area,'click',()=>input?.click());
-  _on(area,'dragover',e=>{e.preventDefault();area.classList.add('ctr-drag-over');});
-  _on(area,'dragleave',()=>area.classList.remove('ctr-drag-over'));
-  _on(area,'drop',e=>{e.preventDefault();area.classList.remove('ctr-drag-over');if(e.dataTransfer.files[0])_previewArquivo(e.dataTransfer.files[0]);});
-  _on(input,'change',()=>{if(input.files[0])_previewArquivo(input.files[0]);});
-  _on(document.getElementById('ctr_btnRemoverArquivo'),'click',_limparArquivo);
-}
-
-function _abrirModalDoc() {
-  const cid=_state.contratoAtivo?.id||document.getElementById('ctr_btnUploadDoc')?.dataset.contratoId;
-  if (!cid) { _toast('Selecione um contrato primeiro','error'); return; }
-  document.getElementById('ctr_formDoc')?.reset();
-  document.getElementById('ctr_docContratoId').value=cid;
-  _limparArquivo();
-  document.getElementById('ctr_modalDoc').style.display='flex';
-}
-
-function _fecharModalDoc() { document.getElementById('ctr_modalDoc').style.display='none'; }
-
-function _previewArquivo(file) {
-  const area=document.getElementById('ctr_uploadArea');
-  const prev=document.getElementById('ctr_uploadPreview');
-  const ico={pdf:'fa-file-pdf',doc:'fa-file-word',docx:'fa-file-word',jpg:'fa-file-image',jpeg:'fa-file-image',png:'fa-file-image'};
-  const ext=file.name.split('.').pop().toLowerCase();
-  document.getElementById('ctr_uploadIcon').className=`fas ${ico[ext]||'fa-file'}`;
-  document.getElementById('ctr_uploadNome').textContent=file.name;
-  document.getElementById('ctr_uploadTamanho').textContent=(file.size/1024/1024).toFixed(2)+' MB';
-  area.style.display='none'; prev.style.display='flex';
-}
-
-function _limparArquivo() {
-  document.getElementById('ctr_uploadArea').style.display='flex';
-  document.getElementById('ctr_uploadPreview').style.display='none';
-  const i=document.getElementById('ctr_docArquivo'); if(i) i.value='';
-}
-
-async function _salvarDoc() {
-  const btn=document.getElementById('ctr_btnSalvarDoc');
-  const cid=document.getElementById('ctr_docContratoId')?.value;
-  const nome=document.getElementById('ctr_docNome')?.value.trim();
-  const tipo=document.getElementById('ctr_docTipo')?.value;
-  const arq=document.getElementById('ctr_docArquivo')?.files[0];
-  if (!nome) { _toast('Informe o nome do documento','error'); return; }
-  if (!tipo) { _toast('Selecione o tipo','error'); return; }
-  if (!arq)  { _toast('Selecione um arquivo','error'); return; }
-  if (arq.size>10*1024*1024) { _toast('Arquivo muito grande. Máx. 10 MB','error'); return; }
-  if (!['jpg','jpeg','png','pdf','doc','docx'].includes(arq.name.split('.').pop().toLowerCase())) { _toast('Formato não permitido','error'); return; }
-  const fd=new FormData();
-  fd.append('acao','upload_doc'); fd.append('contrato_id',cid);
-  fd.append('nome_documento',nome); fd.append('tipo_documento',tipo); fd.append('arquivo',arq);
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Enviando...';
-  try {
-    const d=await _api('api_contratos.php',{method:'POST',body:fd});
-    if (d.sucesso) { _toast('Documento enviado!','success'); _fecharModalDoc(); _carregarDocs(cid); _carregar(); }
-    else _toast(d.mensagem||'Erro ao enviar','error');
-  } catch(e) { _toast('Erro de comunicação','error'); }
-  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-upload"></i> Enviar'; }
-}
-
-function _confirmarExclusaoDoc(docId,contratoId) {
-  _abrirConfirm('Deseja excluir este documento?', async()=>{
-    const fd=new FormData(); fd.append('acao','deletar_doc'); fd.append('id',docId);
-    const d=await _api('api_contratos.php',{method:'POST',body:fd});
-    if (d.sucesso) { _toast('Documento excluído','success'); _carregarDocs(contratoId); _carregar(); }
-    else _toast(d.mensagem||'Erro ao excluir','error');
-  });
-}
-
-// ─── Orçamentos ───────────────────────────────────────────────────────────────
-function _irParaOrcamentos(id) {
-  _state.contratoAtivo=_state.lista.find(c=>c.id==id)||{id};
-  document.querySelectorAll('.ctr-tab').forEach(b=>b.classList.remove('active'));
-  document.querySelector('.ctr-tab[data-tab="orcamentos"]')?.classList.add('active');
-  document.querySelectorAll('.ctr-tab-content').forEach(c=>c.style.display='none');
-  const el=document.getElementById('ctr_tabOrcamentos'); if(el) el.style.display='block';
-  _carregarOrcamentos(id);
-}
-
+/* ═══════════════════════════════════════════════════════════════════
+   ORCAMENTOS
+   ═══════════════════════════════════════════════════════════════════ */
 async function _carregarOrcamentos(contratoId) {
-  const tbody=document.getElementById('ctr_orcTbody'); if(!tbody) return;
-  const contrato=_state.lista.find(c=>c.id==contratoId)||_state.contratoAtivo;
-  const badge=document.getElementById('ctr_orcContratoBadge');
-  if (badge&&contrato) badge.textContent=`Contrato: ${contrato.numero_contrato||'#'+contratoId} — ${contrato.nome_contrato||''}`;
-  const btnN=document.getElementById('ctr_btnNovoOrc');
-  if (btnN) { btnN.disabled=false; btnN.dataset.contratoId=contratoId; }
-  tbody.innerHTML='<tr><td colspan="7" class="ctr-empty"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
-  try {
-    const d=await _api(`api_contratos.php?acao=listar_orc&contrato_id=${contratoId}`);
-    const orcs=Array.isArray(d.dados)?d.dados:[];
-    _renderOrcamentos(orcs,contratoId,contrato?.valor_total);
-    _verificarMinOrcamentos(orcs.length);
-  } catch(e) { tbody.innerHTML='<tr><td colspan="7" class="ctr-empty ctr-empty-error">Erro ao carregar</td></tr>'; }
+    log('carregarOrcamentos contratoId:', contratoId);
+    const d = await _get('listar_orcamentos', { contrato_id: contratoId });
+    const lista = Array.isArray(d?.dados) ? d.dados : Array.isArray(d) ? d : [];
+    _state.orcamentos = lista;
+
+    const count = lista.length;
+    $('ctr_orcCount').textContent = count;
+    $('ctr_badgeOrc').textContent = count;
+
+    const alert = $('ctr_orcAlert');
+    if (alert) {
+        if (count < 3) {
+            alert.style.display = 'flex';
+            $('ctr_orcFaltam').textContent = 3 - count;
+        } else {
+            alert.style.display = 'none';
+        }
+    }
+
+    const tbody = $('ctr_orcTbody');
+    const empty = $('ctr_orcEmpty');
+    if (!tbody) return;
+
+    if (!lista.length) {
+        tbody.innerHTML = '';
+        if (empty) empty.style.display = '';
+        return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    const valorContrato = parseFloat(_state.contratoAtual?.valor_total || 0);
+
+    tbody.innerHTML = lista.map((o, i) => {
+        const valor = parseFloat(o.valor || 0);
+        const acima = valor > valorContrato;
+        return `<tr>
+            <td>${i + 1}</td>
+            <td>${_esc(o.fornecedor_nome)}</td>
+            <td>${_esc(o.descricao)}</td>
+            <td class="${acima ? 'ctr-valor-alto' : ''}">${_money(valor)}${acima ? ' <i class="fas fa-exclamation-triangle"></i>' : ''}</td>
+            <td>${o.justificativa ? _esc(o.justificativa) : '<span class="ctr-text-muted">-</span>'}</td>
+            <td>${_dateBR(o.created_at?.split(' ')[0] || o.data_cadastro)}</td>
+            <td>
+                <button class="ctr-btn-icon ctr-orc-edit" data-idx="${i}" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="ctr-btn-icon ctr-btn-danger-icon ctr-orc-del" data-id="${o.id}" title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('.ctr-orc-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const o = _state.orcamentos[parseInt(btn.dataset.idx)];
+            if (o) _editarOrcamento(o);
+        });
+    });
+    tbody.querySelectorAll('.ctr-orc-del').forEach(btn => {
+        btn.addEventListener('click', () => _excluirOrcamento(parseInt(btn.dataset.id)));
+    });
 }
 
-function _renderOrcamentos(orcs,contratoId,valorContrato) {
-  const tbody=document.getElementById('ctr_orcTbody'); if(!tbody) return;
-  if (!orcs.length) { tbody.innerHTML='<tr><td colspan="7" class="ctr-empty">Nenhum orçamento cadastrado</td></tr>'; return; }
-  tbody.innerHTML=orcs.map((o,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${_esc(o.fornecedor)}</td>
-      <td>${_esc(o.descricao)}</td>
-      <td><strong ${parseFloat(o.valor)>parseFloat(valorContrato||0)?'class="ctr-valor-alto"':''}>${_fmt(o.valor)}</strong>${parseFloat(o.valor)>parseFloat(valorContrato||0)?'<i class="fas fa-exclamation-triangle ctr-ico-warn"></i>':''}</td>
-      <td>${o.justificativa?`<span class="ctr-justificativa-text" title="${_esc(o.justificativa)}"><i class="fas fa-comment-alt"></i> Ver</span>`:'—'}</td>
-      <td>${_fmtDate(o.data_cadastro)}</td>
-      <td><div class="ctr-acoes"><button class="btn-ctr-acao btn-ctr-edit-orc" data-id="${o.id}" data-contrato="${contratoId}"><i class="fas fa-edit"></i></button><button class="btn-ctr-acao btn-ctr-del-orc" data-id="${o.id}" data-contrato="${contratoId}"><i class="fas fa-trash"></i></button></div></td>
-    </tr>
-  `).join('');
-  tbody.querySelectorAll('.btn-ctr-edit-orc').forEach(b=>_on(b,'click',()=>_abrirModalOrc(+b.dataset.id,+b.dataset.contrato)));
-  tbody.querySelectorAll('.btn-ctr-del-orc').forEach(b=>_on(b,'click',()=>_confirmarExclusaoOrc(+b.dataset.id,+b.dataset.contrato)));
+function _editarOrcamento(o) {
+    $('ctr_orcId').value = o.id;
+    $('ctr_orcFornecedor').value = o.fornecedor_nome || '';
+    $('ctr_orcDescricao').value = o.descricao || '';
+    $('ctr_orcValor').value = parseFloat(o.valor || 0).toFixed(2).replace('.', ',');
+    $('ctr_orcJustificativa').value = o.justificativa || '';
+    $('ctr_btnCancelarOrc').style.display = '';
+    _verificarValorOrcamento();
 }
 
-function _verificarMinOrcamentos(qtd) {
-  const al=document.getElementById('ctr_orcAlerta');
-  const msg=document.getElementById('ctr_orcAlertaMsg');
-  if (!al) return;
-  if (qtd<3) { msg.textContent=`São necessários pelo menos 3 orçamentos. Você tem ${qtd} de 3.`; al.style.display='flex'; }
-  else al.style.display='none';
-  const badge=document.getElementById('ctr_badgeOrc');
-  if (badge) { badge.textContent=qtd<3?`${qtd}/3`:qtd; badge.style.display=qtd<3?'inline-flex':'none'; }
+function _cancelarEdicaoOrc() {
+    $('ctr_orcId').value = '0';
+    $('ctr_orcFornecedor').value = '';
+    $('ctr_orcDescricao').value = '';
+    $('ctr_orcValor').value = '';
+    $('ctr_orcJustificativa').value = '';
+    $('ctr_orcJustificativaWrap').style.display = 'none';
+    $('ctr_btnCancelarOrc').style.display = 'none';
 }
 
-function _bindModalOrc() {
-  _on(document.getElementById('ctr_btnNovoOrc'),        'click', ()=>_abrirModalOrc());
-  _on(document.getElementById('ctr_btnFecharModalOrc'), 'click', _fecharModalOrc);
-  _on(document.getElementById('ctr_btnCancelarOrc'),    'click', _fecharModalOrc);
-  _on(document.getElementById('ctr_btnSalvarOrc'),      'click', _salvarOrcamento);
-  _on(document.getElementById('ctr_modalOrc'),          'click', e=>{ if(e.target.id==='ctr_modalOrc') _fecharModalOrc(); });
-  _on(document.getElementById('ctr_orcValor'), 'input', _verificarJustificativaOrc);
-}
-
-async function _abrirModalOrc(id=null,contratoId=null) {
-  document.getElementById('ctr_formOrc')?.reset();
-  document.getElementById('ctr_orcId').value='';
-  document.getElementById('ctr_orcJustificativaGroup').style.display='none';
-  const cid=contratoId||_state.contratoAtivo?.id||document.getElementById('ctr_btnNovoOrc')?.dataset.contratoId;
-  document.getElementById('ctr_orcContratoId').value=cid||'';
-  if (id) {
-    document.getElementById('ctr_orcModalTitulo').textContent='Editar Orçamento';
-    try {
-      const d=await _api(`api_contratos.php?acao=buscar_orc&id=${id}`);
-      if (d.sucesso) {
-        const o=d.dados;
-        document.getElementById('ctr_orcId').value=o.id;
-        document.getElementById('ctr_orcFornecedor').value=o.fornecedor;
-        document.getElementById('ctr_orcDescricao').value=o.descricao;
-        document.getElementById('ctr_orcValor').value=o.valor;
-        if (o.justificativa) { document.getElementById('ctr_orcJustificativaGroup').style.display='block'; document.getElementById('ctr_orcJustificativa').value=o.justificativa; }
-      }
-    } catch(e) { _toast('Erro ao carregar orçamento','error'); return; }
-  } else {
-    document.getElementById('ctr_orcModalTitulo').textContent='Novo Orçamento';
-  }
-  document.getElementById('ctr_modalOrc').style.display='flex';
-}
-
-function _fecharModalOrc() { document.getElementById('ctr_modalOrc').style.display='none'; }
-
-function _verificarJustificativaOrc() {
-  const valOrc=parseFloat(document.getElementById('ctr_orcValor')?.value||0);
-  const cid=document.getElementById('ctr_orcContratoId')?.value;
-  const c=_state.lista.find(x=>x.id==cid)||_state.contratoAtivo;
-  const valC=parseFloat(c?.valor_total||0);
-  const g=document.getElementById('ctr_orcJustificativaGroup');
-  if (!g) return;
-  if (valOrc>valC&&valC>0) g.style.display='block';
-  else { g.style.display='none'; const j=document.getElementById('ctr_orcJustificativa'); if(j) j.value=''; }
+function _verificarValorOrcamento() {
+    const valor = _parseMoney($('ctr_orcValor')?.value);
+    const valorContrato = parseFloat(_state.contratoAtual?.valor_total || 0);
+    const wrap = $('ctr_orcJustificativaWrap');
+    if (wrap) {
+        wrap.style.display = valor > valorContrato ? '' : 'none';
+    }
 }
 
 async function _salvarOrcamento() {
-  const btn=document.getElementById('ctr_btnSalvarOrc');
-  const id=document.getElementById('ctr_orcId')?.value;
-  const cid=document.getElementById('ctr_orcContratoId')?.value;
-  const forn=document.getElementById('ctr_orcFornecedor')?.value.trim();
-  const desc=document.getElementById('ctr_orcDescricao')?.value.trim();
-  const val=parseFloat(document.getElementById('ctr_orcValor')?.value||0);
-  if (!forn) { _toast('Informe o fornecedor','error'); return; }
-  if (!desc)  { _toast('Informe a descrição','error'); return; }
-  if (!val||val<=0) { _toast('Informe o valor','error'); return; }
-  const g=document.getElementById('ctr_orcJustificativaGroup');
-  const just=document.getElementById('ctr_orcJustificativa')?.value.trim();
-  if (g?.style.display!=='none'&&!just) { _toast('A justificativa é obrigatória','error'); document.getElementById('ctr_orcJustificativa')?.focus(); return; }
-  const fd=new FormData();
-  fd.append('acao',id?'atualizar_orc':'cadastrar_orc');
-  if (id) fd.append('id',id);
-  fd.append('contrato_id',cid); fd.append('fornecedor',forn); fd.append('descricao',desc); fd.append('valor',val); fd.append('justificativa',just||'');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Salvando...';
-  try {
-    const d=await _api('api_contratos.php',{method:'POST',body:fd});
-    if (d.sucesso) { _toast(d.mensagem||'Orçamento salvo!','success'); _fecharModalOrc(); _carregarOrcamentos(cid); }
-    else _toast(d.mensagem||'Erro ao salvar','error');
-  } catch(e) { _toast('Erro de comunicação','error'); }
-  finally { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Salvar Orçamento'; }
+    const contratoId = _state.contratoAtual?.id;
+    if (!contratoId) { _toast('Selecione um contrato primeiro', 'error'); return; }
+
+    const fornecedor = $('ctr_orcFornecedor')?.value?.trim();
+    const descricao = $('ctr_orcDescricao')?.value?.trim();
+    const valor = _parseMoney($('ctr_orcValor')?.value);
+    const justificativa = $('ctr_orcJustificativa')?.value?.trim();
+    const orcId = $('ctr_orcId')?.value || '0';
+
+    if (!fornecedor || !descricao || !valor) {
+        _toast('Preencha fornecedor, descricao e valor', 'error');
+        return;
+    }
+
+    const valorContrato = parseFloat(_state.contratoAtual?.valor_total || 0);
+    if (valor > valorContrato && !justificativa) {
+        _toast('Justificativa obrigatoria quando valor excede o contrato', 'error');
+        return;
+    }
+
+    const acao = orcId !== '0' ? 'atualizar_orcamento' : 'cadastrar_orcamento';
+    const dados = {
+        contrato_id: contratoId,
+        fornecedor_nome: fornecedor,
+        descricao,
+        valor: valor.toFixed(2),
+        justificativa: justificativa || ''
+    };
+    if (orcId !== '0') dados.orcamento_id = orcId;
+
+    log('salvarOrcamento:', acao, dados);
+    const d = await _post(acao, dados);
+    if (d?.sucesso) {
+        _toast(orcId !== '0' ? 'Orcamento atualizado' : 'Orcamento cadastrado');
+        _cancelarEdicaoOrc();
+        _carregarOrcamentos(contratoId);
+    } else {
+        _toast(d?.mensagem || 'Erro ao salvar orcamento', 'error');
+    }
 }
 
-function _confirmarExclusaoOrc(orcId,contratoId) {
-  _abrirConfirm('Deseja excluir este orçamento?', async()=>{
-    const fd=new FormData(); fd.append('acao','deletar_orc'); fd.append('id',orcId);
-    const d=await _api('api_contratos.php',{method:'POST',body:fd});
-    if (d.sucesso) { _toast('Orçamento excluído','success'); _carregarOrcamentos(contratoId); }
-    else _toast(d.mensagem||'Erro','error');
-  });
+async function _excluirOrcamento(orcId) {
+    if (!confirm('Excluir este orcamento?')) return;
+    log('excluirOrcamento:', orcId);
+    const d = await _post('excluir_orcamento', { orcamento_id: orcId });
+    if (d?.sucesso) {
+        _toast('Orcamento excluido');
+        _carregarOrcamentos(_state.contratoAtual?.id);
+    } else {
+        _toast(d?.mensagem || 'Erro ao excluir', 'error');
+    }
 }
 
-// ─── Cancelamento ─────────────────────────────────────────────────────────────
-function _confirmarCancelamento(id,numero) {
-  _abrirConfirm(`Deseja cancelar o contrato ${numero}?`, async()=>{
-    const fd=new FormData(); fd.append('acao','cancelar'); fd.append('id',id);
-    const d=await _api('api_contratos.php',{method:'POST',body:fd});
-    if (d.sucesso) { _toast('Contrato cancelado','success'); _carregar(); }
-    else _toast(d.mensagem||'Erro','error');
-  });
+/* ═══════════════════════════════════════════════════════════════════
+   MODAL NOVO / EDITAR CONTRATO
+   ═══════════════════════════════════════════════════════════════════ */
+function _abrirModalNovo() {
+    log('abrirModalNovo');
+    $('ctr_formId').value = '0';
+    $('ctr_modalTitulo').innerHTML = '<i class="fas fa-file-contract"></i> Novo Contrato';
+    $('ctr_btnSalvar').innerHTML = '<i class="fas fa-save"></i> Gerar Contrato';
+    $('ctr_formContrato').reset();
+    _limparFornecedor();
+    $('ctr_parcelasPreview').style.display = 'none';
+    $('ctr_modalOverlay').style.display = 'flex';
 }
 
-// ─── Modal Confirmação ────────────────────────────────────────────────────────
-function _bindModalConfirm() {
-  _on(document.getElementById('ctr_btnFecharConfirm'),    'click', _fecharConfirm);
-  _on(document.getElementById('ctr_btnCancelarConfirm'),  'click', _fecharConfirm);
-  _on(document.getElementById('ctr_btnConfirmarExclusao'),'click', async()=>{
-    if (_state._confirmCallback) { await _state._confirmCallback(); _state._confirmCallback=null; }
-    _fecharConfirm();
-  });
-  _on(document.getElementById('ctr_modalConfirm'),'click',e=>{ if(e.target.id==='ctr_modalConfirm') _fecharConfirm(); });
+function _abrirModalEditar(c) {
+    log('abrirModalEditar:', c.id);
+    $('ctr_formId').value = c.id;
+    $('ctr_modalTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar Contrato';
+    $('ctr_btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Alteracoes';
+
+    $('ctr_formFornecedorId').value = c.fornecedor_id;
+    $('ctr_formFornecedorNome').value = c.fornecedor_nome || c.nome_estabelecimento || '';
+    $('ctr_formFornecedorCnpj').value = c.fornecedor_cnpj || c.cpf_cnpj || '';
+    $('ctr_formFornecedorBusca').style.display = 'none';
+    $('ctr_fornecedorSelecionado').style.display = 'flex';
+    $('ctr_fornecedorInfo').textContent = `${c.fornecedor_nome || c.nome_estabelecimento} — ${c.fornecedor_cnpj || c.cpf_cnpj || ''}`;
+
+    $('ctr_formTipo').value = c.tipo_servico || '';
+    $('ctr_formRecorrencia').value = c.recorrencia || '';
+    $('ctr_formNome').value = c.nome || '';
+    $('ctr_formInicio').value = c.data_inicio || '';
+    $('ctr_formFim').value = c.data_fim || '';
+    $('ctr_formValor').value = parseFloat(c.valor_total || 0).toFixed(2).replace('.', ',');
+    $('ctr_formVencimento').value = c.data_vencimento || '';
+    $('ctr_formPlano').value = c.plano_conta_id || '';
+    $('ctr_formObs').value = c.observacoes || '';
+
+    _calcularParcelas();
+    $('ctr_modalOverlay').style.display = 'flex';
 }
 
-function _abrirConfirm(msg,cb) {
-  document.getElementById('ctr_confirmMsg').textContent=msg;
-  _state._confirmCallback=cb;
-  document.getElementById('ctr_modalConfirm').style.display='flex';
+function _editarContrato() {
+    if (_state.contratoAtual) _abrirModalEditar(_state.contratoAtual);
 }
 
-function _fecharConfirm() {
-  document.getElementById('ctr_modalConfirm').style.display='none';
-  _state._confirmCallback=null;
+function _fecharModal() {
+    $('ctr_modalOverlay').style.display = 'none';
 }
 
-// ─── Relatórios ───────────────────────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════════════════
+   FORNECEDOR AUTOCOMPLETE
+   ═══════════════════════════════════════════════════════════════════ */
+let _debounce = null;
+function _buscarFornecedor() {
+    clearTimeout(_debounce);
+    _debounce = setTimeout(async () => {
+        const q = $('ctr_formFornecedorBusca')?.value?.trim();
+        if (!q || q.length < 2) { $('ctr_fornecedorLista').innerHTML = ''; return; }
+
+        log('buscarFornecedor:', q);
+        const d = await _fetch(`${API_FORN}?acao=listar&busca=${encodeURIComponent(q)}`);
+        const lista = Array.isArray(d?.dados) ? d.dados : Array.isArray(d) ? d : [];
+
+        const el = $('ctr_fornecedorLista');
+        if (!el) return;
+        if (!lista.length) {
+            el.innerHTML = '<div class="ctr-ac-item ctr-ac-empty">Nenhum fornecedor encontrado</div>';
+            return;
+        }
+
+        el.innerHTML = lista.slice(0, 10).map(f =>
+            `<div class="ctr-ac-item" data-id="${f.id}" data-nome="${_esc(f.nome_estabelecimento)}" data-cnpj="${_esc(f.cpf_cnpj || '')}">
+                <strong>${_esc(f.nome_estabelecimento)}</strong>
+                <small>${_esc(f.cpf_cnpj || '')}</small>
+            </div>`
+        ).join('');
+
+        el.querySelectorAll('.ctr-ac-item[data-id]').forEach(item => {
+            item.addEventListener('click', () => {
+                $('ctr_formFornecedorId').value = item.dataset.id;
+                $('ctr_formFornecedorNome').value = item.dataset.nome;
+                $('ctr_formFornecedorCnpj').value = item.dataset.cnpj;
+                $('ctr_formFornecedorBusca').style.display = 'none';
+                $('ctr_fornecedorSelecionado').style.display = 'flex';
+                $('ctr_fornecedorInfo').textContent = `${item.dataset.nome} — ${item.dataset.cnpj}`;
+                el.innerHTML = '';
+            });
+        });
+    }, 300);
+}
+
+function _limparFornecedor() {
+    $('ctr_formFornecedorId').value = '0';
+    $('ctr_formFornecedorNome').value = '';
+    $('ctr_formFornecedorCnpj').value = '';
+    const busca = $('ctr_formFornecedorBusca');
+    if (busca) { busca.value = ''; busca.style.display = ''; }
+    const sel = $('ctr_fornecedorSelecionado');
+    if (sel) sel.style.display = 'none';
+    const lista = $('ctr_fornecedorLista');
+    if (lista) lista.innerHTML = '';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CALCULAR PARCELAS PREVIEW
+   ═══════════════════════════════════════════════════════════════════ */
+function _calcularParcelas() {
+    const rec = $('ctr_formRecorrencia')?.value;
+    const ini = $('ctr_formInicio')?.value;
+    const fim = $('ctr_formFim')?.value;
+    const valor = _parseMoney($('ctr_formValor')?.value);
+    const preview = $('ctr_parcelasPreview');
+    if (!preview) return;
+
+    if (!rec || !ini || !fim || !valor) { preview.style.display = 'none'; return; }
+
+    let parcelas = 1;
+    if (rec === 'mensal') {
+        const d1 = new Date(ini), d2 = new Date(fim);
+        parcelas = Math.max(1, (d2.getFullYear() - d1.getFullYear()) * 12 + d2.getMonth() - d1.getMonth());
+    } else if (rec === 'anual') {
+        const d1 = new Date(ini), d2 = new Date(fim);
+        parcelas = Math.max(1, d2.getFullYear() - d1.getFullYear());
+    } else if (rec === 'diaria') {
+        const d1 = new Date(ini), d2 = new Date(fim);
+        parcelas = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+    }
+
+    const valorParcela = valor / parcelas;
+    preview.style.display = 'flex';
+    $('ctr_parcelasTexto').textContent = `${parcelas} lancamento(s) de ${_money(valorParcela)} serao gerados em Contas a Pagar`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SALVAR CONTRATO
+   ═══════════════════════════════════════════════════════════════════ */
+async function _salvarContrato() {
+    const id = $('ctr_formId')?.value || '0';
+    const fornecedorId = $('ctr_formFornecedorId')?.value;
+    const tipo = $('ctr_formTipo')?.value;
+    const recorrencia = $('ctr_formRecorrencia')?.value;
+    const nome = $('ctr_formNome')?.value?.trim();
+    const dataInicio = $('ctr_formInicio')?.value;
+    const dataFim = $('ctr_formFim')?.value;
+    const valor = _parseMoney($('ctr_formValor')?.value);
+    const dataVencimento = $('ctr_formVencimento')?.value;
+    const planoContaId = $('ctr_formPlano')?.value;
+    const obs = $('ctr_formObs')?.value?.trim();
+
+    if (!fornecedorId || fornecedorId === '0') { _toast('Selecione um fornecedor', 'error'); return; }
+    if (!tipo) { _toast('Selecione o tipo de servico', 'error'); return; }
+    if (!recorrencia) { _toast('Selecione a recorrencia', 'error'); return; }
+    if (!nome) { _toast('Informe o nome do contrato', 'error'); return; }
+    if (!dataInicio) { _toast('Informe a data de inicio', 'error'); return; }
+    if (!dataFim) { _toast('Informe a data de fim', 'error'); return; }
+    if (dataFim <= dataInicio) { _toast('Data de fim deve ser posterior a data de inicio', 'error'); return; }
+    if (!valor || valor <= 0) { _toast('Informe o valor total', 'error'); return; }
+    if (!dataVencimento) { _toast('Informe a data de vencimento', 'error'); return; }
+    if (!planoContaId) { _toast('Selecione o plano de contas', 'error'); return; }
+
+    const acao = id !== '0' ? 'atualizar' : 'cadastrar';
+    const dados = {
+        fornecedor_id: fornecedorId,
+        fornecedor_nome: $('ctr_formFornecedorNome')?.value || '',
+        tipo_servico: tipo,
+        recorrencia,
+        nome,
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        valor_total: valor.toFixed(2),
+        data_vencimento: dataVencimento,
+        plano_conta_id: planoContaId,
+        observacoes: obs || ''
+    };
+    if (id !== '0') dados.id = id;
+
+    log('salvarContrato:', acao, dados);
+    const d = await _post(acao, dados);
+
+    if (d?.sucesso) {
+        _toast(id !== '0' ? 'Contrato atualizado com sucesso' : `Contrato ${d.numero_contrato || ''} gerado com sucesso!`);
+        _fecharModal();
+        const novoId = d.id || d.dados?.id;
+        if (novoId) {
+            await _carregarLista();
+            _abrirDetalhe(novoId);
+        } else {
+            _carregarLista();
+        }
+    } else {
+        _toast(d?.mensagem || 'Erro ao salvar contrato', 'error');
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EXCLUIR CONTRATO
+   ═══════════════════════════════════════════════════════════════════ */
+function _confirmarExclusao() {
+    if (!_state.contratoAtual) return;
+    $('ctr_excluirNumero').textContent = _state.contratoAtual.numero_contrato;
+    $('ctr_modalExcluirOverlay').style.display = 'flex';
+}
+
+async function _excluirContrato() {
+    const id = _state.contratoAtual?.id;
+    if (!id) return;
+    log('excluirContrato:', id);
+    const d = await _post('deletar', { id });
+    if (d?.sucesso) {
+        _toast('Contrato excluido');
+        $('ctr_modalExcluirOverlay').style.display = 'none';
+        _voltarParaLista();
+    } else {
+        _toast(d?.mensagem || 'Erro ao excluir', 'error');
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FILTROS
+   ═══════════════════════════════════════════════════════════════════ */
+function _limparFiltros() {
+    if ($('ctr_fBusca')) $('ctr_fBusca').value = '';
+    if ($('ctr_fStatus')) $('ctr_fStatus').value = '';
+    if ($('ctr_fTipo')) $('ctr_fTipo').value = '';
+    _state.pagina = 1;
+    _carregarLista();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   RELATORIOS
+   ═══════════════════════════════════════════════════════════════════ */
+let _relDados = [];
+let _relColunas = [];
+
 async function _gerarRelatorio(tipo) {
-  const resultado=document.getElementById('ctr_relResultado');
-  if (!resultado) return;
-  resultado.style.display='none';
-  const params=new URLSearchParams({acao:'relatorio',tipo});
-  const configs={
-    ativos:        { titulo:'Contratos Ativos',       colunas:['Nº Contrato','Fornecedor','Tipo','Nome','Recorrência','Valor Total','Vencimento','Dias Restantes'] },
-    vencimentos:   { titulo:'Vencimentos Próximos',   colunas:['Nº Contrato','Fornecedor','Parcela','Valor','Vencimento','Dias'] },
-    por_fornecedor:{ titulo:'Contratos por Fornecedor',colunas:['Fornecedor','CNPJ','Total Contratos','Ativos','Valor Total'] },
-    financeiro:    { titulo:'Relatório Financeiro',   colunas:['Nº Contrato','Fornecedor','Valor Contrato','Total Lançado','Total Pago','Pendente'] },
-  };
-  const cfg=configs[tipo]||{titulo:tipo,colunas:[]};
-  _state.relTitulo=cfg.titulo; _state.relColunas=cfg.colunas;
-  if (tipo==='ativos') { const t=document.getElementById('ctr_relAtivoTipo')?.value; if(t) params.set('tipo_servico',t); }
-  if (tipo==='vencimentos') params.set('dias',document.getElementById('ctr_relVencDias')?.value||'30');
-  if (tipo==='financeiro') { params.set('data_ini',document.getElementById('ctr_relFinIni')?.value||''); params.set('data_fim',document.getElementById('ctr_relFinFim')?.value||''); }
-  try {
-    const d=await _api(`api_contratos.php?${params}`);
-    _state.relDados=Array.isArray(d.dados)?d.dados:[];
-    document.getElementById('ctr_relTitulo').textContent=_state.relTitulo;
-    document.getElementById('ctr_relThead').innerHTML=`<tr>${_state.relColunas.map(c=>`<th>${_esc(c)}</th>`).join('')}</tr>`;
-    const tbody=document.getElementById('ctr_relTbody');
-    tbody.innerHTML=_state.relDados.length
-      ? _state.relDados.map(row=>`<tr>${Object.values(row).map(v=>`<td>${_esc(v??'—')}</td>`).join('')}</tr>`).join('')
-      : `<tr><td colspan="${_state.relColunas.length}" class="ctr-empty">Nenhum dado encontrado</td></tr>`;
-    const sum=document.getElementById('ctr_relSummary');
-    if (d.summary) { sum.innerHTML=Object.entries(d.summary).map(([k,v])=>`<div class="ctr-rel-summary-item"><span>${_esc(k)}</span><strong>${_esc(v)}</strong></div>`).join(''); sum.style.display='flex'; }
-    else sum.style.display='none';
-    resultado.style.display='block';
-    resultado.scrollIntoView({behavior:'smooth',block:'start'});
-  } catch(e) { _toast('Erro ao gerar relatório','error'); }
+    log('gerarRelatorio:', tipo);
+    let params = { tipo_relatorio: tipo };
+
+    if (tipo === 'ativos') {
+        params.tipo_servico = $('ctr_relAtivosTipo')?.value || '';
+    } else if (tipo === 'vencimentos') {
+        params.dias = $('ctr_relVencDias')?.value || '30';
+    } else if (tipo === 'financeiro') {
+        params.data_inicio = $('ctr_relFinIni')?.value || '';
+        params.data_fim = $('ctr_relFinFim')?.value || '';
+    }
+
+    const d = await _get('relatorio', params);
+    if (!d?.sucesso && !d?.dados) {
+        _toast(d?.mensagem || 'Erro ao gerar relatorio', 'error');
+        return;
+    }
+
+    const dados = d.dados || [];
+    _relDados = dados;
+
+    if (!dados.length) {
+        _toast('Nenhum dado encontrado para este relatorio', 'info');
+        $('ctr_relResultado').style.display = 'none';
+        return;
+    }
+
+    _relColunas = Object.keys(dados[0]);
+
+    $('ctr_relThead').innerHTML = '<tr>' + _relColunas.map(c => `<th>${c.toUpperCase().replace(/_/g, ' ')}</th>`).join('') + '</tr>';
+    $('ctr_relTbody').innerHTML = dados.map(row =>
+        '<tr>' + _relColunas.map(c => `<td>${_esc(String(row[c] ?? '-'))}</td>`).join('') + '</tr>'
+    ).join('');
+
+    $('ctr_relResultado').style.display = '';
+    _toast(`Relatorio gerado: ${dados.length} registro(s)`);
 }
 
 function _exportarCSV() {
-  if (!_state.relDados.length) return;
-  const linhas=[_state.relColunas.join(';'),..._state.relDados.map(row=>Object.values(row).map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';'))];
-  const blob=new Blob(['\uFEFF'+linhas.join('\n')],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=`${_state.relTitulo.replace(/\s+/g,'_')}_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+    if (!_relDados.length) return;
+    const header = _relColunas.join(';');
+    const rows = _relDados.map(r => _relColunas.map(c => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(';'));
+    const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio_contratos_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
