@@ -48,6 +48,10 @@ try {
         case 'logout':
             fazerLogout();
             break;
+
+        case 'atualizar_perfil':
+            atualizarPerfil();
+            break;
             
         default:
             http_response_code(400);
@@ -107,19 +111,24 @@ function obterDadosFornecedor() {
     // Preparar query
     $stmt = $conn->prepare("
         SELECT 
-            id,
-            nome_estabelecimento,
-            email,
-            telefone,
-            endereco,
-            cidade,
-            estado,
-            cep,
-            cnpj,
-            data_cadastro,
-            ativo
-        FROM fornecedores
-        WHERE id = ?
+            f.id,
+            f.cpf_cnpj,
+            f.nome_estabelecimento,
+            f.nome_responsavel,
+            f.email,
+            f.telefone,
+            f.endereco,
+            f.cidade,
+            f.estado,
+            f.cep,
+            f.ramo_atividade_id,
+            COALESCE(r.nome, 'N\u00e3o informado') AS ramo_atividade,
+            f.data_cadastro,
+            f.ativo,
+            f.aprovado
+        FROM fornecedores f
+        LEFT JOIN ramos_atividade r ON r.id = f.ramo_atividade_id
+        WHERE f.id = ?
         LIMIT 1
     ");
 
@@ -200,8 +209,7 @@ function fazerLogout() {
         );
     }
     
-    session_destroy();
-
+     session_destroy();
     echo json_encode([
         'sucesso' => true,
         'mensagem' => 'Logout realizado com sucesso',
@@ -209,4 +217,126 @@ function fazerLogout() {
     ]);
 }
 
-?>
+/**
+ * Atualiza dados editáveis do perfil do fornecedor logado
+ * Campos editáveis: email, telefone, endereco, nome_responsavel
+ * Troca de senha: requer senha_atual + nova_senha (mín. 6 chars)
+ * Campos somente leitura (não alteráveis): cpf_cnpj, nome_estabelecimento, ramo_atividade_id
+ */
+function atualizarPerfil() {
+    if (!isset($_SESSION['fornecedor_id'])) {
+        http_response_code(401);
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Fornecedor não autenticado']);
+        exit;
+    }
+
+    global $conn;
+    $fornecedor_id = intval($_SESSION['fornecedor_id']);
+
+    // Coletar campos editáveis
+    $email           = trim($_POST['email'] ?? '');
+    $telefone        = trim($_POST['telefone'] ?? '');
+    $endereco        = trim($_POST['endereco'] ?? '');
+    $nome_responsavel = trim($_POST['nome_responsavel'] ?? '');
+    $senha_atual     = $_POST['senha_atual'] ?? '';
+    $nova_senha      = $_POST['nova_senha'] ?? '';
+    $confirmar_senha = $_POST['confirmar_senha'] ?? '';
+
+    // Validação de e-mail
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['sucesso' => false, 'mensagem' => 'E-mail válido é obrigatório.']);
+        exit;
+    }
+
+    // Verificar se e-mail já está em uso por outro fornecedor
+    $stmt = $conn->prepare('SELECT id FROM fornecedores WHERE email = ? AND id != ? LIMIT 1');
+    $stmt->bind_param('si', $email, $fornecedor_id);
+    $stmt->execute();
+    $stmt->store_result();
+    if ($stmt->num_rows > 0) {
+        $stmt->close();
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Este e-mail já está em uso por outro fornecedor.']);
+        exit;
+    }
+    $stmt->close();
+
+    // Lógica de troca de senha
+    $trocar_senha = !empty($nova_senha) || !empty($senha_atual);
+    $nova_senha_hash = null;
+
+    if ($trocar_senha) {
+        // Buscar senha atual do banco
+        $stmt = $conn->prepare('SELECT senha FROM fornecedores WHERE id = ? LIMIT 1');
+        $stmt->bind_param('i', $fornecedor_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+
+        if (!$row) {
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Fornecedor não encontrado.']);
+            exit;
+        }
+
+        if (empty($senha_atual)) {
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Informe a senha atual para alterar a senha.']);
+            exit;
+        }
+
+        if (!password_verify($senha_atual, $row['senha'])) {
+            echo json_encode(['sucesso' => false, 'mensagem' => 'Senha atual incorreta.']);
+            exit;
+        }
+
+        if (strlen($nova_senha) < 6) {
+            echo json_encode(['sucesso' => false, 'mensagem' => 'A nova senha deve ter no mínimo 6 caracteres.']);
+            exit;
+        }
+
+        if ($nova_senha !== $confirmar_senha) {
+            echo json_encode(['sucesso' => false, 'mensagem' => 'A nova senha e a confirmação não coincidem.']);
+            exit;
+        }
+
+        $nova_senha_hash = password_hash($nova_senha, PASSWORD_DEFAULT);
+    }
+
+    // Montar UPDATE dinâmico
+    if ($nova_senha_hash) {
+        $sql = 'UPDATE fornecedores SET email = ?, telefone = ?, endereco = ?, nome_responsavel = ?, senha = ?, data_atualizacao = NOW() WHERE id = ?';
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('sssssi', $email, $telefone, $endereco, $nome_responsavel, $nova_senha_hash, $fornecedor_id);
+    } else {
+        $sql = 'UPDATE fornecedores SET email = ?, telefone = ?, endereco = ?, nome_responsavel = ?, data_atualizacao = NOW() WHERE id = ?';
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('ssssi', $email, $telefone, $endereco, $nome_responsavel, $fornecedor_id);
+    }
+
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode(['sucesso' => false, 'mensagem' => 'Erro ao preparar atualização: ' . $conn->error]);
+        exit;
+    }
+
+    $stmt->execute();
+    $stmt->close();
+
+    // Atualizar e-mail na sessão
+    $_SESSION['fornecedor_email'] = $email;
+
+    // Registrar log de auditoria
+    $descricao = 'Fornecedor atualizou perfil' . ($nova_senha_hash ? ' (senha alterada)' : '');
+    $data_hora = date('Y-m-d H:i:s');
+    $log_stmt = $conn->prepare("INSERT IGNORE INTO logs_sistema (tipo, descricao, usuario_id, data_hora) VALUES ('perfil', ?, ?, ?)");
+    if ($log_stmt) {
+        $log_stmt->bind_param('sis', $descricao, $fornecedor_id, $data_hora);
+        $log_stmt->execute();
+        $log_stmt->close();
+    }
+
+    echo json_encode([
+        'sucesso' => true,
+        'mensagem' => $nova_senha_hash ? 'Perfil e senha atualizados com sucesso!' : 'Perfil atualizado com sucesso!'
+    ]);
+}
+?>>

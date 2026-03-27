@@ -184,11 +184,121 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
 
         <!-- ABA: PERFIL -->
         <div id="perfil" class="tab-content">
-            <div class="card">
-                <h2><i class="fas fa-user"></i> Meu Perfil</h2>
-                <p>Conteºdo do perfil aqui...</p>
+
+            <!-- Dados somente leitura -->
+            <div class="card" style="margin-bottom:20px;">
+                <h2 style="margin-bottom:6px;"><i class="fas fa-building" style="color:#2563eb;"></i> Dados do Estabelecimento</h2>
+                <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Estes dados são definidos no cadastro e não podem ser alterados. Para correções, entre em contato com o administrador.</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-id-card"></i> CPF / CNPJ</div>
+                        <div style="font-size:15px;font-weight:600;color:#1e293b;" id="perfil-cpf-cnpj"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-store"></i> Nome do Estabelecimento</div>
+                        <div style="font-size:15px;font-weight:600;color:#1e293b;" id="perfil-nome-estabelecimento"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-tags"></i> Ramo de Atividade</div>
+                        <div style="font-size:15px;font-weight:600;color:#1e293b;" id="perfil-ramo"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-calendar-alt"></i> Data de Cadastro</div>
+                        <div style="font-size:15px;font-weight:600;color:#1e293b;" id="perfil-data-cadastro"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-check-circle"></i> Status</div>
+                        <div style="font-size:15px;font-weight:600;" id="perfil-status"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;">
+                        <div style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;"><i class="fas fa-shield-alt"></i> Aprovação</div>
+                        <div style="font-size:15px;font-weight:600;" id="perfil-aprovacao"><i class="fas fa-spinner fa-spin"></i></div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <!-- Formulário de edição -->
+            <div class="card">
+                <h2 style="margin-bottom:6px;"><i class="fas fa-user-edit" style="color:#2563eb;"></i> Atualizar Dados de Contato</h2>
+                <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Você pode alterar seu e-mail, telefone, endereço e nome do responsável. Para alterar a senha, preencha a seção abaixo.</p>
+
+                <!-- Alerta de feedback -->
+                <div id="perfil-alerta" style="display:none;padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:14px;font-weight:500;"></div>
+
+                <form id="form-perfil" novalidate>
+
+                    <!-- Linha 1: E-mail + Telefone -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-email">E-mail <span style="color:#ef4444;">*</span></label>
+                            <input type="email" id="perfil-email" name="email" class="form-control"
+                                placeholder="seu@email.com" required autocomplete="email">
+                            <span style="display:none;font-size:12px;color:#ef4444;margin-top:4px;" id="perfil-err-email"></span>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-telefone">Telefone</label>
+                            <input type="tel" id="perfil-telefone" name="telefone" class="form-control"
+                                placeholder="(31) 99999-9999" autocomplete="tel">
+                        </div>
+                    </div>
+
+                    <!-- Linha 2: Nome do Responsável -->
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-nome-responsavel">Nome do Responsável</label>
+                        <input type="text" id="perfil-nome-responsavel" name="nome_responsavel" class="form-control"
+                            placeholder="Nome completo do responsável" autocomplete="name">
+                    </div>
+
+                    <!-- Linha 3: Endereço -->
+                    <div style="margin-bottom:24px;">
+                        <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-endereco">Endereço</label>
+                        <textarea id="perfil-endereco" name="endereco" class="form-control" rows="3"
+                            placeholder="Rua, número, complemento, bairro, cidade"></textarea>
+                    </div>
+
+                    <!-- Separador: Alterar Senha -->
+                    <div style="border-top:2px solid #f0f0f0;padding-top:20px;margin-bottom:16px;">
+                        <h3 style="font-size:15px;font-weight:600;color:#374151;margin-bottom:4px;">
+                            <i class="fas fa-lock" style="color:#f59e0b;"></i> Alterar Senha
+                        </h3>
+                        <p style="font-size:12px;color:#94a3b8;margin-bottom:16px;">Deixe em branco para manter a senha atual.</p>
+
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-senha-atual">Senha Atual</label>
+                                <input type="password" id="perfil-senha-atual" name="senha_atual" class="form-control"
+                                    placeholder="Senha atual" autocomplete="current-password">
+                                <span style="display:none;font-size:12px;color:#ef4444;margin-top:4px;" id="perfil-err-senha-atual"></span>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-nova-senha">Nova Senha</label>
+                                <input type="password" id="perfil-nova-senha" name="nova_senha" class="form-control"
+                                    placeholder="Mín. 6 caracteres" autocomplete="new-password">
+                                <span style="display:none;font-size:12px;color:#ef4444;margin-top:4px;" id="perfil-err-nova-senha"></span>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px;" for="perfil-confirmar-senha">Confirmar Nova Senha</label>
+                                <input type="password" id="perfil-confirmar-senha" name="confirmar_senha" class="form-control"
+                                    placeholder="Repita a nova senha" autocomplete="new-password">
+                                <span style="display:none;font-size:12px;color:#ef4444;margin-top:4px;" id="perfil-err-confirmar-senha"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div style="display:flex;justify-content:flex-end;gap:12px;padding-top:16px;border-top:1px solid #f0f0f0;">
+                        <button type="button" class="btn btn-secondary" onclick="carregarPerfil()">
+                            <i class="fas fa-undo"></i> Restaurar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btn-salvar-perfil">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+
+        </div><!-- /perfil -->
     </div>
 
     <!-- ===== MODAL: CRIAR/EDITAR PRODUTO ===== -->
@@ -346,6 +456,8 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
                 carregarPedidos();
             } else if (abaName === 'inicio') {
                 carregarDadosInicio();
+            } else if (abaName === 'perfil') {
+                carregarPerfil();
             }
         }
 
@@ -905,6 +1017,186 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
                 mostrarAlerta('Erro ao fazer logout', 'danger');
             }
         }
+
+        // ===== PERFIL DO FORNECEDOR =====
+
+        /**
+         * Carrega os dados do fornecedor logado e preenche a tela de perfil.
+         * Dados somente leitura: cpf_cnpj, nome_estabelecimento, ramo, data_cadastro, status, aprovacao
+         * Dados editáveis: email, telefone, nome_responsavel, endereco
+         */
+        async function carregarPerfil() {
+            console.log('[Perfil] Carregando dados do fornecedor...');
+            try {
+                const res = await fetch(API_BASE + 'api_admin_fornecedores.php?acao=buscar&id=' + (sessionStorage.getItem('fornecedor_id') || ''), {
+                    credentials: 'include'
+                });
+
+                // Fallback: usar api_sessao_fornecedor se a admin não retornar
+                let d = await res.json();
+                let forn = null;
+
+                if (d.sucesso && d.dados) {
+                    forn = d.dados;
+                } else {
+                    // Tentar via sessão do fornecedor
+                    const res2 = await fetch(API_BASE + 'api_sessao_fornecedor.php?acao=dados', { credentials: 'include' });
+                    const d2 = await res2.json();
+                    if (d2.sucesso && d2.dados) forn = d2.dados;
+                }
+
+                if (!forn) {
+                    console.warn('[Perfil] Não foi possível carregar dados do fornecedor.');
+                    return;
+                }
+
+                console.log('[Perfil] Dados carregados:', forn);
+
+                // --- Dados somente leitura ---
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+                set('perfil-cpf-cnpj',           forn.cpf_cnpj);
+                set('perfil-nome-estabelecimento', forn.nome_estabelecimento || forn.nome);
+                set('perfil-ramo',               forn.ramo_atividade || forn.ramo_nome || forn.ramo || '—');
+                set('perfil-data-cadastro',       forn.data_cadastro || '—');
+
+                const elStatus = document.getElementById('perfil-status');
+                if (elStatus) {
+                    const ativo = parseInt(forn.ativo) === 1 || forn.ativo === true;
+                    elStatus.innerHTML = ativo
+                        ? '<span style="color:#16a34a;"><i class="fas fa-check-circle"></i> Ativo</span>'
+                        : '<span style="color:#dc2626;"><i class="fas fa-times-circle"></i> Inativo</span>';
+                }
+
+                const elAprov = document.getElementById('perfil-aprovacao');
+                if (elAprov) {
+                    const aprov = parseInt(forn.aprovado) === 1 || forn.aprovado === true;
+                    elAprov.innerHTML = aprov
+                        ? '<span style="color:#2563eb;"><i class="fas fa-shield-alt"></i> Aprovado</span>'
+                        : '<span style="color:#f59e0b;"><i class="fas fa-clock"></i> Aguardando</span>';
+                }
+
+                // --- Dados editáveis ---
+                const setInput = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+                setInput('perfil-email',           forn.email);
+                setInput('perfil-telefone',         forn.telefone);
+                setInput('perfil-nome-responsavel', forn.nome_responsavel);
+                setInput('perfil-endereco',         forn.endereco);
+
+                // Limpar campos de senha
+                ['perfil-senha-atual', 'perfil-nova-senha', 'perfil-confirmar-senha'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = '';
+                });
+
+                // Ocultar alertas anteriores
+                const alerta = document.getElementById('perfil-alerta');
+                if (alerta) alerta.style.display = 'none';
+
+            } catch (err) {
+                console.error('[Perfil] Erro ao carregar perfil:', err);
+            }
+        }
+
+        /**
+         * Exibe alerta de feedback no formulário de perfil.
+         */
+        function _perfilAlerta(msg, tipo) {
+            const el = document.getElementById('perfil-alerta');
+            if (!el) return;
+            const estilos = {
+                success: 'background:#d1fae5;color:#065f46;border-left:4px solid #10b981;',
+                danger:  'background:#fee2e2;color:#991b1b;border-left:4px solid #ef4444;',
+                warning: 'background:#fef3c7;color:#92400e;border-left:4px solid #f59e0b;'
+            };
+            el.style.cssText = (estilos[tipo] || estilos.warning) + 'display:block;padding:12px 16px;border-radius:6px;margin-bottom:16px;font-size:14px;font-weight:500;';
+            el.innerHTML = '<i class="fas fa-' + (tipo === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + msg;
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        /**
+         * Submete o formulário de perfil via FormData para api_sessao_fornecedor.php?acao=atualizar_perfil
+         */
+        async function salvarPerfil(event) {
+            event.preventDefault();
+            console.log('[Perfil] Salvando alterações...');
+
+            // Limpar erros anteriores
+            ['perfil-err-email', 'perfil-err-senha-atual', 'perfil-err-nova-senha', 'perfil-err-confirmar-senha'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.textContent = ''; el.style.display = 'none'; }
+            });
+
+            const email        = document.getElementById('perfil-email')?.value.trim();
+            const novaSenha    = document.getElementById('perfil-nova-senha')?.value;
+            const confirmarSenha = document.getElementById('perfil-confirmar-senha')?.value;
+            const senhaAtual   = document.getElementById('perfil-senha-atual')?.value;
+
+            // Validação front-end
+            let valido = true;
+            if (!email || !email.includes('@')) {
+                const el = document.getElementById('perfil-err-email');
+                if (el) { el.textContent = 'E-mail válido é obrigatório.'; el.style.display = 'block'; }
+                valido = false;
+            }
+            if (novaSenha && !senhaAtual) {
+                const el = document.getElementById('perfil-err-senha-atual');
+                if (el) { el.textContent = 'Informe a senha atual para alterar a senha.'; el.style.display = 'block'; }
+                valido = false;
+            }
+            if (novaSenha && novaSenha.length < 6) {
+                const el = document.getElementById('perfil-err-nova-senha');
+                if (el) { el.textContent = 'Nova senha deve ter no mínimo 6 caracteres.'; el.style.display = 'block'; }
+                valido = false;
+            }
+            if (novaSenha && novaSenha !== confirmarSenha) {
+                const el = document.getElementById('perfil-err-confirmar-senha');
+                if (el) { el.textContent = 'As senhas não coincidem.'; el.style.display = 'block'; }
+                valido = false;
+            }
+            if (!valido) return;
+
+            const btn = document.getElementById('btn-salvar-perfil');
+            const txtOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+            try {
+                const fd = new FormData(document.getElementById('form-perfil'));
+                fd.append('acao', 'atualizar_perfil');
+
+                const res = await fetch(API_BASE + 'api_sessao_fornecedor.php', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'include'
+                });
+
+                const d = await res.json();
+                console.log('[Perfil] Resposta:', d);
+
+                if (d.sucesso) {
+                    _perfilAlerta(d.mensagem || 'Perfil atualizado com sucesso!', 'success');
+                    // Limpar campos de senha após sucesso
+                    ['perfil-senha-atual', 'perfil-nova-senha', 'perfil-confirmar-senha'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                } else {
+                    _perfilAlerta(d.mensagem || 'Erro ao salvar perfil.', 'danger');
+                }
+            } catch (err) {
+                console.error('[Perfil] Erro ao salvar:', err);
+                _perfilAlerta('Erro de comunicação com o servidor.', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = txtOriginal;
+            }
+        }
+
+        // Vincular o formulário de perfil ao salvarPerfil
+        document.addEventListener('DOMContentLoaded', () => {
+            const formPerfil = document.getElementById('form-perfil');
+            if (formPerfil) formPerfil.addEventListener('submit', salvarPerfil);
+        });
 
         // Carregar dados iniciais
         document.addEventListener('DOMContentLoaded', async () => {
