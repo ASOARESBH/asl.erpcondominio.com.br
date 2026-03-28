@@ -1,21 +1,34 @@
 # API .htaccess
 Options -Indexes
 
-# Permitir CORS
-Header set Access-Control-Allow-Origin "*"
-Header set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
-Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
-Header set Access-Control-Allow-Credentials "true"
+# =====================================================
+# CORS — OBRIGATÓRIO usar domínio específico quando
+# credentials: 'include' está ativo no frontend.
+# O uso de "*" com credentials é inválido pelo padrão
+# CORS e faz o browser rejeitar os cookies de sessão.
+# =====================================================
+SetEnvIf Origin "^https?://(asl\.erpcondominios\.com\.br|localhost(:[0-9]+)?)$" CORS_ORIGIN=$0
+
+Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
+Header always set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Allow-Credentials "true"
+Header always set Vary "Origin"
 
 # Não mostrar erros PHP para o usuário
 php_flag display_errors off
 php_value error_reporting E_ALL
 php_flag log_errors on
 
-# Header de conteúdo JSON por padrão
-Header set Content-Type "application/json; charset=utf-8"
+# Configurações de sessão PHP — garantir que o cookie
+# seja válido para todo o domínio (path=/) e seguro
+php_value session.cookie_path /
+php_value session.cookie_httponly 1
+php_value session.cookie_samesite Lax
+php_value session.use_strict_mode 1
+php_value session.gc_maxlifetime 7200
 
-# Tratar requisições OPTIONS para CORS (sintaxe correcta)
+# Tratar requisições OPTIONS para CORS preflight
 RewriteEngine On
 RewriteCond %{REQUEST_METHOD} ^OPTIONS$
-RewriteRule ^ - [L]
+RewriteRule ^ - [L,R=200]

@@ -9,18 +9,39 @@
  * - atualizar_perfil: Atualiza email/senha/telefone/endereco
  */
 
-// ⚠️ session_start() ANTES de qualquer header ou include
+// ⚠️ session_set_cookie_params() ANTES do session_start()
+// path=/ é obrigatório para o cookie ser válido em todo o domínio
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 7200,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     session_start();
 }
 
 require_once 'config.php';
 require_once 'auth_helper.php';
 
+// CORS com domínio específico (obrigatório com credentials: include)
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowed_origins = [
+    'https://asl.erpcondominios.com.br',
+    'http://asl.erpcondominios.com.br',
+    'http://localhost',
+    'http://localhost:3000',
+];
+if (in_array($origin, $allowed_origins, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Vary: Origin');
+}
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 // Função para retornar JSON
 if (!function_exists('retornar_json')) {
