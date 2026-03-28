@@ -425,10 +425,9 @@
         </div>
     </div>
 
-</div><!-- /.page-wrapper -->
 
-<!-- ═══ MODAL: NOVO / EDITAR CONTRATO ═══ -->
-<div class="modal-overlay" id="ctr_modalOverlay" style="display:none;" onclick="if(event.target===this)Contratos.fecharModal()">
+    <!-- ═══ MODAL: NOVO / EDITAR CONTRATO ═══ -->
+    <div class="modal-overlay" id="ctr_modalOverlay" style="display:none;" onclick="if(event.target===this)Contratos.fecharModal()">
     <div class="modal-box modal-lg">
         <div class="modal-header">
             <h3 id="ctr_modalTitulo"><i class="fas fa-file-contract"></i> Novo Contrato</h3>
@@ -544,12 +543,12 @@
                     </button>
                 </div>
             </form>
-        </div>
+         </div>
     </div>
-</div>
+    </div><!-- /#ctr_modalOverlay -->
 
-<!-- ═══ MODAL: CONFIRMAR EXCLUSAO ═══ -->
-<div class="modal-overlay" id="ctr_modalExcluirOverlay" style="display:none;">
+    <!-- ═══ MODAL: CONFIRMAR EXCLUSAO ═══ -->
+    <div class="modal-overlay" id="ctr_modalExcluirOverlay" style="display:none;">
     <div class="modal-box modal-sm">
         <div class="modal-header">
             <h3><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Confirmar Exclusao</h3>
@@ -565,8 +564,10 @@
                 <button class="btn btn-secondary" id="ctr_btnExcluirCancelar">Cancelar</button>
             </div>
         </div>
-    </div>
-</div>
+     </div>
+    </div><!-- /#ctr_modalExcluirOverlay -->
 
-<!-- Toast de notificacao -->
-<div id="ctr_toast" style="display:none;position:fixed;bottom:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:10px;font-size:.9rem;font-weight:600;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.15);"></div>
+    <!-- Toast de notificacao -->
+    <div id="ctr_toast" style="display:none;position:fixed;bottom:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:10px;font-size:.9rem;font-weight:600;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.15);"></div>
+
+</div><!-- /.page-wrapper -->
