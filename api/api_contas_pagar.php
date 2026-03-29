@@ -118,6 +118,8 @@ if ($acao === 'cadastrar' && $metodo === 'POST') {
     $numero_documento = trim($_POST['numero_documento'] ?? '');
     $fornecedor_nome = trim($_POST['fornecedor_nome'] ?? '');
     $plano_conta_id = intval($_POST['plano_conta_id'] ?? 0);
+    $classificacao_despesa = trim($_POST['classificacao_despesa'] ?? '');
+    $grupo = trim($_POST['grupo'] ?? '');
     $descricao = trim($_POST['descricao'] ?? '');
     $valor_original = floatval($_POST['valor_original'] ?? 0);
     $data_emissao = trim($_POST['data_emissao'] ?? '');
@@ -170,16 +172,18 @@ if ($acao === 'cadastrar' && $metodo === 'POST') {
     
     // Inserir conta
     $sql_insert = "INSERT INTO contas_pagar 
-                   (numero_documento, fornecedor_nome, plano_conta_id, descricao, valor_original, valor_pago, saldo_devedor, 
-                    data_emissao, data_vencimento, status, observacoes, ativo, data_criacao) 
-                   VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 1, NOW())";
+                   (`numero_documento`, `fornecedor_nome`, `plano_conta_id`, `classificacao_despesa`, `grupo`, `descricao`, `valor_original`, `valor_pago`, `saldo_devedor`, 
+                    `data_emissao`, `data_vencimento`, `status`, `observacoes`, `ativo`, `data_criacao`) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 1, NOW())";
     
     $stmt_insert = $conexao->prepare($sql_insert);
     $stmt_insert->bind_param(
-        "ssissddsss",
+        "ssisssddssss",
         $numero_documento,
         $fornecedor_nome,
         $plano_conta_id,
+        $classificacao_despesa,
+        $grupo,
         $descricao,
         $valor_original,
         $saldo_devedor,
@@ -277,6 +281,8 @@ if ($acao === 'atualizar' && $metodo === 'POST') {
     $numero_documento = trim($_POST['numero_documento'] ?? '');
     $fornecedor_nome  = trim($_POST['fornecedor_nome'] ?? '');
     $plano_conta_id   = intval($_POST['plano_conta_id'] ?? 0);
+    $classificacao_despesa = trim($_POST['classificacao_despesa'] ?? '');
+    $grupo = trim($_POST['grupo'] ?? '');
     $descricao        = trim($_POST['descricao'] ?? '');
     $valor_original   = floatval($_POST['valor_original'] ?? 0);
     $data_emissao     = trim($_POST['data_emissao'] ?? '');
@@ -292,11 +298,12 @@ if ($acao === 'atualizar' && $metodo === 'POST') {
         retornar_json(false, 'Preencha todos os campos obrigatórios');
     }
 
-    $sql_upd = "UPDATE contas_pagar SET numero_documento=?, fornecedor_nome=?, plano_conta_id=?, descricao=?, valor_original=?, data_emissao=?, data_vencimento=?, observacoes=?, data_atualizacao=NOW() WHERE id=?";
+    $sql_upd = "UPDATE contas_pagar SET `numero_documento`=?, `fornecedor_nome`=?, `plano_conta_id`=?, `classificacao_despesa`=?, `grupo`=?, `descricao`=?, `valor_original`=?, `data_emissao`=?, `data_vencimento`=?, `observacoes`=?, `data_atualizacao`=NOW() WHERE `id`=?";
     $stmt_upd = $conexao->prepare($sql_upd);
-    $stmt_upd->bind_param('ssisdsssi',
+    $stmt_upd->bind_param('ssisssdsssi',
         $numero_documento, $fornecedor_nome, $plano_conta_id,
-        $descricao, $valor_original, $data_emissao,
+        $classificacao_despesa, $grupo, $descricao,
+        $valor_original, $data_emissao,
         $data_vencimento, $observacoes, $id
     );
 

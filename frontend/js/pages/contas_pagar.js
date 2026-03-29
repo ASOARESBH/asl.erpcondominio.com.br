@@ -81,7 +81,7 @@ async function _carregar() {
     _state.carregando = true;
 
     const tbody = document.getElementById('cp_corpoTabela');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty-table"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="empty-table"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
         const filtro = document.getElementById('cp_filtroStatus');
@@ -112,7 +112,7 @@ function _renderTabela() {
     if (!tbody) return;
 
     if (!_state.lista.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-table"><i class="fas fa-inbox"></i> Nenhuma conta encontrada</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-table"><i class="fas fa-inbox"></i> Nenhuma conta encontrada</td></tr>';
         return;
     }
 
@@ -125,6 +125,8 @@ function _renderTabela() {
         <tr>
             <td>${_esc(c.numero_documento || '-')}</td>
             <td>${_esc(c.fornecedor_nome || '-')}</td>
+            <td>${_esc(c.classificacao_despesa || '-')}</td>
+            <td>${_esc(c.grupo || '-')}</td>
             <td>${_esc(c.descricao || '-')}</td>
             <td${atrasada}>${_formatarMoeda(c.valor_original)}</td>
             <td${atrasada}>${venc}</td>

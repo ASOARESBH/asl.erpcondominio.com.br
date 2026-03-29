@@ -619,6 +619,8 @@ CREATE TABLE `contas_pagar` (
   `fornecedor_id` int(11) DEFAULT NULL COMMENT 'ID do fornecedor',
   `fornecedor_nome` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Nome do fornecedor',
   `plano_conta_id` int(11) NOT NULL COMMENT 'ID do plano de contas',
+  `classificacao_despesa` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Classificação da despesa',
+  `grupo` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Grupo da despesa',
   `descricao` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Descrição da despesa',
   `valor_original` decimal(12,2) NOT NULL COMMENT 'Valor original da conta',
   `valor_pago` decimal(12,2) DEFAULT '0.00' COMMENT 'Valor já pago',
