@@ -3,27 +3,335 @@
 
 <div class="page-wrapper page-seguranca">
 
-  <!-- Breadcrumb -->
-  <nav class="stub-breadcrumb">
-    <span data-page="configuracao"><i class="fas fa-cog"></i> Configurações</span>
-    <span class="stub-sep"><i class="fas fa-chevron-right"></i></span>
-    <span>Segurança</span>
-  </nav>
+  <style>
+    .page-seguranca .page-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
 
-  <!-- Page Header -->
+    .page-seguranca .seg-card {
+      background: #ffffff;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.04);
+    }
+
+    .page-seguranca .seg-card h3 {
+      margin: 0.5rem 0 0.35rem;
+      font-size: 1.85rem;
+      color: #0f172a;
+    }
+
+    .page-seguranca .seg-card span {
+      color: #475569;
+      font-size: 0.95rem;
+    }
+
+    .page-seguranca .seg-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .page-seguranca .seg-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid #e2e8f0;
+    }
+
+    .page-seguranca .seg-pill i {
+      width: 18px;
+      text-align: center;
+    }
+
+    .page-seguranca .seg-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .page-seguranca .seg-filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .page-seguranca .seg-filters label {
+      display: block;
+      margin-bottom: 0.45rem;
+      color: #475569;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    .page-seguranca .seg-filters input,
+    .page-seguranca .seg-filters select {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .page-seguranca .seg-table-container {
+      overflow-x: auto;
+      border-radius: 1rem;
+      background: #ffffff;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.04);
+    }
+
+    .page-seguranca table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    .page-seguranca th,
+    .page-seguranca td {
+      padding: 1rem 1rem;
+      border-bottom: 1px solid #f1f5f9;
+      text-align: left;
+      vertical-align: top;
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    .page-seguranca th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: 0.01em;
+    }
+
+    .page-seguranca tr:hover {
+      background: #f8fafc;
+    }
+
+    .page-seguranca .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .page-seguranca .badge-success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .page-seguranca .badge-danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .page-seguranca .badge-warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .page-seguranca .badge-info {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .page-seguranca .pagination {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1.25rem;
+      padding: 1rem 0;
+    }
+
+    .page-seguranca .pagination button {
+      background: #f8fafc;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .page-seguranca .pagination button:hover:not(:disabled) {
+      background: #e2e8f0;
+    }
+
+    .page-seguranca .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .page-seguranca .page-alert {
+      padding: 1rem 1.25rem;
+      border-radius: 1rem;
+      margin-bottom: 1.25rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-seguranca .page-alert-success {
+      border-left: 4px solid #16a34a;
+      background: #d1fae5;
+      color: #064e3b;
+    }
+
+    .page-seguranca .page-alert-error {
+      border-left: 4px solid #dc2626;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .page-seguranca .page-alert-warning {
+      border-left: 4px solid #f59e0b;
+      background: #fef3c7;
+      color: #78350f;
+    }
+
+    @media (max-width: 980px) {
+      .page-seguranca .page-summary,
+      .page-seguranca .seg-filters {
+        grid-template-columns: 1fr;
+      }
+
+      .page-seguranca .seg-table-container {
+        min-width: 100%;
+      }
+    }
+  </style>
+
   <div class="page-header">
     <h1><i class="fas fa-shield-alt"></i> Segurança e Auditoria</h1>
-    <p>Logs de auditoria, políticas de senha e backups</p>
+    <p>Visualize todos os eventos de auditoria, acessos, debug e erros do sistema.</p>
   </div>
 
-  <!-- Em desenvolvimento -->
-  <div class="page-card stub-card">
-    <i class="fas fa-shield-alt stub-icon"></i>
-    <h3>Módulo em Desenvolvimento</h3>
-    <p>As configurações de segurança, logs de auditoria e políticas de senha estarão disponíveis em breve.</p>
-    <button class="stub-btn-back" data-page="configuracao">
-      <i class="fas fa-arrow-left"></i> Voltar às Configurações
-    </button>
+  <div class="page-alert">
+    <i class="fas fa-info-circle"></i>
+    Os logs exibidos aqui são extraídos do sistema de auditoria existente. Use filtros para investigar acessos,
+    erros e atividades de manutenção.
   </div>
 
+  <div class="page-summary">
+    <div class="seg-card">
+      <span>Total de Registros</span>
+      <h3 id="segurancaTotal">0</h3>
+      <div class="seg-legend">
+        <span class="seg-pill"><i class="fas fa-clock"></i> Últimos 30 dias</span>
+      </div>
+    </div>
+    <div class="seg-card">
+      <span>Eventos de Erro</span>
+      <h3 id="segurancaErros">0</h3>
+      <div class="seg-legend">
+        <span class="seg-pill"><i class="fas fa-exclamation-triangle"></i> Detectados</span>
+      </div>
+    </div>
+    <div class="seg-card">
+      <span>Acessos e Login</span>
+      <h3 id="segurancaAcessos">0</h3>
+      <div class="seg-legend">
+        <span class="seg-pill"><i class="fas fa-user-check"></i> Acessos</span>
+      </div>
+    </div>
+    <div class="seg-card">
+      <span>Tipos de Log</span>
+      <h3 id="segurancaTipos">0</h3>
+      <div class="seg-legend" id="segurancaTags"></div>
+    </div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <h2><i class="fas fa-filter"></i> Filtros de Auditoria</h2>
+      <p>Filtre por tipo, usuário, período ou descrição para encontrar eventos específicos.</p>
+    </div>
+
+    <div class="seg-filters">
+      <div>
+        <label for="filtroTipo">Tipo de Log</label>
+        <select id="filtroTipo">
+          <option value="">Todos os tipos</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtroUsuario">Usuário</label>
+        <input id="filtroUsuario" type="text" placeholder="Nome ou email" />
+      </div>
+      <div>
+        <label for="filtroDataInicio">Data Início</label>
+        <input id="filtroDataInicio" type="date" />
+      </div>
+      <div>
+        <label for="filtroDataFim">Data Fim</label>
+        <input id="filtroDataFim" type="date" />
+      </div>
+      <div>
+        <label for="filtroBusca">Busca Geral</label>
+        <input id="filtroBusca" type="text" placeholder="Descrição, IP ou tipo" />
+      </div>
+      <div>
+        <label for="filtroLimite">Registros por página</label>
+        <select id="filtroLimite">
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="200">200</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="seg-actions">
+      <button class="btn-primary" id="btnBuscar"><i class="fas fa-search"></i> Buscar</button>
+      <button class="btn-secondary" id="btnLimpar"><i class="fas fa-eraser"></i> Limpar</button>
+      <button class="btn-success" id="btnExportar"><i class="fas fa-file-export"></i> Exportar CSV</button>
+      <button class="btn-warning" id="btnAtualizar"><i class="fas fa-chart-line"></i> Atualizar Estatísticas</button>
+      <button class="btn-danger" id="btnLimparLogs"><i class="fas fa-trash"></i> Limpar Logs Antigos</button>
+    </div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <h2><i class="fas fa-list"></i> Registros de Auditoria</h2>
+      <p>Visualize logs de debug, erros, acesso, alteração de dados e operações críticas.</p>
+    </div>
+
+    <div class="seg-table-container">
+      <table id="tableLogs">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Data / Hora</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th>Usuário</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
 </div>

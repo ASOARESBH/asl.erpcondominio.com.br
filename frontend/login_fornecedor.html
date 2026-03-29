@@ -356,6 +356,25 @@
             }, 5000);
         }
 
+        async function registrarErroAuditoria(detalhes) {
+            try {
+                const formData = new FormData();
+                formData.append('acao', 'registrar_erro');
+                formData.append('email', detalhes.email || '');
+                formData.append('mensagem', detalhes.mensagem || 'Erro de login');
+                formData.append('contexto', detalhes.contexto || 'login_fornecedor');
+                formData.append('dados', JSON.stringify(detalhes.dados || {}));
+
+                await fetch(API_BASE + 'api_login_fornecedor.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Falha ao registrar erro de auditoria:', error);
+            }
+        }
+
         // ===== VERIFICAR SE J EST LOGADO =====
         async function verificarSessaoExistente() {
             try {
@@ -410,9 +429,24 @@
                     credentials: 'include'
                 });
 
-                const data = await response.json();
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (parsingError) {
+                    await registrarErroAuditoria({
+                        email,
+                        mensagem: 'Resposta JSON inválida do servidor',
+                        contexto: 'parse_error',
+                        dados: {
+                            status: response.status,
+                            statusText: response.statusText,
+                            body: await response.text()
+                        }
+                    });
+                    throw parsingError;
+                }
 
-                if (data.sucesso) {
+                if (data && data.sucesso) {
                     mostrarAlerta('Login realizado com sucesso! Redirecionando...', 'success');
 
                     // Aguardar um pouco e redirecionar
@@ -420,7 +454,18 @@
                         window.location.href = 'painel_fornecedor.html';
                     }, 1500);
                 } else {
-                    mostrarAlerta(data.mensagem || 'Erro ao fazer login', 'danger');
+                    const mensagemErro = (data && data.mensagem) ? data.mensagem : 'Erro ao fazer login';
+                    mostrarAlerta(mensagemErro, 'danger');
+
+                    await registrarErroAuditoria({
+                        email,
+                        mensagem: mensagemErro,
+                        contexto: 'login_negado',
+                        dados: {
+                            status: response.status,
+                            response: data
+                        }
+                    });
 
                     // Reabilitar botão
                     btnLogin.disabled = false;
@@ -430,6 +475,13 @@
             } catch (error) {
                 console.error('Erro:', error);
                 mostrarAlerta('Erro ao conectar com o servidor', 'danger');
+
+                await registrarErroAuditoria({
+                    email,
+                    mensagem: error.message || 'Erro não identificado',
+                    contexto: 'fetch_exception',
+                    dados: { stack: error.stack }
+                });
 
                 // Reabilitar botão
                 btnLogin.disabled = false;

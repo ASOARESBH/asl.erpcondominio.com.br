@@ -58,6 +58,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $acao   = $_GET['acao'] ?? $_POST['acao'] ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'];
 
+if ($acao === 'registrar_erro' && $metodo === 'POST') {
+    $email   = trim($_POST['email'] ?? '');
+    $mensagem = trim($_POST['mensagem'] ?? 'Erro de login do cliente');
+    $contexto = trim($_POST['contexto'] ?? 'login_fornecedor');
+    $dados    = $_POST['dados'] ?? null;
+
+    log_fornecedor('LOGIN_CLIENT_ERROR', 'Erro de login reportado pelo cliente: ' . $mensagem, $email ?: null, [
+        'contexto'   => $contexto,
+        'dados'      => $dados,
+        'session_id' => session_id(),
+    ]);
+
+    http_response_code(200);
+    echo json_encode([
+        'sucesso' => true,
+        'mensagem' => 'Erro registrado para auditoria'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // =====================================================
 // FUNÇÃO CENTRALIZADA DE LOG DE DEBUG DO FORNECEDOR
 // =====================================================
