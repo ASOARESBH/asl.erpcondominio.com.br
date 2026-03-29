@@ -314,6 +314,12 @@ function cadastrarContrato($db): void {
     if ($data_inicio > $hoje)  $status = 'aguardando';
     if ($data_fim    < $hoje)  $status = 'encerrado';
 
+    // ── Iniciar transação para garantir contrato + contas a pagar ─────────────
+    if (!$db->begin_transaction()) {
+        log_contrato('CONTRATO_ERRO_TRANSACAO', "Falha ao iniciar transação: {$db->error}");
+        retornar_json(false, 'Erro interno ao iniciar criação do contrato.');
+    }
+
     // ── Inserir contrato ──────────────────────────────────────────────────────
     $sql = "INSERT INTO contratos
                 (numero_contrato, fornecedor_id, fornecedor_nome, fornecedor_cnpj,
@@ -322,7 +328,7 @@ function cadastrarContrato($db): void {
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'".addslashes($status)."',1,NOW())";
 
     $stmt = $db->prepare($sql);
-    $stmt->bind_param('sisssssssdssi',
+    $stmt->bind_param('sisssssssdiss',
         $numero_contrato,
         $fornecedor_id,
         $fornecedor_nome,
@@ -339,6 +345,7 @@ function cadastrarContrato($db): void {
     );
 
     if (!$stmt->execute()) {
+        $db->rollback();
         log_contrato('CONTRATO_ERRO_INSERT', $stmt->error);
         retornar_json(false, 'Erro ao salvar contrato: ' . $stmt->error);
     }
@@ -346,9 +353,19 @@ function cadastrarContrato($db): void {
     $stmt->close();
 
     // ── Gerar lançamentos em contas_pagar ─────────────────────────────────────
-    _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $fornecedor_nome,
+    $ok = _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $fornecedor_nome,
         $plano_conta_id, $nome_contrato, $valor_total, $data_inicio, $data_vencimento,
         $recorrencia, $data_fim);
+
+    if (!$ok) {
+        $db->rollback();
+        retornar_json(false, 'Contrato criadoo, mas erro ao gerar lançamentos em contas a pagar. Verifique o log do sistema.');
+    }
+
+    if (!$db->commit()) {
+        log_contrato('CONTRATO_ERRO_COMMIT', "Falha ao finalizar transação: {$db->error}");
+        retornar_json(false, 'Erro interno ao confirmar criação do contrato.');
+    }
 
     log_contrato('CONTRATO_CRIADO', "Contrato $numero_contrato criado", ['id' => $contrato_id]);
 
@@ -364,11 +381,16 @@ function cadastrarContrato($db): void {
  */
 function _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $fornecedor_nome,
     $plano_conta_id, $descricao, $valor_total, $data_inicio, $data_vencimento,
-    $recorrencia, $data_fim): void {
+    $recorrencia, $data_fim): bool {
 
     $vencimentos = [];
-    $dtVenc = new DateTime($data_vencimento);
-    $dtFim  = new DateTime($data_fim);
+    try {
+        $dtVenc = new DateTime($data_vencimento);
+        $dtFim  = new DateTime($data_fim);
+    } catch (Exception $e) {
+        log_contrato('CONTRATO_ERRO_CP_DATA', "Data inválida em contrato $numero_contrato: {$e->getMessage()}");
+        return false;
+    }
     $hoje   = new DateTime();
 
     switch ($recorrencia) {
@@ -410,7 +432,10 @@ function _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $forn
     }
 
     $total_parcelas = count($vencimentos);
-    if ($total_parcelas === 0) return;
+    if ($total_parcelas === 0) {
+        log_contrato('CONTRATO_ERRO_CP_VENCIMENTOS', "Nenhum vencimento gerado para contrato $numero_contrato");
+        return false;
+    }
 
     // Valor por parcela (para mensais/anuais/diárias, divide o total)
     $valor_parcela = $recorrencia === 'unica' ? $valor_total : round($valor_total / $total_parcelas, 2);
@@ -423,6 +448,10 @@ function _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $forn
             VALUES (?,?,?,?,?,0,?,?,?,'PENDENTE',?,?,1,NOW())";
 
     $stmt = $db->prepare($sql);
+    if (!$stmt) {
+        log_contrato('CONTRATO_ERRO_CP_PREPARE', "Erro ao preparar insert de contas_pagar para contrato $numero_contrato: {$db->error}");
+        return false;
+    }
 
     foreach ($vencimentos as $v) {
         $num_doc    = $numero_contrato . ($total_parcelas > 1 ? '-P' . str_pad($v['parcela'], 3, '0', STR_PAD_LEFT) : '');
@@ -431,7 +460,7 @@ function _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $forn
         $data_emis  = date('Y-m-d');
         $saldo      = $valor_parcela;
 
-        $stmt->bind_param('ssissdsssi',
+        if (!$stmt->bind_param('ssissdsssi',
             $num_doc,
             $fornecedor_nome,
             $plano_conta_id,
@@ -442,10 +471,20 @@ function _gerarLancamentosContasPagar($db, $contrato_id, $numero_contrato, $forn
             $v['data'],
             $obs,
             $contrato_id
-        );
-        $stmt->execute();
+        )) {
+            log_contrato('CONTRATO_ERRO_CP_BIND', "Erro ao vincular parâmetros de contas_pagar para contrato $numero_contrato: {$stmt->error}");
+            $stmt->close();
+            return false;
+        }
+
+        if (!$stmt->execute()) {
+            log_contrato('CONTRATO_ERRO_CP_EXECUTE', "Erro ao inserir contas_pagar para contrato $numero_contrato: {$stmt->error}", ['parcela' => $v['parcela'] ?? null]);
+            $stmt->close();
+            return false;
+        }
     }
     $stmt->close();
+    return true;
 }
 
 /**

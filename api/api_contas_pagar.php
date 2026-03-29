@@ -46,12 +46,19 @@ $conexao = conectar_banco();
 if ($acao === 'listar' && $metodo === 'GET') {
     // Autenticação já verificada acima
     $status = $_GET['status'] ?? '';
+    $contrato_id = intval($_GET['contrato_id'] ?? 0);
     $limite = intval($_GET['limite'] ?? 50);
     $offset = intval($_GET['offset'] ?? 0);
     
     $sql = "SELECT * FROM contas_pagar WHERE ativo = 1";
     $params = [];
     $types = "";
+    
+    if ($contrato_id > 0) {
+        $sql .= " AND contrato_id = ?";
+        $params[] = $contrato_id;
+        $types .= "i";
+    }
     
     if (!empty($status)) {
         $sql .= " AND status = ?";
@@ -76,6 +83,7 @@ if ($acao === 'listar' && $metodo === 'GET') {
         $row['valor_original'] = (float)$row['valor_original'];
         $row['valor_pago'] = (float)$row['valor_pago'];
         $row['saldo_devedor'] = (float)$row['saldo_devedor'];
+        $row['contrato_id'] = isset($row['contrato_id']) ? intval($row['contrato_id']) : null;
         $contas[] = $row;
     }
     
@@ -103,6 +111,7 @@ if ($acao === 'buscar' && $metodo === 'GET') {
         $conta['valor_original'] = (float)$conta['valor_original'];
         $conta['valor_pago'] = (float)$conta['valor_pago'];
         $conta['saldo_devedor'] = (float)$conta['saldo_devedor'];
+        $conta['contrato_id'] = isset($conta['contrato_id']) ? intval($conta['contrato_id']) : null;
         $stmt->close();
         fechar_conexao($conexao);
         retornar_json(true, 'Conta encontrada', $conta);

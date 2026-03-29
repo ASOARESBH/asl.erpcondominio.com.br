@@ -28,10 +28,11 @@ CREATE TABLE IF NOT EXISTS `contratos` (
   INDEX `idx_ativo`       (`ativo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Adicionar coluna contrato_id em contas_pagar (se não existir)
+-- Adicionar coluna contrato_id em contas_pagar
 ALTER TABLE `contas_pagar`
-  ADD COLUMN IF NOT EXISTS `contrato_id` INT DEFAULT NULL AFTER `observacoes`,
-  ADD INDEX IF NOT EXISTS `idx_contrato_id` (`contrato_id`);
+  ADD COLUMN `contrato_id` INT DEFAULT NULL AFTER `observacoes`;
+ALTER TABLE `contas_pagar`
+  ADD INDEX `idx_contrato_id` (`contrato_id`);
 
 -- Tabela de documentos do contrato
 CREATE TABLE IF NOT EXISTS `contrato_documentos` (
