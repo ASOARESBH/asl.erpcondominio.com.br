@@ -6,6 +6,11 @@
 
 require_once 'config.php';
 require_once 'auth_helper.php';
+require_once 'session_helper.php';
+
+// Iniciar sessão com cookie path=/ e CORS correto
+iniciar_sessao_fornecedor();
+configurar_cors_fornecedor();
 
 // Função para retornar JSON
 if (!function_exists('retornar_json')) {
@@ -19,28 +24,9 @@ if (!function_exists('retornar_json')) {
 }
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
-session_start();
-
-// Verificar se fornecedor está logado
-if (!isset($_SESSION['fornecedor_id'])) {
-    http_response_code(401);
-    echo json_encode([
-        'sucesso' => false,
-        'mensagem' => 'Fornecedor não autenticado'
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-$fornecedor_id = $_SESSION['fornecedor_id'];
+// Verificar autenticação do fornecedor
+$fornecedor_id = verificar_sessao_fornecedor();
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'];
 

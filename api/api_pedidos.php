@@ -4,13 +4,13 @@
 // =====================================================
 // Gerencia pedidos, aprovações e avaliações
 
-// ⚠️ session_start() ANTES de qualquer include
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once 'config.php';
 require_once 'auth_helper.php';
+require_once 'session_helper.php';
+
+// Iniciar sessão com cookie path=/ e CORS correto
+iniciar_sessao_fornecedor();
+configurar_cors_fornecedor();
 
 // Função para retornar JSON
 if (!function_exists('retornar_json')) {
@@ -24,15 +24,6 @@ if (!function_exists('retornar_json')) {
 }
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: http://erp.asserradaliberdade.ong.br');
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
 
 // Função de log de debug do fornecedor
 if (!function_exists('log_fornecedor')) {
