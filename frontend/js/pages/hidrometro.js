@@ -187,8 +187,27 @@ function _popularSelectUnidades(selectId) {
     if (!sel) return;
     const valorAtual = sel.value;
     sel.innerHTML = '<option value="">Selecione uma unidade...</option>';
-    _state.unidades.forEach(u => {
-        const opt = new Option(u.unidade || u.nome || u, u.unidade || u.nome || u);
+
+    // Ordena: ADMINISTRATIVO primeiro, depois numericamente (Gleba 1, 2, 3...)
+    const isAdm      = str => /adm/i.test(str || '');
+    const numericKey = str => { const m = (str || '').match(/(\d+)/); return m ? parseInt(m[1], 10) : Infinity; };
+
+    const ordenadas = [..._state.unidades].sort((a, b) => {
+        const nomeA = a.unidade || a.nome || a;
+        const nomeB = b.unidade || b.nome || b;
+        const admA  = isAdm(nomeA);
+        const admB  = isAdm(nomeB);
+        if (admA && !admB) return -1;
+        if (!admA && admB) return  1;
+        const nA = numericKey(nomeA);
+        const nB = numericKey(nomeB);
+        if (nA !== nB) return nA - nB;
+        return nomeA.localeCompare(nomeB, 'pt-BR', { numeric: true });
+    });
+
+    ordenadas.forEach(u => {
+        const nome = u.unidade || u.nome || u;
+        const opt  = new Option(nome, nome);
         sel.add(opt);
     });
     if (valorAtual) sel.value = valorAtual;
