@@ -82,6 +82,42 @@
     color: #d97706;
 }
 
+/* Botão Sincronizar Saldo */
+.page-abastecimento .btn-sincronizar-saldo {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #2563eb;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid #93c5fd;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.3px;
+    font-family: inherit;
+}
+.page-abastecimento .btn-sincronizar-saldo:hover {
+    background: #fff;
+    border-color: #2563eb;
+    box-shadow: 0 2px 6px rgba(37,99,235,0.15);
+}
+.page-abastecimento .btn-sincronizar-saldo:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+.page-abastecimento .saldo-kpi.negativo .btn-sincronizar-saldo {
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+.page-abastecimento .saldo-kpi.alerta .btn-sincronizar-saldo {
+    color: #d97706;
+    border-color: #fcd34d;
+}
+
 /* ============================================
    TABS NAVIGATION
    ============================================ */

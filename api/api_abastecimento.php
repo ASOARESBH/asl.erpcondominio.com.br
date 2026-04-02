@@ -75,6 +75,10 @@ if ($metodo === 'GET') {
         case 'relatorio':
             gerarRelatorio($conn);
             break;
+
+        case 'recalcular_saldo':
+            recalcularSaldo($conn);
+            break;
             
         default:
             echo json_encode([
@@ -100,6 +104,10 @@ if ($metodo === 'POST') {
             
         case 'registrar_recarga':
             registrarRecarga($conn, $dados);
+            break;
+
+        case 'recalcular_saldo':
+            recalcularSaldo($conn);
             break;
             
         default:
@@ -418,6 +426,82 @@ function atualizarValorMinimo($conn, $valorMinimo) {
     ");
     $stmt->bind_param("d", $valorMinimo);
     $stmt->execute();
+}
+
+// ============================================
+// RECALCULAR SALDO (sincronização com o banco)
+// ============================================
+
+/**
+ * Recalcula o saldo do zero com base nos registros reais:
+ *   saldo = SUM(recargas.valor_recarga) - SUM(lancamentos.valor)
+ *
+ * Garante consistência mesmo após exclusões manuais no banco.
+ */
+function recalcularSaldo($conn) {
+    try {
+        // Total de recargas
+        $resRecargas = $conn->query("
+            SELECT COALESCE(SUM(valor_recarga), 0) AS total
+            FROM abastecimento_recargas
+        ");
+        $totalRecargas = floatval($resRecargas->fetch_assoc()['total']);
+
+        // Total de abastecimentos
+        $resLanc = $conn->query("
+            SELECT COALESCE(SUM(valor), 0) AS total
+            FROM abastecimento_lancamentos
+        ");
+        $totalLancamentos = floatval($resLanc->fetch_assoc()['total']);
+
+        // Saldo correto
+        $saldoCorreto = $totalRecargas - $totalLancamentos;
+
+        // Obter saldo atual antes de corrigir (para log)
+        $saldoAnterior = obterSaldoAtual($conn);
+
+        // Atualizar saldo na tabela
+        $stmt = $conn->prepare("
+            INSERT INTO abastecimento_saldo (id, valor, data_atualizacao)
+            VALUES (1, ?, NOW())
+            ON DUPLICATE KEY UPDATE valor = ?, data_atualizacao = NOW()
+        ");
+        $stmt->bind_param('dd', $saldoCorreto, $saldoCorreto);
+        $stmt->execute();
+
+        // Registrar no log de auditoria
+        $usuario = $_SESSION['usuario_nome'] ?? 'Sistema';
+        $descricao = "Saldo recalculado manualmente. Anterior: R\$ "
+            . number_format($saldoAnterior, 2, ',', '.')
+            . " → Correto: R\$ "
+            . number_format($saldoCorreto, 2, ',', '.')
+            . " | Recargas: R\$ " . number_format($totalRecargas, 2, ',', '.')
+            . " | Abastecimentos: R\$ " . number_format($totalLancamentos, 2, ',', '.');
+
+        $logStmt = $conn->prepare("
+            INSERT INTO logs_sistema (tipo, descricao, usuario, ip, data_hora)
+            VALUES ('SALDO_RECALCULADO', ?, ?, ?, NOW())
+        ");
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $logStmt->bind_param('sss', $descricao, $usuario, $ip);
+        $logStmt->execute();
+
+        echo json_encode([
+            'sucesso'           => true,
+            'mensagem'          => 'Saldo recalculado com sucesso',
+            'saldo_anterior'    => $saldoAnterior,
+            'saldo_correto'     => $saldoCorreto,
+            'total_recargas'    => $totalRecargas,
+            'total_lancamentos' => $totalLancamentos,
+            'diferenca'         => round($saldoCorreto - $saldoAnterior, 2),
+        ], JSON_UNESCAPED_UNICODE);
+
+    } catch (Exception $e) {
+        echo json_encode([
+            'sucesso'  => false,
+            'mensagem' => 'Erro ao recalcular saldo: ' . $e->getMessage(),
+        ], JSON_UNESCAPED_UNICODE);
+    }
 }
 
 // ============================================

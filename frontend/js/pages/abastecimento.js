@@ -60,6 +60,9 @@ export function init() {
         verDetalhesVeiculo : verDetalhesVeiculo,
     };
 
+    // Botão de sincronização de saldo
+    _on(document.getElementById('btnSincronizarSaldo'), 'click', _sincronizarSaldo);
+
     // Carregar dados iniciais
     _carregarVeiculos();
     _carregarAbastecimentos();
@@ -540,6 +543,48 @@ async function _atualizarSaldo() {
         console.log(`[Abastecimento] Saldo atualizado: R$ ${_formatarMoeda(_state.saldoAtual)}`);
     } catch (err) {
         console.error('[Abastecimento] Erro ao atualizar saldo:', err);
+    }
+}
+
+// ============================================================
+// SINCRONIZAR SALDO (recalcular do zero com base no banco)
+// ============================================================
+async function _sincronizarSaldo() {
+    const btn = document.getElementById('btnSincronizarSaldo');
+    const icon = btn?.querySelector('i');
+
+    // Feedback visual: spinner no botão
+    if (btn) btn.disabled = true;
+    if (icon) icon.className = 'fas fa-spinner fa-spin';
+
+    console.log('[Abastecimento] Iniciando recálculo de saldo...');
+
+    try {
+        const res = await _get('recalcular_saldo');
+
+        if (!res.sucesso) throw new Error(res.mensagem);
+
+        const anterior = _formatarMoeda(res.saldo_anterior);
+        const correto  = _formatarMoeda(res.saldo_correto);
+        const dif      = res.diferenca;
+
+        console.log(`[Abastecimento] Saldo recalculado: R$ ${anterior} → R$ ${correto} (diferença: R$ ${_formatarMoeda(dif)})`);
+
+        // Atualizar exibição do KPI
+        await _atualizarSaldo();
+
+        // Toast informativo
+        const msg = dif === 0
+            ? `Saldo já estava correto: R$ ${correto}`
+            : `Saldo corrigido: R$ ${anterior} → R$ ${correto}`;
+        _toast(msg, dif === 0 ? 'info' : 'success');
+
+    } catch (err) {
+        console.error('[Abastecimento] Erro ao sincronizar saldo:', err);
+        _toast('Erro ao recalcular saldo: ' + err.message, 'error');
+    } finally {
+        if (btn)  btn.disabled = false;
+        if (icon) icon.className = 'fas fa-sync-alt';
     }
 }
 
