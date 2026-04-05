@@ -169,6 +169,21 @@ async function _carregarUnidades() {
 
         _state.unidades = data.dados || [];
 
+        // Ordenação numérica: ADMINISTRATIVO primeiro, depois Gleba 1, 2, 3...
+        const _extrairNumero = (str) => {
+            const m = String(str).match(/(\d+)/);
+            return m ? parseInt(m[1], 10) : 0;
+        };
+        const unidadesOrdenadas = [..._state.unidades].sort((a, b) => {
+            const nomeA = String(a.unidade || a.nome || a).trim();
+            const nomeB = String(b.unidade || b.nome || b).trim();
+            const isAdmA = /adm/i.test(nomeA);
+            const isAdmB = /adm/i.test(nomeB);
+            if (isAdmA && !isAdmB) return -1;
+            if (!isAdmA && isAdmB) return  1;
+            return _extrairNumero(nomeA) - _extrairNumero(nomeB);
+        });
+
         ['ind_unidade', 'hist_unidade'].forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
@@ -176,7 +191,7 @@ async function _carregarUnidades() {
             sel.innerHTML = temTodas
                 ? '<option value="">Todas as unidades</option>'
                 : '<option value="">Selecione uma unidade...</option>';
-            _state.unidades.forEach(u => {
+            unidadesOrdenadas.forEach(u => {
                 const val = u.unidade || u.nome || u;
                 sel.add(new Option(val, val));
             });
