@@ -16,24 +16,37 @@
 // ============================================================
 // CONSTANTES
 // ============================================================
-const API_HIDROMETROS  = window.location.origin + '/api/api_hidrometros.php';
-const API_UNIDADES     = window.location.origin + '/api/api_unidades.php';
-const API_MORADORES    = window.location.origin + '/api/api_moradores.php';
+const API_HIDROMETROS    = window.location.origin + '/api/api_hidrometros.php';
+const API_UNIDADES       = window.location.origin + '/api/api_unidades.php';
+const API_MORADORES      = window.location.origin + '/api/api_moradores.php';
+const API_LEITURAS       = window.location.origin + '/api/api_leituras.php';
+const API_CONFIG_PERIODO = window.location.origin + '/api/api_config_periodo_leitura.php';
+
+// Tarifas de água
+const VALOR_M3       = 6.16;
+const VALOR_MINIMO   = 61.60;
+const CONSUMO_MINIMO = 10;
+const ITENS_POR_PAG  = 20;
 // ============================================================
 // ESTADO DO MÓDULO
 // ============================================================
 
 let _state = {
-    hidrometros    : [],   // lista completa (após ordenação)
-    unidades       : [],
-    moradores      : [],
-    buscarTimer    : null,
-    currentTab     : 'cadastro',
-    // Paginação
-    currentPage    : 1,
-    perPage        : 20,
+    hidrometros      : [],   // lista completa (após ordenação)
+    unidades         : [],
+    moradores        : [],
+    buscarTimer      : null,
+    currentTab       : 'cadastro',
+    currentSubTab    : 'individual',
+    // Paginação hidrômetros
+    currentPage      : 1,
+    perPage          : 20,
+    // Leituras coletivas
+    hidrometrosAtivos: [],
+    paginaAtual      : 1,
+    totalPaginas     : 1,
     // Referência ao handler para remoção no destroy()
-    _modalClickRef : null,
+    _modalClickRef   : null,
 };
 
 // ============================================================
@@ -44,10 +57,15 @@ export function init() {
     console.log('[Hidrometro] Inicializando módulo v2.0...');
 
     _setupTabs();
+    _setupSubTabs();
     _setupForms();
+    _setupFormsLeitura();
     _setDataAtual();
+    _setDataAtual('ind_data_leitura');
+    _setDataAtual('col_data_leitura');
     _carregarUnidades();
     _carregarHidrometros();
+    leituraCarregarConfigPeriodo();
 
     // Listener para fechar modal ao clicar fora — registrado aqui para
     // poder ser removido no destroy() e evitar acúmulo de listeners
@@ -67,6 +85,7 @@ export function init() {
 
     // Expõe API pública para onclick inline
     window.HidrometroPage = {
+        // Hidrômetros
         buscar              : buscar,
         buscarDebounce      : buscarDebounce,
         limparBusca         : limparBusca,
@@ -80,6 +99,19 @@ export function init() {
         selecionarPatrimonio: selecionarPatrimonio,
         irParaPagina        : irParaPagina,
         alterarPerPage      : alterarPerPage,
+        // Leituras
+        calcularPreview         : leituraCalcularPreview,
+        limparIndividual        : leituraLimparIndividual,
+        carregarColetiva        : leituraCarregarHidrometrosAtivos,
+        selecionarTodos         : leituraSelecionarTodos,
+        lancarSelecionados      : leituraLancarSelecionados,
+        limparSelecao           : leituraLimparSelecao,
+        mudarPagina             : leituraMudarPagina,
+        buscarHistorico         : leituraBuscarHistorico,
+        carregarConfigPeriodo   : leituraCarregarConfigPeriodo,
+        // Relatórios
+        gerarRelatorio          : relatorioGerar,
+        exportarRelatorioCSV    : relatorioExportarCSV,
     };
 
     console.log('[Hidrometro] Módulo pronto.');
@@ -88,14 +120,18 @@ export function init() {
 export function destroy() {
     console.log('[Hidrometro] Destruindo módulo...');
     if (_state.buscarTimer) clearTimeout(_state.buscarTimer);
-    // Remove o listener de click fora do modal
     if (_state._modalClickRef) {
         document.removeEventListener('click', _state._modalClickRef);
     }
-    // Garante que o body scroll seja restaurado
     document.body.style.overflow = '';
     delete window.HidrometroPage;
-    _state = { hidrometros: [], unidades: [], moradores: [], buscarTimer: null, currentTab: 'cadastro', currentPage: 1, perPage: 20, _modalClickRef: null };
+    _state = {
+        hidrometros: [], unidades: [], moradores: [], buscarTimer: null,
+        currentTab: 'cadastro', currentSubTab: 'individual',
+        currentPage: 1, perPage: 20,
+        hidrometrosAtivos: [], paginaAtual: 1, totalPaginas: 1,
+        _modalClickRef: null
+    };
 }
 
 // ============================================================
@@ -103,23 +139,59 @@ export function destroy() {
 // ============================================================
 
 function _setupTabs() {
-    document.querySelectorAll('.page-hidrometro .tab-button').forEach(btn => {
+    // Tabs principais (data-tab)
+    document.querySelectorAll('.page-hidrometro > .page-card > .tabs .tab-button[data-tab]').forEach(btn => {
         btn.addEventListener('click', () => _switchTab(btn.dataset.tab));
     });
 }
 
+function _setupSubTabs() {
+    // Sub-tabs de leituras (data-subtab)
+    document.querySelectorAll('.page-hidrometro .tab-button[data-subtab]').forEach(btn => {
+        btn.addEventListener('click', () => _switchSubTab(btn.dataset.subtab));
+    });
+}
+
 function _switchTab(tabName) {
-    document.querySelectorAll('.page-hidrometro .tab-button').forEach(btn => {
+    document.querySelectorAll('.page-hidrometro > .page-card > .tabs .tab-button[data-tab]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
-    document.querySelectorAll('.page-hidrometro .tab-content').forEach(content => {
-        content.classList.toggle('active', content.id === `tab-${tabName}`);
+    document.querySelectorAll('.page-hidrometro .tab-content[id^="tab-"]').forEach(content => {
+        // Só alterna tabs de primeiro nível (não sub-tabs)
+        if (!content.closest('.subtabs-content')) {
+            content.classList.toggle('active', content.id === `tab-${tabName}`);
+        }
     });
     _state.currentTab = tabName;
 
-    // Recarrega lista ao abrir a aba
     if (tabName === 'lista') {
         _carregarHidrometros();
+    }
+    if (tabName === 'leituras') {
+        _carregarUnidadesLeitura();
+        if (_state.currentSubTab === 'configuracoes') {
+            leituraCarregarConfigPeriodo();
+        }
+    }
+    if (tabName === 'relatorios') {
+        relatorioGerar();
+    }
+}
+
+function _switchSubTab(subTabName) {
+    document.querySelectorAll('.page-hidrometro .tab-button[data-subtab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.subtab === subTabName);
+    });
+    document.querySelectorAll('.page-hidrometro .subtab-content').forEach(content => {
+        content.classList.toggle('active', content.id === `subtab-${subTabName}`);
+    });
+    _state.currentSubTab = subTabName;
+
+    if (subTabName === 'coletiva' && _state.hidrometrosAtivos.length === 0) {
+        leituraCarregarHidrometrosAtivos();
+    }
+    if (subTabName === 'configuracoes') {
+        leituraCarregarConfigPeriodo();
     }
 }
 
@@ -151,11 +223,72 @@ function _setupForms() {
 }
 
 // ============================================================
+// FORMULÁRIOS DE LEITURA
+// ============================================================
+
+function _setupFormsLeitura() {
+    // Form leitura individual
+    const formInd = document.getElementById('formIndividual');
+    if (formInd) {
+        formInd.addEventListener('submit', e => { e.preventDefault(); _leituraSalvarIndividual(); });
+    }
+
+    // Form configuração de período
+    const formConfig = document.getElementById('formConfigPeriodo');
+    if (formConfig) {
+        formConfig.addEventListener('submit', e => { e.preventDefault(); _leituraSalvarConfigPeriodo(); });
+    }
+
+    // Cascata: unidade → morador (leitura individual)
+    const selUnidadeLeit = document.getElementById('ind_unidade');
+    if (selUnidadeLeit) {
+        selUnidadeLeit.addEventListener('change', _leituraCarregarMoradores);
+    }
+
+    // Cascata: morador → hidrômetro
+    const selMoradorLeit = document.getElementById('ind_morador');
+    if (selMoradorLeit) {
+        selMoradorLeit.addEventListener('change', _leituraCarregarHidrometrosMorador);
+    }
+
+    // Hidrômetro → última leitura
+    const selHidroLeit = document.getElementById('ind_hidrometro');
+    if (selHidroLeit) {
+        selHidroLeit.addEventListener('change', _leituraCarregarUltimaLeitura);
+    }
+}
+
+async function _carregarUnidadesLeitura() {
+    // Popula os selects de unidade da aba Leituras com ordenação numérica
+    const isAdm = str => /adm/i.test(str || '');
+    const numKey = str => { const m = String(str).match(/(\d+)/); return m ? parseInt(m[1], 10) : 0; };
+
+    const ordenadas = [..._state.unidades].sort((a, b) => {
+        const nA = String(a.unidade || a.nome || a).trim();
+        const nB = String(b.unidade || b.nome || b).trim();
+        if (isAdm(nA) && !isAdm(nB)) return -1;
+        if (!isAdm(nA) && isAdm(nB)) return  1;
+        return numKey(nA) - numKey(nB);
+    });
+
+    ['ind_unidade', 'hist_unidade'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const placeholder = id === 'hist_unidade' ? 'Todas as unidades' : 'Selecione uma unidade...';
+        sel.innerHTML = `<option value="">${placeholder}</option>`;
+        ordenadas.forEach(u => {
+            const val = u.unidade || u.nome || u;
+            sel.add(new Option(val, val));
+        });
+    });
+}
+
+// ============================================================
 // DATA ATUAL
 // ============================================================
 
-function _setDataAtual() {
-    const campo = document.getElementById('cad_data');
+function _setDataAtual(campoId = 'cad_data') {
+    const campo = document.getElementById(campoId);
     if (!campo) return;
     const agora = new Date();
     agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset());
@@ -932,4 +1065,472 @@ function _esc(str) {
 function _setEl(id, valor, prop = 'textContent') {
     const el = document.getElementById(id);
     if (el) el[prop] = valor ?? '';
+}
+
+// ============================================================
+// LEITURAS — INDIVIDUAL
+// ============================================================
+
+async function _leituraCarregarMoradores() {
+    const unidade = document.getElementById('ind_unidade')?.value;
+    const selMorador = document.getElementById('ind_morador');
+    const selHidro   = document.getElementById('ind_hidrometro');
+    if (!selMorador) return;
+
+    selMorador.innerHTML = '<option value="">Carregando...</option>';
+    if (selHidro) selHidro.innerHTML = '<option value="">Selecione o morador primeiro</option>';
+    _leituraLimparPreview();
+
+    if (!unidade) {
+        selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>';
+        return;
+    }
+
+    try {
+        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1`);
+        const moradores = data.dados || data.moradores || [];
+        selMorador.innerHTML = '<option value="">Selecione o morador...</option>';
+        moradores.forEach(m => selMorador.add(new Option(m.nome, m.id)));
+    } catch (err) {
+        selMorador.innerHTML = '<option value="">Erro ao carregar</option>';
+        console.error('[Leitura] Erro ao carregar moradores:', err);
+    }
+}
+
+async function _leituraCarregarHidrometrosMorador() {
+    const moradorId = document.getElementById('ind_morador')?.value;
+    const selHidro  = document.getElementById('ind_hidrometro');
+    if (!selHidro) return;
+
+    selHidro.innerHTML = '<option value="">Carregando...</option>';
+    _leituraLimparPreview();
+
+    if (!moradorId) {
+        selHidro.innerHTML = '<option value="">Selecione o morador primeiro</option>';
+        return;
+    }
+
+    try {
+        const data = await _apiCall(`${API_HIDROMETROS}?morador_id=${moradorId}&ativos=1`);
+        const hidros = data.dados || data.hidrometros || [];
+        selHidro.innerHTML = '<option value="">Selecione o hidrômetro...</option>';
+        hidros.forEach(h => selHidro.add(new Option(`Nº ${h.numero_hidrometro}`, h.id)));
+        if (hidros.length === 1) {
+            selHidro.value = hidros[0].id;
+            _leituraCarregarUltimaLeitura();
+        }
+    } catch (err) {
+        selHidro.innerHTML = '<option value="">Erro ao carregar</option>';
+        console.error('[Leitura] Erro ao carregar hidrômetros:', err);
+    }
+}
+
+async function _leituraCarregarUltimaLeitura() {
+    const hidroId = document.getElementById('ind_hidrometro')?.value;
+    _leituraLimparPreview();
+    if (!hidroId) return;
+
+    try {
+        const data = await _apiCall(`${API_LEITURAS}?hidrometro_id=${hidroId}&ultima=1`);
+        const ultima = data.dados || data.leitura || null;
+        const elUltima = document.getElementById('ind_ultima_leitura');
+        if (elUltima) {
+            elUltima.textContent = ultima
+                ? `Última leitura: ${ultima.leitura_atual} m³ em ${ultima.data_leitura_formatada || ultima.data_leitura}`
+                : 'Nenhuma leitura anterior registrada';
+        }
+    } catch (err) {
+        console.error('[Leitura] Erro ao carregar última leitura:', err);
+    }
+}
+
+function leituraCalcularPreview() {
+    const leituraAnterior = parseFloat(document.getElementById('ind_leitura_anterior')?.value || 0);
+    const leituraAtual    = parseFloat(document.getElementById('ind_leitura_atual')?.value    || 0);
+
+    const consumo = Math.max(0, leituraAtual - leituraAnterior);
+    const valor   = consumo <= CONSUMO_MINIMO ? VALOR_MINIMO : VALOR_MINIMO + (consumo - CONSUMO_MINIMO) * VALOR_M3;
+
+    const elConsumo = document.getElementById('ind_preview_consumo');
+    const elValor   = document.getElementById('ind_preview_valor');
+    const elBox     = document.getElementById('ind_preview_box');
+
+    if (elConsumo) elConsumo.textContent = `${consumo.toFixed(2)} m³`;
+    if (elValor)   elValor.textContent   = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (elBox)     elBox.style.display   = 'block';
+}
+
+function _leituraLimparPreview() {
+    const elBox = document.getElementById('ind_preview_box');
+    if (elBox) elBox.style.display = 'none';
+    const elUltima = document.getElementById('ind_ultima_leitura');
+    if (elUltima) elUltima.textContent = '';
+}
+
+async function _leituraSalvarIndividual() {
+    const hidroId         = document.getElementById('ind_hidrometro')?.value;
+    const leituraAnterior = document.getElementById('ind_leitura_anterior')?.value;
+    const leituraAtual    = document.getElementById('ind_leitura_atual')?.value;
+    const dataLeitura     = document.getElementById('ind_data_leitura')?.value;
+    const observacao      = document.getElementById('ind_observacao')?.value || '';
+
+    if (!hidroId || !leituraAtual || !dataLeitura) {
+        _toast('Preencha todos os campos obrigatórios.', 'warning');
+        return;
+    }
+    if (parseFloat(leituraAtual) < parseFloat(leituraAnterior || 0)) {
+        _toast('A leitura atual não pode ser menor que a anterior.', 'error');
+        return;
+    }
+
+    const consumo = Math.max(0, parseFloat(leituraAtual) - parseFloat(leituraAnterior || 0));
+    const valor   = consumo <= CONSUMO_MINIMO ? VALOR_MINIMO : VALOR_MINIMO + (consumo - CONSUMO_MINIMO) * VALOR_M3;
+
+    const btn = document.getElementById('btnSalvarLeitura');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'; }
+
+    try {
+        const data = await _apiCall(API_LEITURAS, {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify({
+                hidrometro_id    : parseInt(hidroId),
+                leitura_anterior : parseFloat(leituraAnterior || 0),
+                leitura_atual    : parseFloat(leituraAtual),
+                consumo          : consumo,
+                valor_cobrado    : valor,
+                data_leitura     : dataLeitura,
+                observacao       : observacao,
+            }),
+        });
+
+        if (data.sucesso) {
+            _toast('Leitura registrada com sucesso!', 'success');
+            leituraLimparIndividual();
+            leituraBuscarHistorico();
+        } else {
+            _toast(data.mensagem || 'Erro ao salvar leitura.', 'error');
+        }
+    } catch (err) {
+        _toast(`Erro: ${err.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Registrar Leitura'; }
+    }
+}
+
+function leituraLimparIndividual() {
+    ['ind_unidade','ind_morador','ind_hidrometro','ind_leitura_anterior','ind_leitura_atual','ind_observacao'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    _setDataAtual('ind_data_leitura');
+    _leituraLimparPreview();
+    const selMorador = document.getElementById('ind_morador');
+    if (selMorador) selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>';
+    const selHidro = document.getElementById('ind_hidrometro');
+    if (selHidro) selHidro.innerHTML = '<option value="">Selecione o morador primeiro</option>';
+}
+
+// ============================================================
+// LEITURAS — COLETIVA
+// ============================================================
+
+async function leituraCarregarHidrometrosAtivos() {
+    const container = document.getElementById('col_lista_hidrometros');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Carregando hidrômetros ativos...</div>';
+
+    try {
+        const data = await _apiCall(`${API_HIDROMETROS}?ativos=1`);
+        _state.hidrometrosAtivos = data.dados || data.hidrometros || [];
+        _state.paginaAtual = 1;
+        _state.totalPaginas = Math.ceil(_state.hidrometrosAtivos.length / ITENS_POR_PAG);
+        _leituraRenderizarColetiva();
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Erro ao carregar: ${err.message}</div>`;
+    }
+}
+
+function _leituraRenderizarColetiva() {
+    const container = document.getElementById('col_lista_hidrometros');
+    if (!container) return;
+
+    const inicio = (_state.paginaAtual - 1) * ITENS_POR_PAG;
+    const pagina = _state.hidrometrosAtivos.slice(inicio, inicio + ITENS_POR_PAG);
+
+    if (pagina.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-tint-slash"></i><p>Nenhum hidrômetro ativo encontrado.</p></div>';
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="col_check_todos" onchange="HidrometroPage.selecionarTodos(this.checked)"></th>
+                    <th>Unidade</th>
+                    <th>Morador</th>
+                    <th>Nº Hidrômetro</th>
+                    <th>Última Leitura</th>
+                    <th>Leitura Atual (m³)</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${pagina.map(h => `
+                    <tr>
+                        <td><input type="checkbox" class="col-check" data-id="${h.id}" data-ultima="${h.ultima_leitura || 0}"></td>
+                        <td>${_esc(h.unidade)}</td>
+                        <td>${_esc(h.morador_nome)}</td>
+                        <td>${_esc(h.numero_hidrometro)}</td>
+                        <td>${h.ultima_leitura != null ? h.ultima_leitura + ' m³' : '<span style="color:#94a3b8">Sem leitura</span>'}</td>
+                        <td><input type="number" step="0.01" min="0" class="col-leitura-input" data-id="${h.id}" placeholder="0.00" style="width:100px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;"></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div class="pagination-bar" style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem;justify-content:flex-end;">
+            <span style="font-size:13px;color:#64748b;">Página ${_state.paginaAtual} de ${_state.totalPaginas}</span>
+            <button class="btn-secondary" onclick="HidrometroPage.mudarPagina(${_state.paginaAtual - 1})" ${_state.paginaAtual <= 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
+            <button class="btn-secondary" onclick="HidrometroPage.mudarPagina(${_state.paginaAtual + 1})" ${_state.paginaAtual >= _state.totalPaginas ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
+        </div>`;
+}
+
+function leituraSelecionarTodos(checked) {
+    document.querySelectorAll('.col-check').forEach(cb => { cb.checked = checked; });
+}
+
+function leituraLimparSelecao() {
+    document.querySelectorAll('.col-check').forEach(cb => { cb.checked = false; });
+    const checkTodos = document.getElementById('col_check_todos');
+    if (checkTodos) checkTodos.checked = false;
+}
+
+function leituraMudarPagina(pagina) {
+    if (pagina < 1 || pagina > _state.totalPaginas) return;
+    _state.paginaAtual = pagina;
+    _leituraRenderizarColetiva();
+}
+
+async function leituraLancarSelecionados() {
+    const dataLeitura = document.getElementById('col_data_leitura')?.value;
+    if (!dataLeitura) { _toast('Informe a data de leitura.', 'warning'); return; }
+
+    const selecionados = [];
+    document.querySelectorAll('.col-check:checked').forEach(cb => {
+        const id      = parseInt(cb.dataset.id);
+        const ultima  = parseFloat(cb.dataset.ultima || 0);
+        const input   = document.querySelector(`.col-leitura-input[data-id="${id}"]`);
+        const atual   = parseFloat(input?.value || 0);
+        if (atual > 0) {
+            const consumo = Math.max(0, atual - ultima);
+            const valor   = consumo <= CONSUMO_MINIMO ? VALOR_MINIMO : VALOR_MINIMO + (consumo - CONSUMO_MINIMO) * VALOR_M3;
+            selecionados.push({ hidrometro_id: id, leitura_anterior: ultima, leitura_atual: atual, consumo, valor_cobrado: valor, data_leitura: dataLeitura });
+        }
+    });
+
+    if (selecionados.length === 0) { _toast('Selecione ao menos um hidrômetro com leitura preenchida.', 'warning'); return; }
+
+    const btn = document.getElementById('btnLancarColetiva');
+    if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Lançando ${selecionados.length}...`; }
+
+    let sucesso = 0, erros = 0;
+    for (const item of selecionados) {
+        try {
+            const res = await _apiCall(API_LEITURAS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item),
+            });
+            if (res.sucesso) sucesso++; else erros++;
+        } catch { erros++; }
+    }
+
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Lançar Selecionados'; }
+    _toast(`${sucesso} leitura(s) lançada(s) com sucesso${erros > 0 ? `, ${erros} erro(s)` : ''}.`, sucesso > 0 ? 'success' : 'error');
+    leituraLimparSelecao();
+    leituraCarregarHidrometrosAtivos();
+    leituraBuscarHistorico();
+}
+
+// ============================================================
+// LEITURAS — HISTÓRICO
+// ============================================================
+
+async function leituraBuscarHistorico() {
+    const unidade = document.getElementById('hist_unidade')?.value || '';
+    const de      = document.getElementById('hist_data_de')?.value || '';
+    const ate     = document.getElementById('hist_data_ate')?.value || '';
+    const container = document.getElementById('hist_tabela_body');
+    if (!container) return;
+
+    container.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+    try {
+        let url = `${API_LEITURAS}?historico=1`;
+        if (unidade) url += `&unidade=${encodeURIComponent(unidade)}`;
+        if (de)      url += `&data_de=${encodeURIComponent(de)}`;
+        if (ate)     url += `&data_ate=${encodeURIComponent(ate)}`;
+
+        const data = await _apiCall(url);
+        const lista = data.dados || data.leituras || [];
+
+        if (lista.length === 0) {
+            container.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:#94a3b8;"><i class="fas fa-inbox"></i> Nenhuma leitura encontrada.</td></tr>';
+            return;
+        }
+
+        container.innerHTML = lista.map(l => `
+            <tr>
+                <td>${_esc(l.data_leitura_formatada || l.data_leitura)}</td>
+                <td>${_esc(l.unidade)}</td>
+                <td>${_esc(l.morador_nome)}</td>
+                <td>${_esc(l.numero_hidrometro)}</td>
+                <td>${_esc(l.leitura_anterior)} m³</td>
+                <td>${_esc(l.leitura_atual)} m³</td>
+                <td><strong>${_esc(l.consumo)} m³</strong></td>
+                <td><strong style="color:#16a34a;">${parseFloat(l.valor_cobrado || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Erro: ${_esc(err.message)}</td></tr>`;
+    }
+}
+
+// ============================================================
+// LEITURAS — CONFIGURAÇÃO DE PERÍODO
+// ============================================================
+
+async function leituraCarregarConfigPeriodo() {
+    try {
+        const data = await _apiCall(API_CONFIG_PERIODO);
+        const config = data.dados || data.config || {};
+        const campos = {
+            'config_periodo_inicio' : config.periodo_inicio || '',
+            'config_periodo_fim'    : config.periodo_fim    || '',
+            'config_valor_m3'       : config.valor_m3       || VALOR_M3,
+            'config_valor_minimo'   : config.valor_minimo   || VALOR_MINIMO,
+            'config_consumo_minimo' : config.consumo_minimo || CONSUMO_MINIMO,
+        };
+        Object.entries(campos).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        });
+    } catch (err) {
+        console.warn('[Leitura] Config período não disponível:', err.message);
+    }
+}
+
+async function _leituraSalvarConfigPeriodo() {
+    const btn = document.getElementById('btnSalvarConfig');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'; }
+
+    const payload = {
+        periodo_inicio  : document.getElementById('config_periodo_inicio')?.value,
+        periodo_fim     : document.getElementById('config_periodo_fim')?.value,
+        valor_m3        : parseFloat(document.getElementById('config_valor_m3')?.value || VALOR_M3),
+        valor_minimo    : parseFloat(document.getElementById('config_valor_minimo')?.value || VALOR_MINIMO),
+        consumo_minimo  : parseFloat(document.getElementById('config_consumo_minimo')?.value || CONSUMO_MINIMO),
+    };
+
+    try {
+        const data = await _apiCall(API_CONFIG_PERIODO, {
+            method  : 'POST',
+            headers : { 'Content-Type': 'application/json' },
+            body    : JSON.stringify(payload),
+        });
+        _toast(data.sucesso ? 'Configuração salva com sucesso!' : (data.mensagem || 'Erro ao salvar.'), data.sucesso ? 'success' : 'error');
+    } catch (err) {
+        _toast(`Erro: ${err.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Salvar Configuração'; }
+    }
+}
+
+// ============================================================
+// RELATÓRIOS
+// ============================================================
+
+let _relatorioCache = [];
+
+async function relatorioGerar() {
+    const de      = document.getElementById('rel_data_de')?.value  || '';
+    const ate     = document.getElementById('rel_data_ate')?.value || '';
+    const unidade = document.getElementById('rel_unidade')?.value  || '';
+    const container = document.getElementById('rel_tabela_body');
+    const resumo    = document.getElementById('rel_resumo');
+    if (!container) return;
+
+    container.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Gerando relatório...</td></tr>';
+    if (resumo) resumo.style.display = 'none';
+
+    try {
+        let url = `${API_LEITURAS}?relatorio=1`;
+        if (de)      url += `&data_de=${encodeURIComponent(de)}`;
+        if (ate)     url += `&data_ate=${encodeURIComponent(ate)}`;
+        if (unidade) url += `&unidade=${encodeURIComponent(unidade)}`;
+
+        const data = await _apiCall(url);
+        _relatorioCache = data.dados || data.leituras || [];
+
+        if (_relatorioCache.length === 0) {
+            container.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#94a3b8;"><i class="fas fa-inbox"></i> Nenhum dado encontrado para o período.</td></tr>';
+            return;
+        }
+
+        // Totais
+        const totalConsumo = _relatorioCache.reduce((s, l) => s + parseFloat(l.consumo || 0), 0);
+        const totalValor   = _relatorioCache.reduce((s, l) => s + parseFloat(l.valor_cobrado || 0), 0);
+
+        if (resumo) {
+            resumo.style.display = 'grid';
+            _setEl('rel_total_leituras', _relatorioCache.length);
+            _setEl('rel_total_consumo',  `${totalConsumo.toFixed(2)} m³`);
+            _setEl('rel_total_valor',    totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+        }
+
+        container.innerHTML = _relatorioCache.map(l => `
+            <tr>
+                <td>${_esc(l.data_leitura_formatada || l.data_leitura)}</td>
+                <td>${_esc(l.unidade)}</td>
+                <td>${_esc(l.morador_nome)}</td>
+                <td>${_esc(l.numero_hidrometro)}</td>
+                <td>${_esc(l.leitura_anterior)} → ${_esc(l.leitura_atual)} m³</td>
+                <td><strong>${_esc(l.consumo)} m³</strong></td>
+                <td><strong style="color:#16a34a;">${parseFloat(l.valor_cobrado || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        container.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Erro: ${_esc(err.message)}</td></tr>`;
+    }
+}
+
+function relatorioExportarCSV() {
+    if (_relatorioCache.length === 0) {
+        _toast('Gere o relatório antes de exportar.', 'warning');
+        return;
+    }
+
+    const cabecalho = ['Data','Unidade','Morador','Nº Hidrômetro','Leitura Anterior','Leitura Atual','Consumo (m³)','Valor (R$)'];
+    const linhas = _relatorioCache.map(l => [
+        l.data_leitura_formatada || l.data_leitura,
+        l.unidade,
+        l.morador_nome,
+        l.numero_hidrometro,
+        l.leitura_anterior,
+        l.leitura_atual,
+        l.consumo,
+        parseFloat(l.valor_cobrado || 0).toFixed(2).replace('.', ','),
+    ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
+
+    const csv  = [cabecalho.join(';'), ...linhas].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `relatorio_leituras_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    _toast('Relatório exportado com sucesso!', 'success');
 }
