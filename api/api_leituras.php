@@ -89,7 +89,7 @@ if ($metodo === 'GET' && !isset($_GET['ultima_leitura']) && !isset($_GET['hidrom
         $sql .= "AND l.morador_id = $morador_id ";
     }
     
-    $sql .= "ORDER BY l.data_leitura DESC, l.unidade ASC";
+    $sql .= "ORDER BY l.data_leitura ASC, l.unidade ASC";
     
     $resultado = $conexao->query($sql);
     $leituras = array();
