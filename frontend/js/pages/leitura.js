@@ -362,8 +362,19 @@ async function _salvarLeituraIndividual() {
     const dataLeitura   = document.getElementById('ind_data_leitura')?.value;
     const observacao    = document.getElementById('ind_observacao')?.value?.trim() || '';
 
-    if (!hidrometroId || !leituraAtual || !dataLeitura) {
+    const leituraAnteriorRef = parseFloat(document.getElementById('ind_leitura_anterior')?.value) || 0;
+    const leituraAtualStr     = document.getElementById('ind_leitura_atual')?.value;
+
+    if (!hidrometroId || leituraAtualStr === '' || leituraAtualStr === null || leituraAtualStr === undefined || !dataLeitura) {
         _toast('Preencha todos os campos obrigatórios.', 'warning');
+        return;
+    }
+    if (isNaN(leituraAtual)) {
+        _toast('Leitura atual inválida.', 'warning');
+        return;
+    }
+    if (leituraAtual < leituraAnteriorRef) {
+        _toast(`Leitura atual (${leituraAtual}) não pode ser menor que a leitura anterior (${leituraAnteriorRef} m³).`, 'warning');
         return;
     }
 
@@ -499,8 +510,12 @@ async function lancarSelecionados() {
     const leituras = [];
     document.querySelectorAll('.check-hidrometro:checked').forEach(check => {
         const idx          = check.dataset.index;
-        const leituraAtual = parseFloat(document.querySelector(`.leitura-atual[data-index="${idx}"]`)?.value);
-        if (leituraAtual > 0) {
+        const inputEl     = document.querySelector(`.leitura-atual[data-index="${idx}"]`);
+        const inputStr     = inputEl?.value;
+        const leituraAtual = (inputStr !== '' && inputStr !== null && inputStr !== undefined) ? parseFloat(inputStr) : null;
+        const leituraAnt   = _state.hidrometrosAtivos[idx]?.ultima_leitura != null ? parseFloat(_state.hidrometrosAtivos[idx].ultima_leitura) : 0;
+        // Aceita leitura >= anterior (inclusive igual, para quando não houve consumo)
+        if (leituraAtual !== null && !isNaN(leituraAtual) && leituraAtual >= leituraAnt) {
             leituras.push({
                 hidrometro_id : _state.hidrometrosAtivos[idx].id,
                 leitura_atual : leituraAtual,

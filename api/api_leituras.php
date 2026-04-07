@@ -189,7 +189,7 @@ if ($metodo === 'POST') {
             $leitura_atual = floatval($leitura['leitura_atual'] ?? 0);
             $data_leitura = sanitizar($conexao, $leitura['data_leitura'] ?? '');
             
-            if ($hidrometro_id <= 0 || $leitura_atual <= 0) {
+            if ($hidrometro_id <= 0 || $leitura_atual < 0) {
                 continue;
             }
             
@@ -249,8 +249,8 @@ if ($metodo === 'POST') {
             retornar_json(false, "Hidrômetro é obrigatório");
         }
         
-        if ($leitura_atual <= 0) {
-            retornar_json(false, "Leitura atual é obrigatória");
+        if ($leitura_atual < 0) {
+            retornar_json(false, "Leitura atual não pode ser negativa");
         }
         
         if (empty($data_leitura)) {
@@ -300,9 +300,9 @@ if ($metodo === 'POST') {
         $leitura_anterior = $ultima ? floatval($ultima['leitura_atual']) : 0;
         $stmt->close();
         
-        // Validar leitura atual: maior que anterior OU primeira leitura (anterior = 0)
-        if ($leitura_atual < $leitura_anterior && $leitura_anterior != 0) {
-            retornar_json(false, "Leitura atual ($leitura_atual) não pode ser menor que a leitura anterior ($leitura_anterior)");
+        // Validar leitura atual: igual ou maior que anterior (aceita igual para quando nao houve consumo no periodo)
+        if ($leitura_atual < $leitura_anterior) {
+            retornar_json(false, "Leitura atual ({$leitura_atual} m³) não pode ser menor que a leitura anterior ({$leitura_anterior} m³). Informe um valor igual ou superior.");
         }
         
         // Calcular consumo e valor
