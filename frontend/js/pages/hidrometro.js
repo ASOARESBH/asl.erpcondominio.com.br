@@ -74,11 +74,17 @@ export function init() {
             e.target.classList.remove('show');
             document.body.style.overflow = '';
         }
-        // Fechar dropdown de patrimônio ao clicar fora
+        // Fechar dropdown de patrimônio (cadastro) ao clicar fora
         const dropdown = document.getElementById('patrimonioDropdown');
         const inputBusca = document.getElementById('cad_patrimonio_busca');
         if (dropdown && !dropdown.contains(e.target) && e.target !== inputBusca) {
             dropdown.style.display = 'none';
+        }
+        // Fechar dropdown de patrimônio (edição) ao clicar fora
+        const dropdownEdit = document.getElementById('editPatrimonioDropdown');
+        const inputBuscaEdit = document.getElementById('edit_patrimonio_busca');
+        if (dropdownEdit && !dropdownEdit.contains(e.target) && e.target !== inputBuscaEdit) {
+            dropdownEdit.style.display = 'none';
         }
     };
     document.addEventListener('click', _state._modalClickRef);
@@ -94,9 +100,12 @@ export function init() {
         verHistorico        : abrirModalHistorico,
         fecharModal         : fecharModal,
         salvarEdicao        : salvarEdicao,
-        buscarPatrimonio    : buscarPatrimonio,
-        limparPatrimonio    : limparPatrimonio,
-        selecionarPatrimonio: selecionarPatrimonio,
+        buscarPatrimonio        : buscarPatrimonio,
+        limparPatrimonio        : limparPatrimonio,
+        selecionarPatrimonio    : selecionarPatrimonio,
+        buscarPatrimonioEdit    : buscarPatrimonioEdit,
+        limparPatrimonioEdit    : limparPatrimonioEdit,
+        selecionarPatrimonioEdit: selecionarPatrimonioEdit,
         irParaPagina        : irParaPagina,
         alterarPerPage      : alterarPerPage,
         // Leituras
@@ -755,6 +764,38 @@ async function abrirModalEditar(id) {
     const selMorador = document.getElementById('edit_morador');
     if (selMorador) selMorador.value = hidrometro.morador_id;
 
+    // Preencher campo de patrimônio se existir
+    const editPatrimonioBusca = document.getElementById('edit_patrimonio_busca');
+    const editInventarioId    = document.getElementById('edit_inventario_id');
+    const editDropdown        = document.getElementById('editPatrimonioDropdown');
+    if (editPatrimonioBusca) editPatrimonioBusca.value = '';
+    if (editInventarioId)    editInventarioId.value    = '';
+    if (editDropdown)        editDropdown.style.display = 'none';
+
+    // Se o hidrômetro já tem inventario_id, buscar o número do patrimônio para exibir
+    if (hidrometro.inventario_id) {
+        if (editInventarioId) editInventarioId.value = hidrometro.inventario_id;
+        if (editPatrimonioBusca) {
+            // Exibir o numero_patrimonio se vier no objeto, senão buscar na API
+            if (hidrometro.numero_patrimonio) {
+                editPatrimonioBusca.value = hidrometro.numero_patrimonio +
+                    (hidrometro.nome_patrimonio ? ' — ' + hidrometro.nome_patrimonio : '');
+            } else {
+                // Buscar na API de inventário pelo ID
+                try {
+                    const inv = await _apiCall(`${API_INVENTARIO}?id=${hidrometro.inventario_id}`);
+                    const item = (inv.dados || [])[0] || inv.dados;
+                    if (item && item.numero_patrimonio) {
+                        editPatrimonioBusca.value = item.numero_patrimonio +
+                            (item.nome_item ? ' — ' + item.nome_item : '');
+                    }
+                } catch (e) {
+                    console.warn('[Hidrometro] Não foi possível carregar patrimônio:', e);
+                }
+            }
+        }
+    }
+
     abrirModal('modalEditar');
 }
 
@@ -773,6 +814,8 @@ async function salvarEdicao() {
         return;
     }
 
+    const inventarioId = document.getElementById('edit_inventario_id')?.value;
+
     const payload = {
         id                  : parseInt(id),
         morador_id          : parseInt(moradorId),
@@ -782,6 +825,7 @@ async function salvarEdicao() {
         data_instalacao     : dataInst,
         ativo               : parseInt(ativo),
         observacao          : obs,
+        inventario_id       : inventarioId ? parseInt(inventarioId) : null,
     };
 
     console.log('[Hidrometro] Atualizando:', payload);
@@ -983,6 +1027,69 @@ function limparPatrimonio() {
     const inputId    = document.getElementById('cad_inventario_id');
     const dropdown   = document.getElementById('patrimonioDropdown');
 
+    if (inputBusca) inputBusca.value = '';
+    if (inputId)    inputId.value    = '';
+    if (dropdown)   dropdown.style.display = 'none';
+}
+
+// ============================================================
+// PATRIMÔNIO — EDIÇÃO
+// ============================================================
+let _patrimonioEditTimer = null;
+async function buscarPatrimonioEdit(termo) {
+    if (_patrimonioEditTimer) clearTimeout(_patrimonioEditTimer);
+    const dropdown = document.getElementById('editPatrimonioDropdown');
+    if (!dropdown) return;
+    if (!termo || termo.length < 1) {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+        return;
+    }
+    _patrimonioEditTimer = setTimeout(async () => {
+        dropdown.style.display = 'block';
+        dropdown.innerHTML = '<div style="padding:0.75rem 1rem;color:#64748b;font-size:13px;"><i class="fas fa-spinner fa-spin"></i> Buscando...</div>';
+        try {
+            const url = `${API_INVENTARIO}?busca=${encodeURIComponent(termo)}&status=ativo&situacao=circulante&grupo_nome=Hidr%C3%B4metros`;
+            const data = await _apiCall(url);
+            const itens = data.dados || data.itens || [];
+            if (itens.length === 0) {
+                dropdown.innerHTML = '<div style="padding:0.75rem 1rem;color:#94a3b8;font-size:13px;">Nenhum item encontrado</div>';
+                return;
+            }
+            dropdown.innerHTML = itens.map(item => `
+                <div onclick="window.HidrometroPage.selecionarPatrimonioEdit(${item.id}, '${_esc(item.numero_patrimonio)}', '${_esc(item.nome_item)}')" style="
+                    padding:0.65rem 1rem;
+                    cursor:pointer;
+                    border-bottom:1px solid #f1f5f9;
+                    font-size:13px;
+                    transition:background 0.15s;
+                " onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''">
+                    <strong style="color:#1e293b;">${_esc(item.numero_patrimonio)}</strong>
+                    <span style="color:#64748b;"> — ${_esc(item.nome_item)}</span>
+                    ${item.modelo ? `<span style="color:#94a3b8;font-size:11px;"> (${_esc(item.modelo)})</span>` : ''}
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error('[Hidrometro] Erro ao buscar patrimônio (edição):', err);
+            dropdown.innerHTML = '<div style="padding:0.75rem 1rem;color:#ef4444;font-size:13px;">Erro ao buscar</div>';
+        }
+    }, 350);
+}
+
+function selecionarPatrimonioEdit(id, numero, nome) {
+    const inputBusca = document.getElementById('edit_patrimonio_busca');
+    const inputId    = document.getElementById('edit_inventario_id');
+    const dropdown   = document.getElementById('editPatrimonioDropdown');
+    if (inputBusca) inputBusca.value = `${numero} — ${nome}`;
+    if (inputId)    inputId.value    = id;
+    if (dropdown)   dropdown.style.display = 'none';
+    console.log(`[Hidrometro] Patrimônio edição selecionado: ID=${id}, Nº=${numero}`);
+}
+
+function limparPatrimonioEdit() {
+    const inputBusca = document.getElementById('edit_patrimonio_busca');
+    const inputId    = document.getElementById('edit_inventario_id');
+    const dropdown   = document.getElementById('editPatrimonioDropdown');
     if (inputBusca) inputBusca.value = '';
     if (inputId)    inputId.value    = '';
     if (dropdown)   dropdown.style.display = 'none';

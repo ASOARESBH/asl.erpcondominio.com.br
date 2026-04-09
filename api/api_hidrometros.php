@@ -151,6 +151,8 @@ if ($metodo === 'PUT') {
     $data_instalacao = sanitizar($conexao, $dados['data_instalacao'] ?? '');
     $ativo = isset($dados['ativo']) ? intval($dados['ativo']) : 1;
     $observacao = sanitizar($conexao, $dados['observacao'] ?? '');
+    $inventario_id = isset($dados['inventario_id']) && $dados['inventario_id'] > 0
+                     ? intval($dados['inventario_id']) : null;
     
     if ($id <= 0) {
         retornar_json(false, "ID inválido");
@@ -198,6 +200,10 @@ if ($metodo === 'PUT') {
     if ($anterior['ativo'] != $ativo) {
         $campos_alterados[] = array('campo' => 'ativo', 'anterior' => $anterior['ativo'], 'novo' => $ativo);
     }
+    $inventario_anterior = $anterior['inventario_id'] ?? null;
+    if ($inventario_anterior != $inventario_id) {
+        $campos_alterados[] = array('campo' => 'inventario_id', 'anterior' => $inventario_anterior ?? '', 'novo' => $inventario_id ?? '');
+    }
     
     // Inserir histórico
     foreach ($campos_alterados as $campo) {
@@ -208,8 +214,13 @@ if ($metodo === 'PUT') {
     }
     
     // Atualizar hidrômetro
-    $stmt = $conexao->prepare("UPDATE hidrometros SET morador_id = ?, unidade = ?, numero_hidrometro = ?, numero_lacre = ?, data_instalacao = ?, ativo = ? WHERE id = ?");
-    $stmt->bind_param("issssii", $morador_id, $unidade, $numero_hidrometro, $numero_lacre, $data_instalacao, $ativo, $id);
+    if ($inventario_id !== null) {
+        $stmt = $conexao->prepare("UPDATE hidrometros SET morador_id = ?, unidade = ?, numero_hidrometro = ?, numero_lacre = ?, data_instalacao = ?, ativo = ?, inventario_id = ? WHERE id = ?");
+        $stmt->bind_param("issssiii", $morador_id, $unidade, $numero_hidrometro, $numero_lacre, $data_instalacao, $ativo, $inventario_id, $id);
+    } else {
+        $stmt = $conexao->prepare("UPDATE hidrometros SET morador_id = ?, unidade = ?, numero_hidrometro = ?, numero_lacre = ?, data_instalacao = ?, ativo = ?, inventario_id = NULL WHERE id = ?");
+        $stmt->bind_param("issssii", $morador_id, $unidade, $numero_hidrometro, $numero_lacre, $data_instalacao, $ativo, $id);
+    }
     
     if ($stmt->execute()) {
         registrar_log($conexao, 'INFO', "Hidrômetro atualizado: $numero_hidrometro (ID: $id) - Motivo: $observacao");
