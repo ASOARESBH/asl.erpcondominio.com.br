@@ -206,9 +206,19 @@ class SessionManagerCore {
                 this.persistState();
 
                 // EMITIR EVENTO (UI vai escutar e renderizar)
+                // Emite tanto o formato legado (user/expireTime) quanto o esperado pelos módulos
+                // (usuario / sessao.tempo_restante / sessao.tempo_restante_formatado)
                 this.emit('userDataChanged', {
+                    // Formato legado (retrocompatibilidade)
                     user: this.currentUser,
-                    expireTime: this.sessionExpireTime
+                    expireTime: this.sessionExpireTime,
+                    // Formato esperado pelos módulos (dashboard, estoque, inventário, etc.)
+                    usuario: this.currentUser,
+                    tempo_restante: this.sessionExpireTime,
+                    sessao: {
+                        tempo_restante: this.sessionExpireTime,
+                        tempo_restante_formatado: this.formatarTempoRestante(this.sessionExpireTime)
+                    }
                 });
 
                 this.isFetching = false;

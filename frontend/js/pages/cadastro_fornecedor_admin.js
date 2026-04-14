@@ -118,12 +118,12 @@ async function _carregarEstatisticas() {
         const d = await res.json();
         if (d.sucesso && d.dados) {
             const s = d.dados;
-            _setKpi('cfa-kpi-total',    s.total     ?? '—');
-            _setKpi('cfa-kpi-ativos',   s.ativos    ?? '—');
-            _setKpi('cfa-kpi-inativos', s.inativos  ?? '—');
-            _setKpi('cfa-kpi-pendentes', s.pendentes ?? s.aguardando_aprovacao ?? '—');
+            _setKpi('cfa-kpi-total',    s.total     ?? s.total_fornecedores     ?? '—');
+            _setKpi('cfa-kpi-ativos',   s.ativos    ?? s.fornecedores_ativos    ?? '—');
+            _setKpi('cfa-kpi-inativos', s.inativos  ?? s.fornecedores_inativos  ?? '—');
+            _setKpi('cfa-kpi-pendentes', s.pendentes ?? s.aguardando_aprovacao ?? s.fornecedores_pendentes ?? '—');
             // Barra de alerta
-            const pendentes = parseInt(s.pendentes ?? s.aguardando_aprovacao ?? 0);
+            const pendentes = parseInt(s.pendentes ?? s.aguardando_aprovacao ?? s.fornecedores_pendentes ?? 0);
             const bar = document.getElementById('cfa-alert-bar');
             const msg = document.getElementById('cfa-alert-msg');
             if (bar && msg && pendentes > 0) {

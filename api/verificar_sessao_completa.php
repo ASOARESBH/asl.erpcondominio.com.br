@@ -1,14 +1,12 @@
 <?php
 // =====================================================
-// VERIFICAÇÃO DE SESSÃO COMPLETA E CENTRALIZADA - CORRIGIDA
+// VERIFICAÇÃO DE SESSÃO COMPLETA E CENTRALIZADA
 // =====================================================
-// 
-// CORREÇÕES IMPLEMENTADAS:
-// - Melhor tratamento de erros
-// - Suporte para fornecedores e usuários comuns
-// - Headers CORS melhorados
-// - Validação robusta de sessão
-// - Logs de debug
+//
+// CORREÇÕES v2:
+// - CORS dinâmico (Access-Control-Allow-Origin: * é inválido com credentials:include)
+// - Retorna data.sessao.tempo_restante (formato esperado pelo SessionManagerCore)
+// - Mantém retrocompatibilidade com tempo_restante_segundos e tempo_restante_formatado
 
 // Configurações de sessão
 ini_set('session.cookie_httponly', 1);
@@ -22,8 +20,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Headers para API
+// CORS dinâmico — Access-Control-Allow-Origin: * é INVÁLIDO com credentials:include
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+$allowed_origins = [
+    'https://asl.erpcondominios.com.br',
+    'http://asl.erpcondominios.com.br',
+    'https://erpcondominios.com.br',
+    'http://erpcondominios.com.br',
+    'http://localhost',
+    'http://127.0.0.1',
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowed_origins)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+} else {
+    header('Access-Control-Allow-Origin: https://asl.erpcondominios.com.br');
+}
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
@@ -134,12 +146,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $tempo_decorrido = time() - ($dados_usuario['login_timestamp'] ?? time());
         $tempo_restante = 7200 - $tempo_decorrido;
         
+        $tempo_restante_val = max(0, $tempo_restante);
         retornar_sucesso([
-            'sessao_ativa' => true,
-            'usuario' => $dados_usuario,
-            'tempo_restante_segundos' => max(0, $tempo_restante),
-            'tempo_restante_formatado' => gmdate("H:i:s", max(0, $tempo_restante)),
-            'session_id' => session_id()
+            'sessao_ativa'             => true,
+            'usuario'                  => $dados_usuario,
+            // Retrocompatibilidade
+            'tempo_restante_segundos'  => $tempo_restante_val,
+            'tempo_restante_formatado' => gmdate('H:i:s', $tempo_restante_val),
+            'session_id'               => session_id(),
+            // Formato esperado pelo SessionManagerCore (data.sessao?.tempo_restante)
+            'sessao' => [
+                'tempo_restante' => $tempo_restante_val,
+                'tempo_formatado'=> gmdate('H:i:s', $tempo_restante_val),
+                'session_id'     => session_id(),
+            ],
         ]);
     } else {
         retornar_erro('Sessão expirada ou inválida', 401);
