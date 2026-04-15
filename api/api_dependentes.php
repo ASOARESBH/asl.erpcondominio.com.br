@@ -77,7 +77,7 @@ try {
         }
         
         try {
-            $stmt = $conexao->prepare("SELECT d.id, d.morador_id, d.nome_completo, d.cpf, d.parentesco, d.ativo, m.nome as morador_nome FROM dependentes d LEFT JOIN moradores m ON d.morador_id = m.id WHERE d.id = ?");
+            $stmt = $conexao->prepare("SELECT d.id, d.morador_id, d.nome_completo, d.cpf, d.email, d.telefone, d.celular, d.parentesco, d.observacao, d.ativo, m.nome as morador_nome FROM dependentes d LEFT JOIN moradores m ON d.morador_id = m.id WHERE d.id = ?");
             if (!$stmt) {
                 throw new Exception("Erro ao preparar query: " . $conexao->error);
             }
@@ -113,7 +113,8 @@ try {
         $filtro_cpf = isset($_GET['cpf']) ? trim($_GET['cpf']) : '';
         
         // Construir query com prepared statement
-        $sql = "SELECT d.id, d.morador_id, d.nome_completo, d.cpf, d.parentesco, d.ativo,
+        $sql = "SELECT d.id, d.morador_id, d.nome_completo, d.cpf, d.email, d.telefone, d.celular,
+                d.parentesco, d.ativo,
                 DATE_FORMAT(d.data_cadastro, '%d/%m/%Y %H:%i') as data_cadastro,
                 m.nome as morador_nome, m.unidade as morador_unidade
                 FROM dependentes d
