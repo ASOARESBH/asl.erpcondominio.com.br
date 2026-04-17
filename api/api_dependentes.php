@@ -237,7 +237,7 @@ try {
         if (!$stmt) {
             throw new Exception("Erro ao preparar insert: " . $conexao->error);
         }
-        $stmt->bind_param("isssssss", $morador_id, $nome_completo, $cpf, $email, $telefone, $celular, $data_nascimento, $parentesco, $observacao);
+        $stmt->bind_param("issssssss", $morador_id, $nome_completo, $cpf, $email, $telefone, $celular, $data_nascimento, $parentesco, $observacao);
         
         if ($stmt->execute()) {
             $id_inserido = $conexao->insert_id;
