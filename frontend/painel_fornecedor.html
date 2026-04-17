@@ -953,23 +953,38 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
             }
         }
 
-        // ===== VERIFICAO DE SESSO =====
-        async function verificarAutenticacao() {
+         // ===== VERIFICAÇÃO DE SESSÃO =====
+        // Tenta até 2 vezes antes de redirecionar para evitar falsos negativos
+        // causados por latência de rede ou restart do servidor.
+        async function verificarAutenticacao(tentativa = 1) {
             try {
-                const response = await fetch(API_BASE + 'api_sessao_fornecedor.php?acao=verificar', {
-                    credentials: 'include'
-                });
+                const response = await fetch(
+                    API_BASE + 'api_sessao_fornecedor.php?acao=verificar&t=' + Date.now(),
+                    { credentials: 'include', cache: 'no-store' }
+                );
 
                 if (response.status === 401) {
-                    // Não autenticado, redirecionar para login
+                    console.warn('[Auth] Sessão inválida (401) — redirecionando para login');
+                    window.location.href = 'login_fornecedor.html';
+                    return false;
+                }
+
+                if (!response.ok) {
+                    // Erro de servidor (5xx) — tentar novamente uma vez antes de redirecionar
+                    if (tentativa < 2) {
+                        console.warn('[Auth] Erro HTTP ' + response.status + ' — retentando em 2s...');
+                        await new Promise(r => setTimeout(r, 2000));
+                        return verificarAutenticacao(2);
+                    }
+                    console.error('[Auth] Falha persistente na verificação de sessão');
                     window.location.href = 'login_fornecedor.html';
                     return false;
                 }
 
                 const data = await response.json();
-                
+
                 if (!data.sucesso || !data.logado) {
-                    // Sessão inválida
+                    console.warn('[Auth] Sessão inválida:', data.mensagem);
                     window.location.href = 'login_fornecedor.html';
                     return false;
                 }
@@ -979,9 +994,17 @@ body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:
                 sessionStorage.setItem('fornecedor_email', data.email);
                 sessionStorage.setItem('fornecedor_nome', data.nome);
 
+                console.log('[Auth] Sessão válida — fornecedor:', data.nome);
                 return true;
+
             } catch (error) {
-                console.error('Erro ao verificar autenticação:', error);
+                // Falha de rede — não redirecionar imediatamente, tentar novamente
+                if (tentativa < 2) {
+                    console.warn('[Auth] Erro de rede — retentando em 3s...', error.message);
+                    await new Promise(r => setTimeout(r, 3000));
+                    return verificarAutenticacao(2);
+                }
+                console.error('[Auth] Falha de rede persistente:', error);
                 window.location.href = 'login_fornecedor.html';
                 return false;
             }

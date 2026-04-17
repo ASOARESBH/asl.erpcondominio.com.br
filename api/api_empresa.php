@@ -62,13 +62,21 @@ function registrar_log_empresa($empresa_id, $acao, $dados_anteriores, $dados_nov
     }
 }
 
-$usuario = verificarAutenticacao(true, 'admin');
-$usuario_id = $usuario['id'];
 $metodo = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
+
+// Ação 'obter' é pública (usada na página de login para identidade visual)
+// As demais ações exigem autenticacao de admin
+if ($action !== 'obter') {
+    $usuario = verificarAutenticacao(true, 'admin');
+    $usuario_id = $usuario['id'];
+} else {
+    $usuario_id = null;
+}
+
 $conexao = conectar_banco();
 
-// OBTER DADOS DA EMPRESA
+// OBTER DADOS DA EMPRESA (público)
 if ($action === 'obter' && $metodo === 'GET') {
     try {
         $stmt = $conexao->prepare("

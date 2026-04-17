@@ -14,46 +14,18 @@
  * =====================================================
  */
 
-// ⚠️ OBRIGATÓRIO: configurar cookie de sessão ANTES do session_start()
-// path=/ garante que o cookie seja válido para todo o domínio,
-// não apenas para /api/ — sem isso o painel_fornecedor.html
-// não consegue ler a sessão criada aqui.
-if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params([
-        'lifetime' => 7200,
-        'path'     => '/',
-        'domain'   => '',          // vazio = domínio atual
-        'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-        'httponly' => true,
-        'samesite' => 'Lax',
-    ]);
-    session_start();
-}
+// ✅ SESSÃO CENTRALIZADA: session_helper garante path='/' e configurações
+// idênticas em TODAS as APIs do fornecedor, evitando que o session_id
+// mude entre requisições e destrua a sessão recém-criada.
+require_once 'session_helper.php';
+iniciar_sessao_fornecedor();   // session_set_cookie_params + session_start
 
 require_once 'config.php';
 require_once 'auth_helper.php';
 
-// Cabeçalhos — CORS com domínio específico (obrigatório com credentials: include)
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowed_origins = [
-    'https://asl.erpcondominios.com.br',
-    'http://asl.erpcondominios.com.br',
-    'http://localhost',
-    'http://localhost:3000',
-];
-if (in_array($origin, $allowed_origins, true)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-    header('Access-Control-Allow-Credentials: true');
-    header('Vary: Origin');
-}
+// CORS centralizado (obrigatório com credentials: include)
+configurar_cors_fornecedor();
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
 
 $acao   = $_GET['acao'] ?? $_POST['acao'] ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'];
