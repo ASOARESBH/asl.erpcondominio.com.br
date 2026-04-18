@@ -1,4 +1,8 @@
 <?php
+// ob_start() captura qualquer output acidental (warnings, notices, BOM)
+// antes dos headers JSON — evita 'Unexpected non-whitespace character'
+ob_start();
+
 /**
  * API de Gerenciamento de Sessão do Fornecedor
  *
@@ -395,4 +399,3 @@ function atualizarPerfil() {
         'mensagem' => $nova_senha_hash ? 'Perfil e senha atualizados com sucesso!' : 'Perfil atualizado com sucesso!'
     ]);
 }
-?>>

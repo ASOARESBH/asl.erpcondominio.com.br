@@ -193,4 +193,3 @@ function retornarSucesso($mensagem, $dados = null, $codigo = 200) {
     echo json_encode($resposta, JSON_UNESCAPED_UNICODE);
     exit;
 }
-?>

@@ -1,4 +1,8 @@
 <?php
+// ob_start() captura qualquer output acidental (warnings, notices, BOM)
+// antes dos headers JSON — evita 'Unexpected non-whitespace character'
+ob_start();
+
 /**
  * =====================================================
  * API DE LOGIN DO FORNECEDOR
