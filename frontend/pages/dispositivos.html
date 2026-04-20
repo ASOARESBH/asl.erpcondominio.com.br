@@ -1,0 +1,385 @@
+<div id="page-metadata" data-title="Dispositivos" data-icon="fa-microchip" style="display:none;"></div>
+
+<div class="page-wrapper page-dispositivos">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1><i class="fas fa-microchip"></i> Dispositivos de Acesso</h1>
+    <p>Cadastro e integração de leitores Control ID (IDUHF, iDAccess, etc.) com o sistema</p>
+  </div>
+
+  <!-- Abas -->
+  <div class="tabs-container">
+    <button class="tab-btn active" data-tab="dispositivos">
+      <i class="fas fa-server"></i> Dispositivos
+    </button>
+    <button class="tab-btn" data-tab="sincronizacao">
+      <i class="fas fa-sync-alt"></i> Sincronização
+    </button>
+    <button class="tab-btn" data-tab="leituras">
+      <i class="fas fa-list-alt"></i> Leituras
+    </button>
+    <button class="tab-btn" data-tab="guia">
+      <i class="fas fa-book"></i> Guia de Integração
+    </button>
+  </div>
+
+  <!-- ===================== ABA: DISPOSITIVOS ===================== -->
+  <div id="tab-dispositivos" class="tab-content active">
+
+    <!-- Formulário de cadastro -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2 id="form-titulo"><i class="fas fa-plus-circle"></i> Novo Dispositivo</h2>
+        <button class="btn-secondary-modern" id="btnLimparForm" type="button" style="display:none;">
+          <i class="fas fa-times"></i> Cancelar Edição
+        </button>
+      </div>
+
+      <form id="formDispositivo" autocomplete="off">
+        <input type="hidden" id="disp-id" value="">
+
+        <div class="form-grid">
+          <div>
+            <label>Nome do Dispositivo *</label>
+            <input type="text" id="disp-nome" placeholder="Ex: Leitor UHF Portaria Principal" required>
+          </div>
+          <div>
+            <label>Modelo *</label>
+            <select id="disp-modelo">
+              <option value="IDUHF">IDUHF — Leitor UHF Veicular 15m</option>
+              <option value="iDAccess Nano">iDAccess Nano</option>
+              <option value="iDAccess Pro">iDAccess Pro</option>
+              <option value="iDFace">iDFace — Reconhecimento Facial</option>
+              <option value="iDFlex">iDFlex</option>
+              <option value="iDBlock">iDBlock — Catraca</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo de Leitura *</label>
+            <select id="disp-tipo">
+              <option value="uhf">UHF (TAG Veicular 15m)</option>
+              <option value="rfid">RFID / Wiegand (Cartão Proximidade)</option>
+              <option value="facial">Reconhecimento Facial</option>
+              <option value="biometria">Biometria Digital</option>
+              <option value="qrcode">QR Code</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div>
+            <label>Área de Instalação</label>
+            <input type="text" id="disp-area" placeholder="Ex: Portaria Principal, Garagem B">
+          </div>
+          <div>
+            <label>Endereço IP *</label>
+            <input type="text" id="disp-ip" placeholder="Ex: 192.168.1.100" required>
+          </div>
+          <div>
+            <label>Porta HTTP</label>
+            <input type="number" id="disp-porta" value="80" min="1" max="65535">
+          </div>
+          <div>
+            <label>Usuário da API</label>
+            <input type="text" id="disp-usuario" value="admin" placeholder="admin">
+          </div>
+          <div>
+            <label>Senha da API *</label>
+            <div class="input-with-toggle">
+              <input type="password" id="disp-senha" placeholder="Senha de acesso ao equipamento">
+              <button type="button" class="btn-toggle-senha" onclick="toggleSenha('disp-senha', this)">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <small id="disp-senha-hint" style="display:none; color:#888;">Deixe em branco para manter a senha atual</small>
+          </div>
+          <div class="full-width">
+            <label>Descrição / Observações</label>
+            <textarea id="disp-descricao" rows="2" placeholder="Informações adicionais sobre o dispositivo"></textarea>
+          </div>
+          <div>
+            <label>Status</label>
+            <select id="disp-ativo">
+              <option value="1">Ativo</option>
+              <option value="0">Inativo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary-modern" id="btnSalvarDisp">
+            <i class="fas fa-save"></i> Salvar Dispositivo
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de dispositivos -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-list"></i> Dispositivos Cadastrados</h2>
+        <button class="btn-secondary-modern" id="btnAtualizarLista" type="button">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+      </div>
+
+      <div id="loading-dispositivos" class="loading" style="display:none;">
+        <i class="fas fa-spinner fa-spin"></i> Carregando dispositivos...
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="tabelaDispositivos">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Nome</th>
+              <th>Modelo / Tipo</th>
+              <th>IP : Porta</th>
+              <th>Área</th>
+              <th>Último Ping</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-dispositivos">
+            <tr><td colspan="7" class="text-center text-muted">Nenhum dispositivo cadastrado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ABA: SINCRONIZAÇÃO ===================== -->
+  <div id="tab-sincronizacao" class="tab-content" style="display:none;">
+
+    <div class="page-card">
+      <h2><i class="fas fa-sync-alt"></i> Sincronizar TAGs com Control ID</h2>
+      <p class="card-subtitle">
+        Envia as TAGs UHF dos veículos cadastrados no ERP para o leitor Control ID selecionado.
+        Cada veículo é criado como um <strong>usuário</strong> no equipamento com sua TAG vinculada.
+      </p>
+
+      <div class="form-grid">
+        <div>
+          <label>Dispositivo *</label>
+          <select id="sync-dispositivo-id">
+            <option value="">— Selecione um dispositivo —</option>
+          </select>
+        </div>
+        <div>
+          <label>Modo de Sincronização</label>
+          <select id="sync-modo">
+            <option value="1">Apenas veículos não sincronizados (recomendado)</option>
+            <option value="0">Todos os veículos ativos (forçar resincronização)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary-modern" id="btnTestarConexao" type="button">
+          <i class="fas fa-plug"></i> Testar Conexão
+        </button>
+        <button class="btn-success-modern" id="btnSincronizar" type="button">
+          <i class="fas fa-upload"></i> Sincronizar TAGs
+        </button>
+        <button class="btn-secondary-modern" id="btnColetarLogs" type="button">
+          <i class="fas fa-download"></i> Coletar Logs do Equipamento
+        </button>
+      </div>
+
+      <!-- Resultado da operação -->
+      <div id="sync-resultado" style="display:none;" class="sync-resultado-box">
+        <div id="sync-resultado-content"></div>
+      </div>
+
+      <!-- Progresso -->
+      <div id="sync-progresso" style="display:none;" class="sync-progresso">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span id="sync-progresso-msg">Processando...</span>
+      </div>
+    </div>
+
+    <!-- Log de sincronizações -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-history"></i> Histórico de Sincronizações</h2>
+        <button class="btn-secondary-modern" id="btnAtualizarSyncLog" type="button">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Dispositivo</th>
+              <th>Ação</th>
+              <th>Status</th>
+              <th>Enviados</th>
+              <th>Erros</th>
+              <th>Detalhes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-sync-log">
+            <tr><td colspan="7" class="text-center text-muted">Nenhum registro.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ABA: LEITURAS ===================== -->
+  <div id="tab-leituras" class="tab-content" style="display:none;">
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-car"></i> Leituras de Acesso Coletadas</h2>
+        <div class="table-tools">
+          <select id="filtro-leituras-disp">
+            <option value="">Todos os dispositivos</option>
+          </select>
+          <button class="btn-secondary-modern" id="btnAtualizarLeituras" type="button">
+            <i class="fas fa-sync-alt"></i> Atualizar
+          </button>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Dispositivo</th>
+              <th>TAG / Cartão</th>
+              <th>Veículo</th>
+              <th>Morador</th>
+              <th>Evento</th>
+              <th>Acesso</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-leituras">
+            <tr><td colspan="7" class="text-center text-muted">Nenhuma leitura importada.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ABA: GUIA DE INTEGRAÇÃO ===================== -->
+  <div id="tab-guia" class="tab-content" style="display:none;">
+    <div class="page-card guia-integracao">
+      <h2><i class="fas fa-book-open"></i> Guia de Integração — Leitor IDUHF Control ID</h2>
+
+      <div class="guia-section">
+        <h3><i class="fas fa-network-wired"></i> 1. Configuração de Rede do Equipamento</h3>
+        <ol>
+          <li>Conecte o leitor IDUHF à mesma rede local do servidor (switch ou roteador).</li>
+          <li>Acesse a interface web do equipamento pelo IP padrão de fábrica: <code>192.168.0.1</code> (usuário: <code>admin</code>, senha: <code>admin</code>).</li>
+          <li>Vá em <strong>Configurações → Rede</strong> e defina um IP fixo na sua sub-rede (ex: <code>192.168.1.100</code>).</li>
+          <li>Certifique-se de que o servidor do ERP consegue alcançar esse IP (mesma rede ou roteamento configurado).</li>
+        </ol>
+      </div>
+
+      <div class="guia-section">
+        <h3><i class="fas fa-cogs"></i> 2. Modo de Operação da TAG UHF</h3>
+        <p>O IDUHF suporta dois modos para TAGs UHF:</p>
+        <table class="data-table">
+          <thead><tr><th>Modo</th><th>Objeto na API</th><th>Formato da TAG</th><th>Quando usar</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Extended</strong> (recomendado)</td>
+              <td><code>uhf_tags</code></td>
+              <td>String hexadecimal (ex: <code>CAFEDAD0</code>)</td>
+              <td>TAGs com EPC de 96 bits — padrão do IDUHF</td>
+            </tr>
+            <tr>
+              <td><strong>Standard</strong></td>
+              <td><code>cards</code></td>
+              <td>Número inteiro (Wiegand)</td>
+              <td>Compatibilidade com leitores RFID tradicionais</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>O sistema tenta primeiro o modo <strong>Extended</strong>. Se falhar, tenta o modo <strong>Standard</strong> automaticamente.</p>
+      </div>
+
+      <div class="guia-section">
+        <h3><i class="fas fa-tag"></i> 3. Formato das TAGs no ERP</h3>
+        <p>No cadastro de veículos, o campo <strong>TAG</strong> deve conter:</p>
+        <ul>
+          <li><strong>Modo Extended (IDUHF):</strong> o código EPC da tag em hexadecimal, ex: <code>MAJJHAG0022</code> ou <code>E2003411B802011820A0B8F3</code></li>
+          <li><strong>Modo Standard:</strong> o número Wiegand da TAG, ex: <code>12345</code></li>
+        </ul>
+        <div class="alert-box alert-info">
+          <i class="fas fa-info-circle"></i>
+          <strong>Como obter o código EPC da TAG:</strong> Aproxime a TAG do leitor IDUHF e consulte os logs de acesso no equipamento (<em>Controle de Acesso → Logs</em>) — o campo <code>uhf_tag</code> mostrará o código EPC lido.
+        </div>
+      </div>
+
+      <div class="guia-section">
+        <h3><i class="fas fa-play-circle"></i> 4. Fluxo de Integração</h3>
+        <div class="fluxo-steps">
+          <div class="fluxo-step">
+            <div class="step-num">1</div>
+            <div class="step-desc">
+              <strong>Cadastre o dispositivo</strong> na aba "Dispositivos" com IP, porta e credenciais.
+            </div>
+          </div>
+          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+          <div class="fluxo-step">
+            <div class="step-num">2</div>
+            <div class="step-desc">
+              <strong>Teste a conexão</strong> — o sistema faz login na API do equipamento e confirma a comunicação.
+            </div>
+          </div>
+          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+          <div class="fluxo-step">
+            <div class="step-num">3</div>
+            <div class="step-desc">
+              <strong>Sincronize as TAGs</strong> — o sistema envia todos os veículos cadastrados como usuários no equipamento, vinculando cada TAG UHF.
+            </div>
+          </div>
+          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+          <div class="fluxo-step">
+            <div class="step-num">4</div>
+            <div class="step-desc">
+              <strong>Coleta automática de logs</strong> — ao clicar em "Coletar Logs", o sistema importa os acessos registrados pelo equipamento e os registra no controle de acesso do ERP.
+            </div>
+          </div>
+          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+          <div class="fluxo-step">
+            <div class="step-num">5</div>
+            <div class="step-desc">
+              <strong>Novos veículos</strong> — ao cadastrar um novo veículo com TAG, clique em "Sincronizar TAGs" novamente. O sistema enviará apenas os veículos ainda não sincronizados.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="guia-section">
+        <h3><i class="fas fa-exclamation-triangle"></i> 5. Requisitos e Observações</h3>
+        <ul>
+          <li>O servidor do ERP (HostGator) deve ter acesso de rede ao IP do equipamento. Em redes locais, pode ser necessário configurar um <strong>proxy reverso</strong> ou usar o módulo de integração local.</li>
+          <li>A API do Control ID usa HTTP (porta 80 por padrão) — certifique-se de que firewalls não bloqueiam essa porta.</li>
+          <li>O token de sessão da API expira em ~30 minutos. O sistema faz login automaticamente a cada operação.</li>
+          <li>O grupo de acesso padrão usado é o <strong>Grupo 1</strong> do equipamento. Certifique-se de que ele tem regras de acesso configuradas no equipamento.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div id="modal-excluir-disp" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3><i class="fas fa-exclamation-triangle text-danger"></i> Confirmar Exclusão</h3>
+    <p>Tem certeza que deseja remover o dispositivo <strong id="modal-excluir-nome"></strong>?</p>
+    <p class="text-muted">Esta ação também removerá todos os logs e leituras associados.</p>
+    <div class="modal-actions">
+      <button class="btn-danger-modern" id="btnConfirmarExcluir">
+        <i class="fas fa-trash"></i> Excluir
+      </button>
+      <button class="btn-secondary-modern" id="btnCancelarExcluir">
+        <i class="fas fa-times"></i> Cancelar
+      </button>
+    </div>
+  </div>
+</div>
