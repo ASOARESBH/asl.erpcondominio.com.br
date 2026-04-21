@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:www.controlid.com.br)",
-      "Bash(/c/xampp/mysql/bin/mysql.exe -u inlaud99_admin -pAdmin259087@ inlaud99_erpserra)"
+      "Bash(/c/xampp/mysql/bin/mysql.exe -u inlaud99_admin -pAdmin259087@ inlaud99_erpserra)",
+      "WebFetch(domain:manuals.plus)",
+      "WebFetch(domain:www.manualslib.com)",
+      "WebSearch",
+      "WebFetch(domain:fcc.report)",
+      "WebFetch(domain:device.report)",
+      "WebFetch(domain:idcloud.com.br)"
     ]
   }
 }
