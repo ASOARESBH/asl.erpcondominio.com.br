@@ -1,15 +1,11 @@
 <?php
 /**
- * api_dispositivos_controlid.php — API de Dispositivos Control ID v1.0
+ * api_dispositivos_controlid.php — API de Dispositivos Control ID v2.0
  *
  * Gerencia leitores Control ID (IDUHF, iDAccess, etc.) e realiza
- * integração direta com a API REST dos equipamentos para:
- *   - Cadastro/edição/remoção de dispositivos
- *   - Teste de conexão (login na API do equipamento)
- *   - Sincronização de TAGs UHF dos veículos cadastrados
- *   - Coleta de logs de acesso do equipamento
+ * integração direta com a API REST dos equipamentos.
  *
- * Endpoints:
+ * Endpoints originais (PULL mode):
  *   GET    ?acao=listar           — Lista todos os dispositivos
  *   GET    ?acao=obter&id=N       — Obtém um dispositivo
  *   POST   {acao:salvar}          — Cria ou atualiza dispositivo
@@ -19,6 +15,14 @@
  *   POST   {acao:coletar_logs, id:N}           — Coleta access_logs do equipamento
  *   GET    ?acao=sync_log&dispositivo_id=N     — Log de sincronizações
  *   GET    ?acao=leituras&dispositivo_id=N     — Leituras coletadas
+ *
+ * Novos endpoints (Push / Online Mode):
+ *   POST   {acao:configurar_push, id:N, push_url:..., periodo:10}  — Configura push mode no equipamento
+ *   POST   {acao:configurar_online, id:N, server_url:..., modo:pro} — Configura online mode no equipamento
+ *   POST   {acao:enviar_comando, id:N, endpoint:..., body:{...}}   — Enfileira comando push
+ *   GET    ?acao=status_push&id=N              — Status push + eventos recentes
+ *   GET    ?acao=eventos&dispositivo_id=N      — Eventos push/online recebidos
+ *   GET    ?acao=fila_push&dispositivo_id=N    — Fila de comandos push
  */
 
 ob_start();
@@ -41,15 +45,22 @@ $conn = conectar_banco();
 // ROTEAMENTO
 // ============================================================
 switch ($acao) {
-    case 'listar':         _listar($conn);         break;
-    case 'obter':          _obter($conn);           break;
-    case 'salvar':         _salvar($conn, $body);   break;
-    case 'excluir':        _excluir($conn, $body);  break;
-    case 'testar_conexao': _testarConexao($conn, $body); break;
-    case 'sincronizar_tags': _sincronizarTags($conn, $body); break;
-    case 'coletar_logs':   _coletarLogs($conn, $body); break;
-    case 'sync_log':       _syncLog($conn);         break;
-    case 'leituras':       _leituras($conn);        break;
+    case 'listar':            _listar($conn);                    break;
+    case 'obter':             _obter($conn);                     break;
+    case 'salvar':            _salvar($conn, $body);             break;
+    case 'excluir':           _excluir($conn, $body);            break;
+    case 'testar_conexao':    _testarConexao($conn, $body);      break;
+    case 'sincronizar_tags':  _sincronizarTags($conn, $body);    break;
+    case 'coletar_logs':      _coletarLogs($conn, $body);        break;
+    case 'sync_log':          _syncLog($conn);                   break;
+    case 'leituras':          _leituras($conn);                  break;
+    // Push / Online Mode
+    case 'configurar_push':   _configurarPush($conn, $body);     break;
+    case 'configurar_online': _configurarOnline($conn, $body);   break;
+    case 'enviar_comando':    _enviarComando($conn, $body);       break;
+    case 'status_push':       _statusPush($conn);                break;
+    case 'eventos':           _eventos($conn);                   break;
+    case 'fila_push':         _filaPush($conn);                  break;
     default:
         retornar_json(false, 'Ação inválida ou não informada.');
 }
@@ -489,6 +500,276 @@ function _leituras($conn) {
     $leituras = [];
     while ($row = $res->fetch_assoc()) $leituras[] = $row;
     retornar_json(true, 'OK', ['leituras' => $leituras]);
+}
+
+// ============================================================
+// CONFIGURAR PUSH MODE no equipamento
+// ============================================================
+function _configurarPush($conn, $body) {
+    $id         = intval($body['id']       ?? 0);
+    $push_url   = trim($body['push_url']   ?? '');
+    $periodo    = intval($body['periodo']  ?? 10);
+    $timeout_ms = intval($body['timeout']  ?? 30000);
+
+    if (!$id) retornar_json(false, 'ID não informado.');
+    if (!$push_url) {
+        // URL padrão do próprio servidor
+        $host = $_SERVER['HTTP_HOST'] ?? 'asl.erpcondominio.com.br';
+        $push_url = 'https://' . $host . '/api/controlid';
+    }
+
+    $disp = _buscarDispositivo($conn, $id);
+    if (!$disp) retornar_json(false, 'Dispositivo não encontrado.');
+
+    $login = _controlid_login($disp['ip_address'], $disp['porta'], $disp['usuario_api'], $disp['senha_api']);
+    if (!$login['sucesso']) retornar_json(false, 'Falha ao conectar ao dispositivo: ' . $login['erro']);
+
+    $session  = $login['session'];
+    $base_url = "http://{$disp['ip_address']}:{$disp['porta']}";
+
+    $config_payload = [
+        'push_server' => [
+            'push_remote_address'  => $push_url,
+            'push_request_timeout' => (string)$timeout_ms,
+            'push_request_period'  => (string)$periodo
+        ]
+    ];
+
+    $resp = _controlid_post(
+        $base_url . '/set_configuration.fcgi?session=' . $session,
+        $config_payload, $session
+    );
+
+    _controlid_post($base_url . '/logout.fcgi?session=' . $session, [], $session);
+
+    // Atualizar banco com modo e URL push
+    $stmt = $conn->prepare(
+        "UPDATE dispositivos_controlid
+         SET modo_operacao='push', push_ativo=1, push_server_url=?, status_online=1, ultimo_ping=NOW()
+         WHERE id=?"
+    );
+    $stmt->bind_param('si', $push_url, $id);
+    $stmt->execute();
+
+    _registrarSyncLog($conn, $id, 'configurar_push', 'sucesso',
+        json_encode(['push_url' => $push_url, 'periodo' => $periodo, 'resposta' => $resp]));
+
+    retornar_json(true, 'Push mode configurado com sucesso!', [
+        'push_url' => $push_url,
+        'periodo'  => $periodo,
+        'resposta_equipamento' => $resp
+    ]);
+}
+
+// ============================================================
+// CONFIGURAR ONLINE MODE no equipamento
+// ============================================================
+function _configurarOnline($conn, $body) {
+    $id         = intval($body['id']         ?? 0);
+    $server_url = trim($body['server_url']   ?? '');
+    $modo       = trim($body['modo']         ?? 'pro'); // pro | enterprise
+    $acao_acesso = trim($body['acao_acesso']  ?? 'door');
+    $acao_params = trim($body['acao_params']  ?? 'door=1');
+
+    if (!$id) retornar_json(false, 'ID não informado.');
+
+    $disp = _buscarDispositivo($conn, $id);
+    if (!$disp) retornar_json(false, 'Dispositivo não encontrado.');
+
+    if (!$server_url) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'asl.erpcondominio.com.br';
+        $server_url = $host;
+    }
+
+    // Extrair host e porta da URL
+    $parsed   = parse_url('http://' . ltrim($server_url, 'http://https://'));
+    $srv_host = $parsed['host'] ?? $server_url;
+    $srv_port = $parsed['port'] ?? 80;
+
+    $login = _controlid_login($disp['ip_address'], $disp['porta'], $disp['usuario_api'], $disp['senha_api']);
+    if (!$login['sucesso']) retornar_json(false, 'Falha ao conectar ao dispositivo: ' . $login['erro']);
+
+    $session  = $login['session'];
+    $base_url = "http://{$disp['ip_address']}:{$disp['porta']}";
+
+    // Configurar modo online (connection_type: 1=standalone, 2=online_pro, 3=enterprise)
+    $conn_type = ($modo === 'enterprise') ? 3 : 2;
+    $config_payload = [
+        'network_device' => [
+            'server_address'  => $srv_host,
+            'server_port'     => $srv_port,
+            'connection_type' => $conn_type
+        ]
+    ];
+
+    $resp = _controlid_post(
+        $base_url . '/set_configuration.fcgi?session=' . $session,
+        $config_payload, $session
+    );
+
+    _controlid_post($base_url . '/logout.fcgi?session=' . $session, [], $session);
+
+    $modo_operacao = $modo === 'enterprise' ? 'online_enterprise' : 'online_pro';
+
+    $stmt = $conn->prepare(
+        "UPDATE dispositivos_controlid
+         SET modo_operacao=?, online_server_url=?, acao_acesso=?, acao_acesso_params=?,
+             status_online=1, ultimo_ping=NOW()
+         WHERE id=?"
+    );
+    $stmt->bind_param('ssssi', $modo_operacao, $server_url, $acao_acesso, $acao_params, $id);
+    $stmt->execute();
+
+    _registrarSyncLog($conn, $id, 'configurar_online', 'sucesso',
+        json_encode(['modo' => $modo, 'server' => $srv_host . ':' . $srv_port, 'resposta' => $resp]));
+
+    retornar_json(true, "Online mode ($modo) configurado com sucesso!", [
+        'modo'    => $modo,
+        'servidor' => $srv_host . ':' . $srv_port,
+        'resposta_equipamento' => $resp
+    ]);
+}
+
+// ============================================================
+// ENFILEIRAR COMANDO PUSH para o equipamento
+// ============================================================
+function _enviarComando($conn, $body) {
+    $id       = intval($body['id']       ?? 0);
+    $endpoint = trim($body['endpoint']   ?? 'load_objects');
+    $verb     = strtoupper(trim($body['verb'] ?? 'POST'));
+    $cmd_body = $body['body']            ?? [];
+
+    if (!$id) retornar_json(false, 'ID não informado.');
+    if (!in_array($verb, ['GET', 'POST'])) $verb = 'POST';
+
+    $disp = _buscarDispositivo($conn, $id);
+    if (!$disp) retornar_json(false, 'Dispositivo não encontrado.');
+
+    $body_json = json_encode($cmd_body);
+    $stmt = $conn->prepare(
+        "INSERT INTO controlid_push_queue (dispositivo_id, device_id, endpoint, verb, body)
+         VALUES (?, ?, ?, ?, ?)"
+    );
+    $stmt->bind_param('iisss', $id, $disp['push_device_id'], $endpoint, $verb, $body_json);
+    $stmt->execute();
+
+    if ($stmt->error) retornar_json(false, 'Erro ao enfileirar comando: ' . $stmt->error);
+
+    _registrarSyncLog($conn, $id, 'enviar_comando', 'sucesso',
+        json_encode(['endpoint' => $endpoint, 'queue_id' => $conn->insert_id]));
+
+    retornar_json(true, 'Comando enfileirado. Será enviado no próximo ciclo de polling.', [
+        'queue_id' => $conn->insert_id,
+        'endpoint' => $endpoint,
+        'aguarda_push_periodo' => 'O equipamento buscará em até ' . ($disp['push_request_period'] ?? '10') . 's'
+    ]);
+}
+
+// ============================================================
+// STATUS PUSH — situação do push mode e eventos recentes
+// ============================================================
+function _statusPush($conn) {
+    $id = intval($_GET['id'] ?? 0);
+    if (!$id) retornar_json(false, 'ID não informado.');
+
+    $disp = _buscarDispositivo($conn, $id);
+    if (!$disp) retornar_json(false, 'Dispositivo não encontrado.');
+
+    // Fila pendente
+    $fila_pend = $conn->query(
+        "SELECT COUNT(*) AS total FROM controlid_push_queue WHERE dispositivo_id=$id AND status='pendente'"
+    )->fetch_assoc()['total'];
+
+    // Total de eventos
+    $total_ev = $conn->query(
+        "SELECT COUNT(*) AS total FROM controlid_push_eventos WHERE dispositivo_id=$id"
+    )->fetch_assoc()['total'];
+
+    // Últimos 5 eventos
+    $res = $conn->query(
+        "SELECT tipo_evento, acesso_liberado, tag_value, card_value, qrcode_value,
+                veiculo_id, data_evento, data_recebimento
+         FROM controlid_push_eventos WHERE dispositivo_id=$id
+         ORDER BY id DESC LIMIT 5"
+    );
+    $ultimos = [];
+    while ($row = $res->fetch_assoc()) $ultimos[] = $row;
+
+    retornar_json(true, 'OK', [
+        'modo_operacao'     => $disp['modo_operacao'],
+        'push_ativo'        => (bool)$disp['push_ativo'],
+        'push_device_id'    => $disp['push_device_id'],
+        'push_ultimo_contato' => $disp['push_ultimo_contato'],
+        'push_server_url'   => $disp['push_server_url'],
+        'online_server_url' => $disp['online_server_url'],
+        'status_online'     => (bool)$disp['status_online'],
+        'fila_pendente'     => intval($fila_pend),
+        'total_eventos'     => intval($total_ev),
+        'ultimos_eventos'   => $ultimos
+    ]);
+}
+
+// ============================================================
+// EVENTOS PUSH/ONLINE recebidos
+// ============================================================
+function _eventos($conn) {
+    $disp_id = intval($_GET['dispositivo_id'] ?? 0);
+    $tipo    = trim($_GET['tipo']    ?? '');
+    $limit   = min(200, intval($_GET['limit'] ?? 100));
+
+    $where = [];
+    if ($disp_id) $where[] = "e.dispositivo_id = $disp_id";
+    if ($tipo)    $where[] = "e.tipo_evento = '" . $conn->real_escape_string($tipo) . "'";
+    $sql_where = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $sql = "SELECT e.*, d.nome AS dispositivo_nome,
+                   v.placa, v.modelo AS veiculo_modelo, v.cor,
+                   m.nome AS morador_nome, m.unidade
+            FROM controlid_push_eventos e
+            LEFT JOIN dispositivos_controlid d ON d.id = e.dispositivo_id
+            LEFT JOIN veiculos v ON v.id = e.veiculo_id
+            LEFT JOIN moradores m ON m.id = e.morador_id
+            $sql_where
+            ORDER BY e.id DESC
+            LIMIT $limit";
+
+    $res = $conn->query($sql);
+    if (!$res) retornar_json(false, 'Erro: ' . $conn->error);
+
+    $eventos = [];
+    while ($row = $res->fetch_assoc()) {
+        unset($row['payload'], $row['resposta_enviada']); // omitir raw
+        $eventos[] = $row;
+    }
+    retornar_json(true, 'OK', ['eventos' => $eventos]);
+}
+
+// ============================================================
+// FILA DE COMANDOS PUSH
+// ============================================================
+function _filaPush($conn) {
+    $disp_id = intval($_GET['dispositivo_id'] ?? 0);
+    $status  = trim($_GET['status'] ?? '');
+    $limit   = min(100, intval($_GET['limit'] ?? 50));
+
+    $where = [];
+    if ($disp_id) $where[] = "q.dispositivo_id = $disp_id";
+    if ($status)  $where[] = "q.status = '" . $conn->real_escape_string($status) . "'";
+    $sql_where = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $sql = "SELECT q.id, q.dispositivo_id, q.endpoint, q.verb, q.status,
+                   q.tentativas, q.criado_em, q.enviado_em, q.executado_em,
+                   d.nome AS dispositivo_nome
+            FROM controlid_push_queue q
+            LEFT JOIN dispositivos_controlid d ON d.id = q.dispositivo_id
+            $sql_where
+            ORDER BY q.id DESC
+            LIMIT $limit";
+
+    $res = $conn->query($sql);
+    $fila = [];
+    while ($row = $res->fetch_assoc()) $fila[] = $row;
+    retornar_json(true, 'OK', ['fila' => $fila]);
 }
 
 // ============================================================

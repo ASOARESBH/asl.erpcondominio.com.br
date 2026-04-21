@@ -1,23 +1,26 @@
 /**
- * dispositivos.js — Módulo de Dispositivos Control ID v1.0
+ * dispositivos.js — Módulo de Dispositivos Control ID v2.0
  *
  * Gerencia leitores Control ID (IDUHF, iDAccess, etc.) e integração
- * com a API REST dos equipamentos para sincronização de TAGs UHF.
+ * com a API REST dos equipamentos — inclui Push Mode e Online Mode.
  */
 'use strict';
 
 const API = '../api/api_dispositivos_controlid.php';
 let _dispExcluirId = null;
 let _listeners = [];
+let _autoRefreshTimer = null;
 
 // ============================================================
 // INIT / DESTROY
 // ============================================================
 export function init() {
-    console.log('[Dispositivos] Inicializando módulo v1.0...');
+    console.log('[Dispositivos] Inicializando módulo v2.0...');
     _setupTabs();
     _setupForm();
     _setupSincronizacao();
+    _setupPushMode();
+    _setupEventos();
     _setupModais();
     _carregarDispositivos();
     _carregarSyncLog();
@@ -27,6 +30,7 @@ export function init() {
 
 export function destroy() {
     console.log('[Dispositivos] Destruindo módulo...');
+    if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
     _listeners.forEach(({ el, ev, fn }) => el.removeEventListener(ev, fn));
     _listeners = [];
     console.log('[Dispositivos] Módulo destruído.');
@@ -51,6 +55,15 @@ function _setupTabs() {
             const content = document.getElementById(`tab-${tab}`);
             if (content) content.style.display = 'block';
             console.log(`[Dispositivos] Tab ativa: ${tab}`);
+
+            // Controle de auto-refresh na aba eventos
+            if (tab === 'eventos') {
+                _carregarEventos();
+                const chk = document.getElementById('eventos-auto-refresh');
+                if (chk?.checked) _iniciarAutoRefresh();
+            } else {
+                _pararAutoRefresh();
+            }
         });
     });
 }
@@ -213,14 +226,6 @@ async function _carregarDispositivos() {
     }
 }
 
-function _carregarSelectDispositivos(lista) {
-    if (!lista) return;
-    const selSync    = document.getElementById('sync-dispositivo-id');
-    const selFiltro  = document.getElementById('filtro-leituras-disp');
-    const opts = lista.map(d => `<option value="${d.id}">${_esc(d.nome)} (${_esc(d.ip_address)})</option>`).join('');
-    if (selSync)   selSync.innerHTML   = '<option value="">— Selecione um dispositivo —</option>' + opts;
-    if (selFiltro) selFiltro.innerHTML = '<option value="">Todos os dispositivos</option>' + opts;
-}
 
 // ============================================================
 // SINCRONIZAÇÃO
@@ -454,6 +459,284 @@ window.DispositivosPage = {
 };
 
 // ============================================================
+// PUSH MODE — Configuração e Status
+// ============================================================
+function _setupPushMode() {
+    _on(document.getElementById('push-dispositivo-id'), 'change', async () => {
+        const id = document.getElementById('push-dispositivo-id').value;
+        if (id) await _carregarStatusPush(parseInt(id));
+        else document.getElementById('push-status-area').style.display = 'none';
+    });
+
+    _on(document.getElementById('btnAtualizarStatusPush'), 'click', async () => {
+        const id = document.getElementById('push-dispositivo-id').value;
+        if (!id) { _showToast('Selecione um dispositivo.', 'aviso'); return; }
+        await _carregarStatusPush(parseInt(id));
+    });
+
+    _on(document.getElementById('btnConfigurarPush'), 'click', async () => {
+        const id = document.getElementById('push-dispositivo-id').value;
+        if (!id) { _showToast('Selecione um dispositivo.', 'aviso'); return; }
+        await _acionarPush('configurar_push', {
+            acao: 'configurar_push',
+            id: parseInt(id),
+            push_url: document.getElementById('push-url').value.trim(),
+            periodo:  parseInt(document.getElementById('push-periodo').value),
+            timeout:  parseInt(document.getElementById('push-timeout').value)
+        }, 'push-config-resultado', 'Configurando push mode no equipamento...');
+    });
+
+    _on(document.getElementById('btnConfigurarOnline'), 'click', async () => {
+        const id = document.getElementById('push-dispositivo-id').value;
+        if (!id) { _showToast('Selecione um dispositivo.', 'aviso'); return; }
+        await _acionarPush('configurar_online', {
+            acao: 'configurar_online',
+            id: parseInt(id),
+            server_url:   document.getElementById('online-servidor').value.trim(),
+            modo:         document.getElementById('online-modo').value,
+            acao_acesso:  document.getElementById('online-acao-acesso').value,
+            acao_params:  document.getElementById('online-acao-params').value.trim()
+        }, 'online-config-resultado', 'Configurando online mode no equipamento...');
+    });
+
+    _on(document.getElementById('btnEnviarComandoPush'), 'click', async () => {
+        const id = document.getElementById('push-dispositivo-id').value;
+        if (!id) { _showToast('Selecione um dispositivo.', 'aviso'); return; }
+        const bodyStr = document.getElementById('push-cmd-body').value.trim();
+        let body = {};
+        if (bodyStr) {
+            try { body = JSON.parse(bodyStr); }
+            catch { _showToast('JSON do comando inválido.', 'erro'); return; }
+        }
+        await _acionarPush('enviar_comando', {
+            acao: 'enviar_comando',
+            id: parseInt(id),
+            endpoint: document.getElementById('push-cmd-endpoint').value,
+            verb:     document.getElementById('push-cmd-verb').value,
+            body
+        }, 'push-cmd-resultado', 'Enfileirando comando...');
+    });
+
+    _on(document.getElementById('btnAtualizarFila'), 'click', _carregarFilaPush);
+}
+
+async function _carregarStatusPush(id) {
+    document.getElementById('push-status-area').style.display = 'none';
+    try {
+        const resp = await _apiGet(`?acao=status_push&id=${id}`);
+        if (!resp.sucesso) { _showToast(resp.mensagem, 'erro'); return; }
+
+        const d = resp.dados;
+        document.getElementById('push-stat-modo').textContent   = _modoLabel(d.modo_operacao);
+        document.getElementById('push-stat-status').innerHTML   =
+            d.status_online
+                ? '<span class="badge badge-success">Online</span>'
+                : '<span class="badge badge-danger">Offline</span>';
+        document.getElementById('push-stat-ping').textContent   = d.push_ultimo_contato ? _formatarData(d.push_ultimo_contato) : '—';
+        document.getElementById('push-stat-fila').textContent   = d.fila_pendente ?? 0;
+        document.getElementById('push-stat-eventos').textContent = d.total_eventos ?? 0;
+        document.getElementById('push-stat-url').textContent    = d.push_server_url || d.online_server_url || '—';
+        document.getElementById('push-status-area').style.display = 'block';
+
+        // Pre-preencher formulários com URLs atuais
+        if (d.push_server_url)
+            document.getElementById('push-url').value = d.push_server_url;
+        if (d.online_server_url)
+            document.getElementById('online-servidor').value = d.online_server_url;
+
+        // Atualizar fila
+        await _carregarFilaPush();
+
+    } catch (err) {
+        console.error('[Dispositivos Push] Erro ao carregar status:', err);
+    }
+}
+
+async function _acionarPush(tipo, payload, resultadoId, msgProgresso) {
+    const el = document.getElementById(resultadoId);
+    if (!el) return;
+    el.style.display = 'none';
+
+    const btn = tipo === 'configurar_push'  ? document.getElementById('btnConfigurarPush') :
+                tipo === 'configurar_online' ? document.getElementById('btnConfigurarOnline') :
+                                               document.getElementById('btnEnviarComandoPush');
+    if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msgProgresso}`; }
+
+    console.log(`[Dispositivos Push] Ação: ${tipo}`, payload);
+
+    try {
+        const resp = await _api(payload);
+        console.log(`[Dispositivos Push] Resposta ${tipo}:`, resp);
+
+        el.className = resp.sucesso
+            ? 'sync-resultado-box sync-resultado-sucesso'
+            : 'sync-resultado-box sync-resultado-erro';
+        el.innerHTML = resp.sucesso
+            ? `<div class="resultado-sucesso"><i class="fas fa-check-circle"></i> <strong>${_esc(resp.mensagem)}</strong></div>
+               ${_renderDadosPush(tipo, resp.dados)}`
+            : `<div class="resultado-erro"><i class="fas fa-times-circle"></i> <strong>Erro:</strong> ${_esc(resp.mensagem)}</div>`;
+        el.style.display = 'block';
+
+        if (resp.sucesso) {
+            const id = parseInt(payload.id);
+            if (id) await _carregarStatusPush(id);
+            _carregarDispositivos();
+        }
+    } catch (err) {
+        console.error(`[Dispositivos Push] Erro ${tipo}:`, err);
+        el.className = 'sync-resultado-box sync-resultado-erro';
+        el.innerHTML = '<div class="resultado-erro"><i class="fas fa-times-circle"></i> Erro de comunicação com a API.</div>';
+        el.style.display = 'block';
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            const icons = { configurar_push: 'satellite-dish', configurar_online: 'wifi', enviar_comando: 'paper-plane' };
+            const labels = { configurar_push: 'Configurar Push Mode', configurar_online: 'Configurar Online Mode', enviar_comando: 'Enfileirar Comando' };
+            btn.innerHTML = `<i class="fas fa-${icons[tipo] || 'check'}"></i> ${labels[tipo] || 'OK'}`;
+        }
+    }
+}
+
+function _renderDadosPush(tipo, dados) {
+    if (!dados) return '';
+    if (tipo === 'configurar_push') {
+        return `<div class="resultado-stats">
+          <span class="stat-item stat-total">URL: ${_esc(dados.push_url)}</span>
+          <span class="stat-item stat-sucesso">Intervalo: ${dados.periodo}s</span>
+        </div>`;
+    }
+    if (tipo === 'configurar_online') {
+        return `<div class="resultado-stats">
+          <span class="stat-item stat-total">Modo: ${_esc(dados.modo)}</span>
+          <span class="stat-item stat-sucesso">Servidor: ${_esc(dados.servidor)}</span>
+        </div>`;
+    }
+    if (tipo === 'enviar_comando') {
+        return `<div class="resultado-stats">
+          <span class="stat-item stat-total">Fila ID: #${dados.queue_id}</span>
+          <span class="stat-item">Endpoint: ${_esc(dados.endpoint)}</span>
+        </div>`;
+    }
+    return '';
+}
+
+async function _carregarFilaPush() {
+    const tbody = document.getElementById('tbody-fila-push');
+    const dispId = document.getElementById('push-dispositivo-id')?.value || '';
+    const url = `?acao=fila_push&limit=30${dispId ? '&dispositivo_id=' + dispId : ''}`;
+    try {
+        const resp = await _apiGet(url);
+        const fila = resp.dados?.fila || [];
+        if (!fila.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum comando na fila.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = fila.map(c => {
+            const statusClass = { pendente: 'badge-warning', enviado: 'badge-info',
+                                  executado: 'badge-success', erro: 'badge-danger' }[c.status] || 'badge-secondary';
+            return `<tr>
+              <td>${c.id}</td>
+              <td>${_esc(c.dispositivo_nome || '—')}</td>
+              <td><code>${_esc(c.endpoint)}</code></td>
+              <td><span class="badge badge-secondary">${c.verb}</span></td>
+              <td><span class="badge ${statusClass}">${c.status}</span></td>
+              <td>${c.tentativas}</td>
+              <td>${_formatarData(c.criado_em)}</td>
+              <td>${c.executado_em ? _formatarData(c.executado_em) : '—'}</td>
+            </tr>`;
+        }).join('');
+    } catch (err) {
+        console.error('[Dispositivos] Erro ao carregar fila push:', err);
+    }
+}
+
+// ============================================================
+// EVENTOS — Recebidos via Push/Online Mode
+// ============================================================
+function _setupEventos() {
+    _on(document.getElementById('btnAtualizarEventos'), 'click', _carregarEventos);
+    _on(document.getElementById('filtro-eventos-disp'), 'change', _carregarEventos);
+    _on(document.getElementById('filtro-eventos-tipo'), 'change', _carregarEventos);
+
+    const chkAutoRefresh = document.getElementById('eventos-auto-refresh');
+    if (chkAutoRefresh) {
+        _on(chkAutoRefresh, 'change', () => {
+            if (chkAutoRefresh.checked) _iniciarAutoRefresh();
+            else _pararAutoRefresh();
+        });
+    }
+}
+
+function _iniciarAutoRefresh() {
+    _pararAutoRefresh();
+    const badge = document.getElementById('eventos-live-badge');
+    if (badge) badge.style.display = 'inline-flex';
+    _autoRefreshTimer = setInterval(() => {
+        const aba = document.querySelector('.page-dispositivos .tab-btn[data-tab="eventos"]');
+        if (aba?.classList.contains('active')) _carregarEventos();
+    }, 10000);
+}
+
+function _pararAutoRefresh() {
+    if (_autoRefreshTimer) { clearInterval(_autoRefreshTimer); _autoRefreshTimer = null; }
+    const badge = document.getElementById('eventos-live-badge');
+    if (badge) badge.style.display = 'none';
+}
+
+async function _carregarEventos() {
+    const tbody  = document.getElementById('tbody-eventos');
+    const dispId = document.getElementById('filtro-eventos-disp')?.value || '';
+    const tipo   = document.getElementById('filtro-eventos-tipo')?.value  || '';
+    let url = `?acao=eventos&limit=100`;
+    if (dispId) url += `&dispositivo_id=${dispId}`;
+    if (tipo)   url += `&tipo=${encodeURIComponent(tipo)}`;
+
+    try {
+        const resp = await _apiGet(url);
+        const eventos = resp.dados?.eventos || [];
+        if (!eventos.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum evento recebido.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = eventos.map(ev => {
+            const acessoClass = ev.acesso_liberado == 1 ? 'badge-success' : 'badge-danger';
+            const acessoTxt   = ev.acesso_liberado == 1 ? 'Liberado' : 'Negado';
+            const tipoLabel   = _tipoEventoLabel(ev.tipo_evento);
+            const identificador = ev.tag_value || ev.card_value || ev.qrcode_value || '—';
+            return `<tr class="${ev.acesso_liberado == 1 ? '' : 'row-negado'}">
+              <td>${_formatarData(ev.data_recebimento)}</td>
+              <td>${_esc(ev.dispositivo_nome || '—')}</td>
+              <td><span class="badge badge-info">${tipoLabel}</span></td>
+              <td><code>${_esc(identificador)}</code></td>
+              <td>${ev.placa ? `<strong>${_esc(ev.placa)}</strong><br><small>${_esc(ev.veiculo_modelo || '')} ${_esc(ev.cor || '')}</small>` : '—'}</td>
+              <td>${ev.morador_nome ? `${_esc(ev.morador_nome)}<br><small>${_esc(ev.unidade || '')}</small>` : '—'}</td>
+              <td><span class="badge ${acessoClass}">${acessoTxt}</span></td>
+            </tr>`;
+        }).join('');
+    } catch (err) {
+        console.error('[Dispositivos] Erro ao carregar eventos:', err);
+    }
+}
+
+// ============================================================
+// Sincronizar selects de dispositivos para Push e Eventos
+// ============================================================
+function _carregarSelectDispositivos(lista) {
+    if (!lista) return;
+    const opts = lista.map(d => `<option value="${d.id}">${_esc(d.nome)} (${_esc(d.ip_address)})</option>`).join('');
+
+    const selSync      = document.getElementById('sync-dispositivo-id');
+    const selFiltro    = document.getElementById('filtro-leituras-disp');
+    const selPush      = document.getElementById('push-dispositivo-id');
+    const selFiltroEv  = document.getElementById('filtro-eventos-disp');
+
+    if (selSync)     selSync.innerHTML     = '<option value="">— Selecione um dispositivo —</option>' + opts;
+    if (selFiltro)   selFiltro.innerHTML   = '<option value="">Todos os dispositivos</option>' + opts;
+    if (selPush)     selPush.innerHTML     = '<option value="">— Selecione um dispositivo —</option>' + opts;
+    if (selFiltroEv) selFiltroEv.innerHTML = '<option value="">Todos os dispositivos</option>' + opts;
+}
+
+// ============================================================
 // HELPERS
 // ============================================================
 async function _api(payload) {
@@ -492,6 +775,29 @@ function _formatarData(dt) {
 function _tipoLabel(tipo) {
     const labels = { uhf: 'UHF Veicular', rfid: 'RFID/Wiegand', facial: 'Facial', biometria: 'Biometria', qrcode: 'QR Code', outro: 'Outro' };
     return labels[tipo] || tipo;
+}
+
+function _modoLabel(modo) {
+    const labels = {
+        standalone:         'Standalone (PULL)',
+        push:               'Push Polling',
+        online_pro:         'Online Pro',
+        online_enterprise:  'Online Enterprise'
+    };
+    return labels[modo] || modo || '—';
+}
+
+function _tipoEventoLabel(tipo) {
+    const labels = {
+        uhf_tag:         'UHF Tag',
+        card:            'Cartão',
+        qrcode:          'QR Code',
+        user_identified: 'Identificado Pro',
+        heartbeat:       'Heartbeat',
+        dao:             'Monitor DAO',
+        door:            'Porta/Relay'
+    };
+    return labels[tipo] || tipo || '—';
 }
 
 function _eventoLabel(ev) {

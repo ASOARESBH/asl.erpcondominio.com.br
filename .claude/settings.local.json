@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.controlid.com.br)",
+      "Bash(/c/xampp/mysql/bin/mysql.exe -u inlaud99_admin -pAdmin259087@ inlaud99_erpserra)"
+    ]
+  }
+}

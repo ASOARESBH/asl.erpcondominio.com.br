@@ -13,6 +13,12 @@
     <button class="tab-btn active" data-tab="dispositivos">
       <i class="fas fa-server"></i> Dispositivos
     </button>
+    <button class="tab-btn" data-tab="push">
+      <i class="fas fa-bolt"></i> Modo Push
+    </button>
+    <button class="tab-btn" data-tab="eventos">
+      <i class="fas fa-stream"></i> Eventos
+    </button>
     <button class="tab-btn" data-tab="sincronizacao">
       <i class="fas fa-sync-alt"></i> Sincronização
     </button>
@@ -142,6 +148,290 @@
           </thead>
           <tbody id="tbody-dispositivos">
             <tr><td colspan="7" class="text-center text-muted">Nenhum dispositivo cadastrado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ABA: MODO PUSH ===================== -->
+  <div id="tab-push" class="tab-content" style="display:none;">
+
+    <!-- Status Push por dispositivo -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-bolt"></i> Modo Push — Configuração e Status</h2>
+        <button class="btn-secondary-modern" id="btnAtualizarStatusPush" type="button">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+      </div>
+      <p class="card-subtitle">
+        No <strong>Modo Push</strong>, o equipamento inicia a comunicação periodicamente com o servidor,
+        eliminando a necessidade de acesso de rede do servidor ao equipamento.
+        Ideal para redes NAT ou equipamentos atrás de firewall.
+      </p>
+
+      <div class="form-grid">
+        <div>
+          <label>Dispositivo *</label>
+          <select id="push-dispositivo-id">
+            <option value="">— Selecione um dispositivo —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Status cards -->
+      <div id="push-status-area" style="display:none;">
+        <div class="push-status-cards">
+          <div class="push-stat-card">
+            <div class="push-stat-icon push-icon-modo"><i class="fas fa-cog"></i></div>
+            <div class="push-stat-info">
+              <span class="push-stat-label">Modo de Operação</span>
+              <span class="push-stat-value" id="push-stat-modo">—</span>
+            </div>
+          </div>
+          <div class="push-stat-card">
+            <div class="push-stat-icon push-icon-status"><i class="fas fa-circle"></i></div>
+            <div class="push-stat-info">
+              <span class="push-stat-label">Status</span>
+              <span class="push-stat-value" id="push-stat-status">—</span>
+            </div>
+          </div>
+          <div class="push-stat-card">
+            <div class="push-stat-icon push-icon-ping"><i class="fas fa-clock"></i></div>
+            <div class="push-stat-info">
+              <span class="push-stat-label">Último Contato</span>
+              <span class="push-stat-value" id="push-stat-ping">—</span>
+            </div>
+          </div>
+          <div class="push-stat-card">
+            <div class="push-stat-icon push-icon-fila"><i class="fas fa-list"></i></div>
+            <div class="push-stat-info">
+              <span class="push-stat-label">Comandos na Fila</span>
+              <span class="push-stat-value" id="push-stat-fila">0</span>
+            </div>
+          </div>
+          <div class="push-stat-card">
+            <div class="push-stat-icon push-icon-eventos"><i class="fas fa-stream"></i></div>
+            <div class="push-stat-info">
+              <span class="push-stat-label">Total Eventos</span>
+              <span class="push-stat-value" id="push-stat-eventos">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="push-url-info">
+          <span class="push-url-label"><i class="fas fa-link"></i> URL Push configurada:</span>
+          <code id="push-stat-url">—</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configurar Push Mode -->
+    <div class="page-card">
+      <h2><i class="fas fa-satellite-dish"></i> Configurar Push Mode no Equipamento</h2>
+      <p class="card-subtitle">
+        Envia a configuração diretamente ao equipamento via API REST (requer acesso de rede ao IP do equipamento).
+        Após configurado, o equipamento passa a enviar dados proativamente para o servidor.
+      </p>
+
+      <div class="form-grid">
+        <div class="full-width">
+          <label>URL do Servidor Push</label>
+          <input type="text" id="push-url" placeholder="https://asl.erpcondominio.com.br/api/controlid"
+                 title="URL base que o equipamento usará para polling. Deixe em branco para usar a URL padrão do sistema.">
+          <small class="field-hint">URL que o equipamento chamará periodicamente. Deixe em branco para usar a URL padrão do sistema.</small>
+        </div>
+        <div>
+          <label>Intervalo de Polling (segundos)</label>
+          <input type="number" id="push-periodo" value="10" min="5" max="300"
+                 title="Intervalo em segundos entre cada polling do equipamento">
+          <small class="field-hint">Recomendado: 10s. Mínimo: 5s.</small>
+        </div>
+        <div>
+          <label>Timeout do Request (ms)</label>
+          <input type="number" id="push-timeout" value="30000" min="5000" max="120000"
+                 title="Timeout em milissegundos para cada request de polling">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-primary-modern" id="btnConfigurarPush" type="button">
+          <i class="fas fa-satellite-dish"></i> Configurar Push Mode
+        </button>
+      </div>
+
+      <div id="push-config-resultado" style="display:none;" class="sync-resultado-box"></div>
+    </div>
+
+    <!-- Configurar Online Mode -->
+    <div class="page-card">
+      <h2><i class="fas fa-wifi"></i> Configurar Online Mode no Equipamento</h2>
+      <p class="card-subtitle">
+        No <strong>Online Mode</strong>, o equipamento envia cada identificação em tempo real para o servidor,
+        que autoriza ou nega o acesso imediatamente. Disponível nos modos Pro e Enterprise.
+      </p>
+
+      <div class="form-grid">
+        <div>
+          <label>Endereço do Servidor Online</label>
+          <input type="text" id="online-servidor" placeholder="asl.erpcondominio.com.br"
+                 title="Hostname ou IP do servidor para o modo online (sem https://)">
+          <small class="field-hint">Hostname que o equipamento usará para enviar eventos de identificação.</small>
+        </div>
+        <div>
+          <label>Modo Online</label>
+          <select id="online-modo" title="Modo de operação online do equipamento">
+            <option value="pro">Pro — Identificação no equipamento, autorização no servidor</option>
+            <option value="enterprise">Enterprise — Identificação e autorização no servidor</option>
+          </select>
+        </div>
+        <div>
+          <label>Ação ao Liberar Acesso</label>
+          <select id="online-acao-acesso" title="Tipo de relay/acionamento ao conceder acesso">
+            <option value="door">door — Relay interno (iDAccess, iDFlex, iDFit)</option>
+            <option value="sec_box">sec_box — Relay externo MAE (iDUHF, iDAccess Pro)</option>
+            <option value="catra">catra — Catraca (iDBlock)</option>
+          </select>
+        </div>
+        <div>
+          <label>Parâmetros da Ação</label>
+          <input type="text" id="online-acao-params" value="door=1"
+                 placeholder="door=1 | id=65793, reason=1 | allow=clockwise"
+                 title="Parâmetros enviados ao relay. Exemplos: door=1, id=65793 reason=1, allow=clockwise">
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-success-modern" id="btnConfigurarOnline" type="button">
+          <i class="fas fa-wifi"></i> Configurar Online Mode
+        </button>
+      </div>
+
+      <div id="online-config-resultado" style="display:none;" class="sync-resultado-box"></div>
+    </div>
+
+    <!-- Enviar Comando Push -->
+    <div class="page-card">
+      <h2><i class="fas fa-terminal"></i> Enviar Comando via Push</h2>
+      <p class="card-subtitle">
+        Enfileira um comando para ser executado pelo equipamento no próximo ciclo de polling.
+        Útil para acionar sincronizações, coletar logs ou executar ações sem login direto.
+      </p>
+
+      <div class="form-grid">
+        <div>
+          <label>Comando (Endpoint Control ID)</label>
+          <select id="push-cmd-endpoint" title="Endpoint da API Control ID a ser executado no equipamento">
+            <option value="load_objects">load_objects — Listar objetos</option>
+            <option value="create_objects">create_objects — Criar objetos</option>
+            <option value="destroy_objects">destroy_objects — Remover objetos</option>
+            <option value="set_configuration">set_configuration — Configurar equipamento</option>
+            <option value="message_to_screen">message_to_screen — Mensagem na tela</option>
+          </select>
+        </div>
+        <div>
+          <label>Método HTTP</label>
+          <select id="push-cmd-verb" title="Método HTTP do comando">
+            <option value="POST">POST</option>
+            <option value="GET">GET</option>
+          </select>
+        </div>
+        <div class="full-width">
+          <label>Body do Comando (JSON)</label>
+          <textarea id="push-cmd-body" rows="4"
+                    placeholder='{"object": "access_logs", "limit": 100}'
+                    title="JSON do corpo do comando a enviar ao equipamento"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn-secondary-modern" id="btnEnviarComandoPush" type="button">
+          <i class="fas fa-paper-plane"></i> Enfileirar Comando
+        </button>
+      </div>
+
+      <div id="push-cmd-resultado" style="display:none;" class="sync-resultado-box"></div>
+    </div>
+
+    <!-- Fila de Comandos -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-list-ol"></i> Fila de Comandos Push</h2>
+        <button class="btn-secondary-modern" id="btnAtualizarFila" type="button">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Dispositivo</th>
+              <th>Endpoint</th>
+              <th>Método</th>
+              <th>Status</th>
+              <th>Tentativas</th>
+              <th>Criado em</th>
+              <th>Executado em</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-fila-push">
+            <tr><td colspan="8" class="text-center text-muted">Nenhum comando na fila.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ABA: EVENTOS ===================== -->
+  <div id="tab-eventos" class="tab-content" style="display:none;">
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-stream"></i> Eventos Recebidos em Tempo Real</h2>
+        <div class="table-tools">
+          <select id="filtro-eventos-disp" title="Filtrar por dispositivo">
+            <option value="">Todos os dispositivos</option>
+          </select>
+          <select id="filtro-eventos-tipo" title="Filtrar por tipo de evento">
+            <option value="">Todos os tipos</option>
+            <option value="uhf_tag">UHF Tag</option>
+            <option value="card">Cartão</option>
+            <option value="qrcode">QR Code</option>
+            <option value="user_identified">Usuário Identificado</option>
+            <option value="dao">Monitor DAO</option>
+            <option value="heartbeat">Heartbeat</option>
+            <option value="door">Porta/Relay</option>
+          </select>
+          <label class="auto-refresh-toggle">
+            <input type="checkbox" id="eventos-auto-refresh" checked>
+            Auto-refresh (10s)
+          </label>
+          <button class="btn-secondary-modern" id="btnAtualizarEventos" type="button">
+            <i class="fas fa-sync-alt"></i> Atualizar
+          </button>
+        </div>
+      </div>
+
+      <div id="eventos-live-badge" class="live-badge" style="display:none;">
+        <span class="live-dot"></span> LIVE
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data/Hora</th>
+              <th>Dispositivo</th>
+              <th>Tipo</th>
+              <th>TAG / Cartão / QR</th>
+              <th>Veículo</th>
+              <th>Morador</th>
+              <th>Acesso</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-eventos">
+            <tr><td colspan="7" class="text-center text-muted">Nenhum evento recebido.</td></tr>
           </tbody>
         </table>
       </div>
@@ -354,7 +644,56 @@
       </div>
 
       <div class="guia-section">
-        <h3><i class="fas fa-exclamation-triangle"></i> 5. Requisitos e Observações</h3>
+        <h3><i class="fas fa-bolt"></i> 5. Modo Push — Comunicação Invertida (Recomendado)</h3>
+        <p>No <strong>Modo Push</strong>, o equipamento inicia a comunicação com o servidor — não o contrário.</p>
+        <table class="data-table">
+          <thead><tr><th>Modo</th><th>Quem inicia</th><th>Quando usar</th><th>URL no equipamento</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>PULL (padrão atual)</strong></td>
+              <td>Servidor → Equipamento</td>
+              <td>Servidor tem acesso ao IP do equipamento na rede local</td>
+              <td>IP do equipamento configurado no ERP</td>
+            </tr>
+            <tr>
+              <td><strong>Push Polling</strong></td>
+              <td>Equipamento → Servidor</td>
+              <td>Equipamento tem internet mas servidor não alcança o equipamento (NAT)</td>
+              <td><code>https://asl.erpcondominio.com.br/api/controlid</code></td>
+            </tr>
+            <tr>
+              <td><strong>Online Mode Pro</strong></td>
+              <td>Equipamento → Servidor (cada leitura)</td>
+              <td>Autorização em tempo real — melhor para controle de acesso rigoroso</td>
+              <td><code>asl.erpcondominio.com.br</code></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="alert-box alert-info" style="margin-top:12px;">
+          <i class="fas fa-info-circle"></i>
+          <strong>Como ativar:</strong> Vá na aba <strong>Modo Push</strong>, selecione o dispositivo,
+          configure a URL e clique em <strong>Configurar Push Mode</strong>. O sistema enviará
+          a configuração diretamente ao equipamento.
+        </div>
+        <h4 style="margin-top:16px;">Endpoints disponíveis no servidor:</h4>
+        <table class="data-table">
+          <thead><tr><th>Método</th><th>URL</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td>GET</td><td><code>/api/controlid/push</code></td><td>Push polling — equipamento busca comandos</td></tr>
+            <tr><td>POST</td><td><code>/api/controlid/result</code></td><td>Resultado do comando executado</td></tr>
+            <tr><td>POST</td><td><code>/new_uhf_tag.fcgi</code></td><td>Online Mode — leitura UHF</td></tr>
+            <tr><td>POST</td><td><code>/new_user_identified.fcgi</code></td><td>Online Mode Pro — usuário identificado</td></tr>
+            <tr><td>POST</td><td><code>/new_card.fcgi</code></td><td>Online Mode — cartão Wiegand</td></tr>
+            <tr><td>POST</td><td><code>/new_qrcode.fcgi</code></td><td>Online Mode — QR Code</td></tr>
+            <tr><td>POST</td><td><code>/device_is_alive.fcgi</code></td><td>Heartbeat / verificação de conectividade</td></tr>
+            <tr><td>POST</td><td><code>/api/controlid/notifications/dao</code></td><td>Monitor — mudanças em access_logs</td></tr>
+            <tr><td>POST</td><td><code>/api/controlid/notifications/door</code></td><td>Monitor — estado da porta/relay</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="guia-section">
+        <h3><i class="fas fa-exclamation-triangle"></i> 6. Requisitos e Observações</h3>
         <ul>
           <li>O servidor do ERP (HostGator) deve ter acesso de rede ao IP do equipamento. Em redes locais, pode ser necessário configurar um <strong>proxy reverso</strong> ou usar o módulo de integração local.</li>
           <li>A API do Control ID usa HTTP (porta 80 por padrão) — certifique-se de que firewalls não bloqueiam essa porta.</li>

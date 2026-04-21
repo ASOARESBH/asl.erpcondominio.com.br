@@ -6,6 +6,16 @@ RewriteEngine On
 # Página inicial padrão - Redireciona para login.html
 DirectoryIndex login.html
 
+# --- CONTROL ID ONLINE MODE — Endpoints .fcgi → api/controlid/ ---
+# O equipamento chama estas URLs no modo Online (Pro/Enterprise).
+# Devem ficar ANTES das regras de arquivos reais pois .fcgi não existe em disco.
+
+RewriteRule ^new_uhf_tag\.fcgi$         api/controlid/new_uhf_tag.php         [QSA,L]
+RewriteRule ^new_user_identified\.fcgi$ api/controlid/new_user_identified.php [QSA,L]
+RewriteRule ^new_card\.fcgi$            api/controlid/new_card.php            [QSA,L]
+RewriteRule ^new_qrcode\.fcgi$          api/controlid/new_qrcode.php          [QSA,L]
+RewriteRule ^device_is_alive\.fcgi$     api/controlid/device_is_alive.php     [QSA,L]
+
 # --- REGRAS PRINCIPAIS DE ROTEAMENTO ---
 
 # 1. PERMITIR: Arquivos reais (imagens, css, js, etc) - não fazer rewrite
