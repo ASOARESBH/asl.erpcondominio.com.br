@@ -899,6 +899,10 @@
             <i class="fas fa-tint" aria-hidden="true"></i>
             <span>Hidrômetro</span>
         </button>
+        <button class="nav-tab" onclick="abrirAba('veiculos', this)" aria-label="Veículos">
+            <i class="fas fa-car" aria-hidden="true"></i>
+            <span>Veículos</span>
+        </button>
     </div>
 </nav>
 
@@ -1300,6 +1304,31 @@
         </div>
     </div>
 
+    <!-- ============================================================
+         ABA: VEÍCULOS
+         ============================================================ -->
+    <div id="panel-veiculos" class="tab-panel" role="tabpanel">
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon"><i class="fas fa-car" aria-hidden="true"></i></div>
+                <div>
+                    <h2>Meus Veículos</h2>
+                    <p>Veículos cadastrados para você e seus dependentes</p>
+                </div>
+            </div>
+
+            <!-- Resumo de totais -->
+            <div id="veiculosResumo" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1.25rem;"></div>
+
+            <!-- Tabela de veículos -->
+            <div id="veiculosLista">
+                <div class="empty-state"><i class="fas fa-car"></i><p>Carregando veículos...</p></div>
+            </div>
+        </div>
+
+    </div>
+
 </main>
 
 <!-- ================================================================
@@ -1473,7 +1502,8 @@ function abrirAba(aba, btnEl) {
         acessos:     () => { carregarVisitantesSelect(); carregarAcessos(); },
         dependentes: carregarDependentes,
         protocolos:  () => carregarProtocolos(''),
-        hidrometro:  carregarHidrometro
+        hidrometro:  carregarHidrometro,
+        veiculos:    carregarVeiculos
     };
     if (loaders[aba]) loaders[aba]();
 
@@ -2212,6 +2242,127 @@ function carregarHidrometro() {
         document.getElementById('dadosHidrometro').innerHTML =
             '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar dados do hidrômetro</p></div>';
     });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   VEÍCULOS (somente leitura)
+   ────────────────────────────────────────────────────────────────── */
+function carregarVeiculos() {
+    console.log('[Portal] Carregando veículos do morador...');
+    const lista   = document.getElementById('veiculosLista');
+    const resumo  = document.getElementById('veiculosResumo');
+    lista.innerHTML  = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Carregando veículos...</p></div>';
+    resumo.innerHTML = '';
+
+    fetch(window.location.origin + '/api/api_portal_morador.php?action=veiculos', {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        console.log('[Portal] Resposta veículos:', data);
+        if (!data.sucesso) {
+            lista.innerHTML = `<div class="empty-state"><i class="fas fa-car"></i><p>${escHtml(data.mensagem)}</p></div>`;
+            return;
+        }
+
+        const veiculos = data.dados?.veiculos || [];
+
+        if (veiculos.length === 0) {
+            lista.innerHTML = '<div class="empty-state"><i class="fas fa-car"></i><p>Nenhum veículo cadastrado para sua unidade</p></div>';
+            return;
+        }
+
+        // Resumo de totais
+        const total   = veiculos.length;
+        const ativos  = veiculos.filter(v => v.ativo == 1).length;
+        const inativos = total - ativos;
+        resumo.innerHTML = `
+            <span style="background:#dbeafe;color:#1e40af;padding:4px 14px;border-radius:20px;font-size:.82rem;font-weight:600;">
+                <i class="fas fa-car"></i> ${total} veículo${total !== 1 ? 's' : ''}
+            </span>
+            ${ativos > 0 ? `<span style="background:#dcfce7;color:#166534;padding:4px 14px;border-radius:20px;font-size:.82rem;font-weight:600;">
+                <i class="fas fa-check-circle"></i> ${ativos} ativo${ativos !== 1 ? 's' : ''}
+            </span>` : ''}
+            ${inativos > 0 ? `<span style="background:#fee2e2;color:#991b1b;padding:4px 14px;border-radius:20px;font-size:.82rem;font-weight:600;">
+                <i class="fas fa-times-circle"></i> ${inativos} inativo${inativos !== 1 ? 's' : ''}
+            </span>` : ''}
+        `;
+
+        // Tabela de veículos
+        let html = `
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Placa</th>
+                        <th>Modelo</th>
+                        <th>Cor</th>
+                        <th>TAG RFID</th>
+                        <th>Titular</th>
+                        <th>Cadastro</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        veiculos.forEach(v => {
+            const titular = v.dependente_nome
+                ? `<span style="color:var(--text-secondary);font-size:.85rem;"><i class="fas fa-user-friends" style="margin-right:4px;"></i>${escHtml(v.dependente_nome)}</span>`
+                : `<span style="color:var(--primary);font-size:.85rem;"><i class="fas fa-user" style="margin-right:4px;"></i>Titular</span>`;
+
+            const statusBadge = v.ativo == 1
+                ? `<span class="badge badge-success">Ativo</span>`
+                : `<span class="badge badge-danger">Inativo</span>`;
+
+            const tagHtml = v.tag
+                ? `<code style="background:#f1f5f9;padding:2px 7px;border-radius:4px;font-size:.82rem;color:#1e40af;">${escHtml(v.tag)}</code>`
+                : `<span style="color:var(--text-muted);">—</span>`;
+
+            html += `
+                <tr style="${v.ativo != 1 ? 'opacity:.6;' : ''}">
+                    <td><strong style="letter-spacing:.05em;">${escHtml(v.placa)}</strong></td>
+                    <td>${escHtml(v.modelo)}</td>
+                    <td>
+                        <span style="display:inline-flex;align-items:center;gap:6px;">
+                            <span style="width:14px;height:14px;border-radius:50%;background:${corParaCss(v.cor)};border:1px solid #e2e8f0;display:inline-block;"></span>
+                            ${escHtml(v.cor || '—')}
+                        </span>
+                    </td>
+                    <td>${tagHtml}</td>
+                    <td>${titular}</td>
+                    <td style="white-space:nowrap;color:var(--text-muted);font-size:.85rem;">${escHtml(v.data_cadastro || '—')}</td>
+                    <td>${statusBadge}</td>
+                </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        lista.innerHTML = html;
+    })
+    .catch(err => {
+        console.error('[Portal] Erro veículos:', err);
+        lista.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar veículos. Tente novamente.</p></div>';
+    });
+}
+
+/* Função auxiliar: converte nome de cor para CSS */
+function corParaCss(cor) {
+    if (!cor) return '#e2e8f0';
+    const mapa = {
+        'branco': '#f8fafc', 'branca': '#f8fafc',
+        'preto': '#1e293b', 'preta': '#1e293b',
+        'prata': '#94a3b8', 'cinza': '#94a3b8',
+        'vermelho': '#ef4444', 'vermelha': '#ef4444',
+        'azul': '#3b82f6',
+        'verde': '#22c55e',
+        'amarelo': '#eab308', 'amarela': '#eab308',
+        'laranja': '#f97316',
+        'marrom': '#92400e',
+        'bege': '#d4b896',
+        'roxo': '#a855f7', 'roxa': '#a855f7',
+        'rosa': '#ec4899',
+        'dourado': '#d97706', 'dourada': '#d97706'
+    };
+    return mapa[cor.toLowerCase().trim()] || '#e2e8f0';
 }
 
 /* ──────────────────────────────────────────────────────────────────

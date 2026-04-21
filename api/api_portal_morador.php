@@ -338,6 +338,34 @@ if ($action === 'hidrometro' && $metodo === 'GET') {
 }
 
 // ========================================
+// VEÍCULOS DO MORADOR (somente leitura)
+// ========================================
+if ($action === 'veiculos' && $metodo === 'GET') {
+    $stmt = $conexao->prepare("
+        SELECT v.id, v.placa, v.modelo, v.cor, v.tag, v.ativo,
+               v.dependente_id,
+               d.nome_completo AS dependente_nome,
+               DATE_FORMAT(v.data_cadastro, '%d/%m/%Y') AS data_cadastro
+        FROM veiculos v
+        LEFT JOIN dependentes d ON v.dependente_id = d.id
+        WHERE v.morador_id = ?
+        ORDER BY v.ativo DESC, v.data_cadastro DESC
+    ");
+    if (!$stmt) {
+        retornar_json(false, 'Erro ao preparar consulta de veículos: ' . $conexao->error);
+    }
+    $stmt->bind_param('i', $morador_id);
+    $stmt->execute();
+    $resultado = $stmt->get_result();
+    $veiculos = [];
+    while ($row = $resultado->fetch_assoc()) {
+        $veiculos[] = $row;
+    }
+    $stmt->close();
+    retornar_json(true, 'Veículos obtidos com sucesso.', ['veiculos' => $veiculos]);
+}
+
+// ========================================
 // AÇÃO NÃO ENCONTRADA
 // ========================================
 http_response_code(404);
