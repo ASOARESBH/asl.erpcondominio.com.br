@@ -12,7 +12,8 @@
         { id: 'financeiro', label: 'Financeiro', icon: 'fas fa-money-bill-wave', page: 'financeiro', href: 'layout-base.html?page=financeiro', order: 8 },
         { id: 'configuracao', label: 'Configuracoes', icon: 'fas fa-cog', page: 'configuracao', href: 'configuracao.html', order: 9 },
         { id: 'manutencao', label: 'Manutencao', icon: 'fas fa-tools', page: 'manutencao', href: 'manutencao.html', order: 10 },
-        { id: 'administrativa', label: 'Administrativo', icon: 'fas fa-briefcase', page: 'administrativa', href: 'administrativa.html', order: 11 }
+        { id: 'administrativa', label: 'Administrativo', icon: 'fas fa-briefcase', page: 'administrativa', href: 'administrativa.html', order: 11 },
+        { id: 'recursos_humanos', label: 'Recursos Humanos', icon: 'fas fa-users-cog', page: 'recursos_humanos', href: 'layout-base.html?page=recursos_humanos', order: 12 }
     ];
 
     const LEGACY_GROUP_BY_PAGE = {
