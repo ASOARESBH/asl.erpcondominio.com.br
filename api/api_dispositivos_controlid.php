@@ -886,32 +886,25 @@ function _gerarApiKey($conn) {
     $chave = bin2hex(random_bytes(32));
     $hash  = hash('sha256', $chave); // armazenar hash no banco
 
-    // Salvar na tabela configuracoes (cria se não existir)
-    $conn->query("CREATE TABLE IF NOT EXISTS configuracoes (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        chave VARCHAR(100) NOT NULL UNIQUE,
-        valor TEXT,
-        descricao VARCHAR(255),
-        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-    // Upsert da chave
+    // Upsert da chave — usa a estrutura real da tabela configuracoes (coluna data_atualizacao)
     $stmt = $conn->prepare(
         "INSERT INTO configuracoes (chave, valor, descricao)
          VALUES ('bridge_api_key', ?, 'Chave de autenticação do Bridge Control ID')
-         ON DUPLICATE KEY UPDATE valor = VALUES(valor), atualizado_em = NOW()"
+         ON DUPLICATE KEY UPDATE valor = VALUES(valor), data_atualizacao = NOW()"
     );
+    if (!$stmt) retornar_json(false, 'Erro prepare: ' . $conn->error);
     $stmt->bind_param('s', $chave);
     $stmt->execute();
     if ($stmt->error) retornar_json(false, 'Erro ao salvar chave: ' . $stmt->error);
 
     // Registrar data de geração
+    $agora = date('Y-m-d H:i:s');
     $stmt2 = $conn->prepare(
         "INSERT INTO configuracoes (chave, valor, descricao)
-         VALUES ('bridge_api_key_gerada_em', NOW(), 'Data de geração da API Key do Bridge')
-         ON DUPLICATE KEY UPDATE valor = NOW(), atualizado_em = NOW()"
+         VALUES ('bridge_api_key_gerada_em', ?, 'Data de geração da API Key do Bridge')
+         ON DUPLICATE KEY UPDATE valor = VALUES(valor), data_atualizacao = NOW()"
     );
-    $stmt2->execute();
+    if ($stmt2) { $stmt2->bind_param('s', $agora); $stmt2->execute(); }
 
     retornar_json(true, 'Nova chave gerada com sucesso.', [
         'api_key'    => $chave,
@@ -924,8 +917,9 @@ function _gerarApiKey($conn) {
 // ============================================================
 function _revogarApiKey($conn) {
     $stmt = $conn->prepare(
-        "UPDATE configuracoes SET valor = '' WHERE chave = 'bridge_api_key'"
+        "UPDATE configuracoes SET valor = '', data_atualizacao = NOW() WHERE chave = 'bridge_api_key'"
     );
+    if (!$stmt) retornar_json(false, 'Erro prepare: ' . $conn->error);
     $stmt->execute();
     retornar_json(true, 'Chave revogada com sucesso. O Bridge será desconectado na próxima verificação.');
 }
