@@ -22,6 +22,7 @@ export function init() {
     _setupPushMode();
     _setupEventos();
     _setupModais();
+    _setupBridge();
     _carregarDispositivos();
     _carregarSyncLog();
     _carregarLeituras();
@@ -63,6 +64,11 @@ function _setupTabs() {
                 if (chk?.checked) _iniciarAutoRefresh();
             } else {
                 _pararAutoRefresh();
+            }
+            // Carregar dados da aba bridge ao abrir
+            if (tab === 'bridge') {
+                _carregarStatusBridge();
+                _carregarApiKey();
             }
         });
     });
@@ -815,6 +821,207 @@ function _resumoDetalhes(detalhes) {
         if (d.total_logs !== undefined) return `Logs: ${d.total_logs}, Importados: ${d.importados || 0}`;
     } catch {}
     return detalhes.substring(0, 80) + (detalhes.length > 80 ? '...' : '');
+}
+
+// ============================================================
+// BRIDGE / API KEY
+// ============================================================
+function _setupBridge() {
+    // Botão: Gerar nova chave
+    _on(document.getElementById('btnGerarKey'), 'click', async () => {
+        if (!confirm('Gerar uma nova chave irá invalidar a chave anterior.\nO Bridge precisará ser atualizado com a nova chave.\n\nDeseja continuar?')) return;
+        console.log('[Bridge] Gerando nova API Key...');
+        try {
+            const resp = await _api({ acao: 'gerar_api_key' });
+            console.log('[Bridge] Resposta gerar_api_key:', resp);
+            if (resp.sucesso) {
+                _exibirApiKey(resp.dados.api_key);
+                _atualizarConfigPreview(resp.dados.api_key);
+                _showToast('Nova chave gerada com sucesso! Atualize o config.json do Bridge.', 'sucesso');
+            } else {
+                _showToast(resp.mensagem || 'Erro ao gerar chave.', 'erro');
+            }
+        } catch (err) {
+            console.error('[Bridge] Erro ao gerar chave:', err);
+            _showToast('Erro de comunicação com a API.', 'erro');
+        }
+    });
+
+    // Botão: Revogar chave
+    _on(document.getElementById('btnRevogarKey'), 'click', async () => {
+        if (!confirm('Revogar a chave irá desconectar o Bridge imediatamente.\nVocê precisará gerar uma nova chave e reconfigurá-la.\n\nDeseja continuar?')) return;
+        console.log('[Bridge] Revogando API Key...');
+        try {
+            const resp = await _api({ acao: 'revogar_api_key' });
+            if (resp.sucesso) {
+                _exibirApiKey('');
+                _showToast('Chave revogada. O Bridge foi desconectado.', 'aviso');
+            } else {
+                _showToast(resp.mensagem || 'Erro ao revogar.', 'erro');
+            }
+        } catch (err) {
+            _showToast('Erro de comunicação com a API.', 'erro');
+        }
+    });
+
+    // Botão: Mostrar/ocultar chave
+    _on(document.getElementById('btnToggleKeyVisibility'), 'click', () => {
+        const input = document.getElementById('bridge-api-key-input');
+        const icon  = document.getElementById('bridge-key-eye-icon');
+        if (!input) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fas fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fas fa-eye';
+        }
+    });
+
+    // Botão: Copiar chave
+    _on(document.getElementById('btnCopiarKey'), 'click', async () => {
+        const input = document.getElementById('bridge-api-key-input');
+        if (!input?.value) { _showToast('Nenhuma chave para copiar.', 'aviso'); return; }
+        try {
+            await navigator.clipboard.writeText(input.value);
+            const feedback = document.getElementById('bridge-key-copy-feedback');
+            if (feedback) {
+                feedback.style.display = 'flex';
+                setTimeout(() => { feedback.style.display = 'none'; }, 3000);
+            }
+            console.log('[Bridge] Chave copiada para a área de transferência.');
+        } catch {
+            // Fallback para navegadores sem clipboard API
+            input.type = 'text';
+            input.select();
+            document.execCommand('copy');
+            _showToast('Chave copiada!', 'sucesso');
+        }
+    });
+
+    // Botão: Copiar config.json
+    _on(document.getElementById('btnCopiarConfigJson'), 'click', async () => {
+        const pre = document.getElementById('bridge-config-preview');
+        if (!pre) return;
+        try {
+            await navigator.clipboard.writeText(pre.textContent);
+            _showToast('Configuração copiada!', 'sucesso');
+        } catch {
+            _showToast('Não foi possível copiar automaticamente. Selecione o texto manualmente.', 'aviso');
+        }
+    });
+
+    // Botão: Atualizar status do bridge
+    _on(document.getElementById('btnAtualizarStatusBridge'), 'click', () => {
+        _carregarStatusBridge();
+    });
+}
+
+async function _carregarApiKey() {
+    console.log('[Bridge] Carregando API Key atual...');
+    try {
+        const resp = await _apiGet('?acao=obter_api_key');
+        console.log('[Bridge] Resposta obter_api_key:', resp);
+        if (resp.sucesso) {
+            _exibirApiKey(resp.dados?.api_key || '');
+        }
+    } catch (err) {
+        console.error('[Bridge] Erro ao carregar API Key:', err);
+    }
+}
+
+function _exibirApiKey(chave) {
+    const input = document.getElementById('bridge-api-key-input');
+    const btnRevogar = document.getElementById('btnRevogarKey');
+    if (!input) return;
+    input.value = chave || '';
+    input.type = 'password';
+    const icon = document.getElementById('bridge-key-eye-icon');
+    if (icon) icon.className = 'fas fa-eye';
+    if (btnRevogar) btnRevogar.style.display = chave ? 'inline-flex' : 'none';
+    _atualizarConfigPreview(chave);
+}
+
+function _atualizarConfigPreview(chave) {
+    const pre = document.getElementById('bridge-config-preview');
+    if (!pre) return;
+    const url = window.location.origin;
+    pre.textContent = JSON.stringify({
+        erp: {
+            url: url,
+            api_key: chave || '(gere a chave acima)',
+            poll_interval: 10
+        },
+        dispositivos: [
+            {
+                id: 1,
+                nome: 'Leitor UHF Portaria',
+                ip: '192.168.3.150',
+                porta: 80,
+                usuario: 'admin',
+                senha: 'admin'
+            }
+        ],
+        bridge: {
+            porta_local: 8765,
+            log_level: 'INFO'
+        }
+    }, null, 2);
+}
+
+async function _carregarStatusBridge() {
+    console.log('[Bridge] Verificando status do bridge...');
+    try {
+        const resp = await _apiGet('?acao=status_bridge');
+        console.log('[Bridge] Resposta status_bridge:', resp);
+        const dados = resp.dados || {};
+
+        // Status geral
+        const online = dados.online == 1 || dados.online === true;
+        const statusEl = document.getElementById('bridge-stat-status');
+        if (statusEl) {
+            statusEl.innerHTML = online
+                ? '<span class="badge-online" style="display:inline-block;padding:3px 10px;border-radius:12px;background:#dcfce7;color:#166534;font-size:12px;"><i class="fas fa-circle" style="font-size:8px;"></i> Online</span>'
+                : '<span class="badge-offline" style="display:inline-block;padding:3px 10px;border-radius:12px;background:#fee2e2;color:#991b1b;font-size:12px;"><i class="fas fa-circle" style="font-size:8px;"></i> Offline</span>';
+        }
+
+        // Versão
+        const versaoEl = document.getElementById('bridge-stat-versao');
+        if (versaoEl) versaoEl.textContent = dados.versao || '—';
+
+        // Último contato
+        const pingEl = document.getElementById('bridge-stat-ping');
+        if (pingEl) pingEl.textContent = dados.ultimo_contato ? _formatarData(dados.ultimo_contato) : '—';
+
+        // Dispositivos
+        const dispEl = document.getElementById('bridge-stat-dispositivos');
+        const dispOnline = dados.dispositivos_online ?? 0;
+        const dispTotal  = dados.dispositivos_total  ?? 0;
+        if (dispEl) dispEl.textContent = `${dispOnline} / ${dispTotal}`;
+
+        // Tabela de dispositivos do bridge
+        const areaDisp = document.getElementById('bridge-dispositivos-area');
+        const tbody = document.getElementById('tbody-bridge-dispositivos');
+        if (tbody && dados.dispositivos_lista?.length) {
+            if (areaDisp) areaDisp.style.display = 'block';
+            tbody.innerHTML = dados.dispositivos_lista.map(d => {
+                const st = d.online ? '<span style="color:#16a34a;"><i class="fas fa-circle" style="font-size:8px;"></i> Online</span>'
+                                    : '<span style="color:#dc2626;"><i class="fas fa-circle" style="font-size:8px;"></i> Offline</span>';
+                return `<tr>
+                  <td>${_esc(d.nome)}</td>
+                  <td><code>${_esc(d.ip)}</code></td>
+                  <td>${st}</td>
+                  <td>${d.ultimo_contato ? _formatarData(d.ultimo_contato) : '—'}</td>
+                  <td>${d.erros_consecutivos ?? 0}</td>
+                </tr>`;
+            }).join('');
+        } else if (areaDisp) {
+            areaDisp.style.display = 'none';
+        }
+
+    } catch (err) {
+        console.error('[Bridge] Erro ao verificar status:', err);
+    }
 }
 
 // Função global para toggle de senha

@@ -61,6 +61,11 @@ switch ($acao) {
     case 'status_push':       _statusPush($conn);                break;
     case 'eventos':           _eventos($conn);                   break;
     case 'fila_push':         _filaPush($conn);                  break;
+    // Bridge / API Key
+    case 'gerar_api_key':     _gerarApiKey($conn);               break;
+    case 'revogar_api_key':   _revogarApiKey($conn);             break;
+    case 'obter_api_key':     _obterApiKey($conn);               break;
+    case 'status_bridge':     _statusBridge($conn);              break;
     default:
         retornar_json(false, 'Ação inválida ou não informada.');
 }
@@ -871,4 +876,122 @@ function _registrarAcessoERP($conn, $veiculo_id, $morador_id, $data_hora, $tag, 
     $stmt->bind_param('sssssiss', $data_hora, $row['placa'], $row['modelo'], $row['cor'],
         $tag, $morador_id, $status, $obs);
     $stmt->execute();
+}
+
+// ============================================================
+// BRIDGE — Gerar API Key
+// ============================================================
+function _gerarApiKey($conn) {
+    // Gerar chave segura de 64 caracteres hex
+    $chave = bin2hex(random_bytes(32));
+    $hash  = hash('sha256', $chave); // armazenar hash no banco
+
+    // Salvar na tabela configuracoes (cria se não existir)
+    $conn->query("CREATE TABLE IF NOT EXISTS configuracoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        chave VARCHAR(100) NOT NULL UNIQUE,
+        valor TEXT,
+        descricao VARCHAR(255),
+        atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Upsert da chave
+    $stmt = $conn->prepare(
+        "INSERT INTO configuracoes (chave, valor, descricao)
+         VALUES ('bridge_api_key', ?, 'Chave de autenticação do Bridge Control ID')
+         ON DUPLICATE KEY UPDATE valor = VALUES(valor), atualizado_em = NOW()"
+    );
+    $stmt->bind_param('s', $chave);
+    $stmt->execute();
+    if ($stmt->error) retornar_json(false, 'Erro ao salvar chave: ' . $stmt->error);
+
+    // Registrar data de geração
+    $stmt2 = $conn->prepare(
+        "INSERT INTO configuracoes (chave, valor, descricao)
+         VALUES ('bridge_api_key_gerada_em', NOW(), 'Data de geração da API Key do Bridge')
+         ON DUPLICATE KEY UPDATE valor = NOW(), atualizado_em = NOW()"
+    );
+    $stmt2->execute();
+
+    retornar_json(true, 'Nova chave gerada com sucesso.', [
+        'api_key'    => $chave,
+        'gerada_em'  => date('Y-m-d H:i:s')
+    ]);
+}
+
+// ============================================================
+// BRIDGE — Revogar API Key
+// ============================================================
+function _revogarApiKey($conn) {
+    $stmt = $conn->prepare(
+        "UPDATE configuracoes SET valor = '' WHERE chave = 'bridge_api_key'"
+    );
+    $stmt->execute();
+    retornar_json(true, 'Chave revogada com sucesso. O Bridge será desconectado na próxima verificação.');
+}
+
+// ============================================================
+// BRIDGE — Obter API Key atual (mascarada)
+// ============================================================
+function _obterApiKey($conn) {
+    $res = $conn->query("SELECT valor FROM configuracoes WHERE chave = 'bridge_api_key' LIMIT 1");
+    if (!$res || !($row = $res->fetch_assoc())) {
+        retornar_json(true, 'Nenhuma chave configurada.', ['api_key' => '', 'tem_chave' => false]);
+    }
+    $chave = $row['valor'] ?? '';
+    retornar_json(true, 'OK', [
+        'api_key'   => $chave,
+        'tem_chave' => !empty($chave)
+    ]);
+}
+
+// ============================================================
+// BRIDGE — Status do Bridge (heartbeat + dispositivos)
+// ============================================================
+function _statusBridge($conn) {
+    // Verificar tabela bridge_status
+    $conn->query("CREATE TABLE IF NOT EXISTS bridge_status (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        bridge_id VARCHAR(64),
+        versao VARCHAR(20),
+        ip_local VARCHAR(45),
+        ultimo_contato TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        online TINYINT(1) DEFAULT 0,
+        dispositivos_total INT DEFAULT 0,
+        dispositivos_online INT DEFAULT 0,
+        dados_json TEXT,
+        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $res = $conn->query("SELECT * FROM bridge_status ORDER BY ultimo_contato DESC LIMIT 1");
+    if (!$res || !($row = $res->fetch_assoc())) {
+        retornar_json(true, 'Nenhum bridge conectado ainda.', [
+            'online'              => false,
+            'versao'              => null,
+            'ultimo_contato'      => null,
+            'dispositivos_total'  => 0,
+            'dispositivos_online' => 0,
+            'dispositivos_lista'  => []
+        ]);
+    }
+
+    // Considerar offline se último contato > 2 minutos
+    $ultimo = strtotime($row['ultimo_contato']);
+    $online = (time() - $ultimo) < 120;
+
+    $lista = [];
+    if (!empty($row['dados_json'])) {
+        $dados = json_decode($row['dados_json'], true);
+        $lista = $dados['dispositivos'] ?? [];
+    }
+
+    retornar_json(true, 'OK', [
+        'online'              => $online,
+        'versao'              => $row['versao'],
+        'ip_local'            => $row['ip_local'],
+        'ultimo_contato'      => $row['ultimo_contato'],
+        'dispositivos_total'  => intval($row['dispositivos_total']),
+        'dispositivos_online' => intval($row['dispositivos_online']),
+        'dispositivos_lista'  => $lista
+    ]);
 }

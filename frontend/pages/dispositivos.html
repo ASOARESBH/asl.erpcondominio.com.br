@@ -28,6 +28,9 @@
     <button class="tab-btn" data-tab="guia">
       <i class="fas fa-book"></i> Guia de Integração
     </button>
+    <button class="tab-btn" data-tab="bridge">
+      <i class="fas fa-key"></i> Bridge / API Key
+    </button>
   </div>
 
   <!-- ===================== ABA: DISPOSITIVOS ===================== -->
@@ -705,6 +708,196 @@
   </div>
 
 </div>
+
+  <!-- ===================== ABA: BRIDGE / API KEY ===================== -->
+  <div id="tab-bridge" class="tab-content" style="display:none;">
+
+    <!-- Card: Status do Bridge -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-plug"></i> Status do Bridge</h2>
+        <button class="btn-secondary-modern" id="btnAtualizarStatusBridge" type="button">
+          <i class="fas fa-sync-alt"></i> Atualizar
+        </button>
+      </div>
+      <p class="card-subtitle">
+        O <strong>Control ID Bridge</strong> é um programa Python que roda no seu computador local e faz a comunicação entre este ERP (hospedado na internet) e os equipamentos Control ID na rede interna.
+      </p>
+
+      <div class="bridge-status-grid" id="bridge-status-grid">
+        <div class="bridge-stat-card">
+          <div class="bridge-stat-icon bridge-icon-status"><i class="fas fa-circle"></i></div>
+          <div class="bridge-stat-info">
+            <span class="bridge-stat-label">Status do Bridge</span>
+            <span class="bridge-stat-value" id="bridge-stat-status"><span class="badge-offline">Offline</span></span>
+          </div>
+        </div>
+        <div class="bridge-stat-card">
+          <div class="bridge-stat-icon bridge-icon-versao"><i class="fas fa-code-branch"></i></div>
+          <div class="bridge-stat-info">
+            <span class="bridge-stat-label">Versão</span>
+            <span class="bridge-stat-value" id="bridge-stat-versao">—</span>
+          </div>
+        </div>
+        <div class="bridge-stat-card">
+          <div class="bridge-stat-icon bridge-icon-ping"><i class="fas fa-clock"></i></div>
+          <div class="bridge-stat-info">
+            <span class="bridge-stat-label">Último Contato</span>
+            <span class="bridge-stat-value" id="bridge-stat-ping">—</span>
+          </div>
+        </div>
+        <div class="bridge-stat-card">
+          <div class="bridge-stat-icon bridge-icon-disp"><i class="fas fa-server"></i></div>
+          <div class="bridge-stat-info">
+            <span class="bridge-stat-label">Dispositivos Online</span>
+            <span class="bridge-stat-value" id="bridge-stat-dispositivos">0 / 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabela de dispositivos conectados via bridge -->
+      <div id="bridge-dispositivos-area" style="margin-top:16px; display:none;">
+        <h3 style="font-size:14px; color:#475569; margin-bottom:8px;"><i class="fas fa-list"></i> Dispositivos reportados pelo Bridge</h3>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Dispositivo</th>
+                <th>IP</th>
+                <th>Status</th>
+                <th>Último Contato</th>
+                <th>Erros</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-bridge-dispositivos">
+              <tr><td colspan="5" class="text-center text-muted">Aguardando dados do bridge...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Chave de Autenticação -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-key"></i> Chave de Autenticação (API Key)</h2>
+      </div>
+      <p class="card-subtitle">
+        A <strong>API Key</strong> é usada pelo Bridge para autenticar as comunicações com o ERP.
+        Copie a chave gerada e cole no arquivo <code>config.json</code> do Bridge no campo <code>api_key</code>.
+      </p>
+
+      <!-- Chave atual -->
+      <div class="bridge-key-display">
+        <label>Chave Atual</label>
+        <div class="bridge-key-row">
+          <input type="password" id="bridge-api-key-input" class="bridge-key-field" readonly
+                 placeholder="Nenhuma chave gerada ainda" autocomplete="off">
+          <button class="btn-icon-action" id="btnToggleKeyVisibility" title="Mostrar/ocultar chave" type="button">
+            <i class="fas fa-eye" id="bridge-key-eye-icon"></i>
+          </button>
+          <button class="btn-icon-action" id="btnCopiarKey" title="Copiar chave" type="button">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+        <div id="bridge-key-copy-feedback" class="copy-feedback" style="display:none;">
+          <i class="fas fa-check-circle"></i> Chave copiada para a área de transferência!
+        </div>
+      </div>
+
+      <!-- Botões de ação -->
+      <div class="bridge-key-actions">
+        <button class="btn-primary-modern" id="btnGerarKey" type="button">
+          <i class="fas fa-magic"></i> Gerar Nova Chave
+        </button>
+        <button class="btn-danger-modern" id="btnRevogarKey" type="button" style="display:none;">
+          <i class="fas fa-ban"></i> Revogar Chave
+        </button>
+      </div>
+
+      <div class="alert-box alert-warning" style="margin-top:16px;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Atenção:</strong> Ao gerar uma nova chave, a chave anterior será invalidada imediatamente.
+        Você precisará atualizar o <code>config.json</code> do Bridge com a nova chave.
+      </div>
+    </div>
+
+    <!-- Card: Configuração do config.json -->
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-file-code"></i> Configuração do Bridge (config.json)</h2>
+        <button class="btn-secondary-modern" id="btnCopiarConfigJson" type="button">
+          <i class="fas fa-copy"></i> Copiar JSON
+        </button>
+      </div>
+      <p class="card-subtitle">
+        Copie o trecho abaixo e cole no arquivo <code>config.json</code> do Bridge, substituindo os valores de IP e credenciais dos seus equipamentos.
+      </p>
+      <pre id="bridge-config-preview" class="bridge-config-pre">{
+  "erp": {
+    "url": "https://asl.erpcondominios.com.br",
+    "api_key": "(gere a chave acima)",
+    "poll_interval": 10
+  },
+  "dispositivos": [
+    {
+      "id": 1,
+      "nome": "Leitor UHF Portaria",
+      "ip": "192.168.3.150",
+      "porta": 80,
+      "usuario": "admin",
+      "senha": "admin"
+    }
+  ],
+  "bridge": {
+    "porta_local": 8765,
+    "log_level": "INFO"
+  }
+}</pre>
+    </div>
+
+    <!-- Card: Instruções rápidas -->
+    <div class="page-card guia-integracao">
+      <h2><i class="fas fa-rocket"></i> Como usar o Bridge</h2>
+      <div class="fluxo-steps">
+        <div class="fluxo-step">
+          <div class="step-num">1</div>
+          <div class="step-desc">
+            <strong>Baixe o Bridge</strong> — faça download do arquivo <code>ControlID_Bridge.zip</code> (disponível no suporte) e extraia numa pasta no seu computador.
+          </div>
+        </div>
+        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+        <div class="fluxo-step">
+          <div class="step-num">2</div>
+          <div class="step-desc">
+            <strong>Gere a API Key</strong> — clique em <em>Gerar Nova Chave</em> acima e copie a chave gerada.
+          </div>
+        </div>
+        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+        <div class="fluxo-step">
+          <div class="step-num">3</div>
+          <div class="step-desc">
+            <strong>Configure o config.json</strong> — cole a chave no campo <code>api_key</code> e ajuste os IPs dos equipamentos.
+          </div>
+        </div>
+        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+        <div class="fluxo-step">
+          <div class="step-num">4</div>
+          <div class="step-desc">
+            <strong>Execute o Bridge</strong> — dê duplo clique em <code>ControlID_Bridge.exe</code> ou execute como serviço Windows com <code>instalar_servico.bat</code>.
+          </div>
+        </div>
+        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
+        <div class="fluxo-step">
+          <div class="step-num">5</div>
+          <div class="step-desc">
+            <strong>Verifique o status</strong> — volte nesta aba e clique em <em>Atualizar</em>. O bridge aparecerá como <span class="badge-online" style="display:inline-block; padding:2px 8px; border-radius:12px; background:#dcfce7; color:#166534; font-size:12px;">Online</span>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 
 <!-- Modal de confirmação de exclusão -->
 <div id="modal-excluir-disp" class="modal-overlay" style="display:none;">
