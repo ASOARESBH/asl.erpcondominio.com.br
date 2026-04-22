@@ -3,7 +3,7 @@
  */
 'use strict';
 
-const API = 'api/api_crm.php';
+const API = '../api/api_crm.php';
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 let _uid       = 0;
@@ -15,12 +15,11 @@ let _paginaAtual = 1;
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 export async function init() {
-    _carregarCSS();
     _setupTabs();
 
     // Dados do usuário logado
     try {
-        const r = await fetch('api/api_usuario_logado.php', { credentials: 'include' });
+        const r = await fetch('../api/api_usuario_logado.php', { credentials: 'include' });
         const d = await r.json();
         if (d.sucesso) { _uid = d.usuario?.id || 0; _unome = d.usuario?.nome || ''; }
     } catch {}
@@ -61,15 +60,6 @@ export async function init() {
 
 export function destroy() {
     delete window.CRMPage;
-}
-
-// ── CSS dinâmico ──────────────────────────────────────────────────────────────
-function _carregarCSS() {
-    if (!document.getElementById('css-crm')) {
-        const l = document.createElement('link');
-        l.id = 'css-crm'; l.rel = 'stylesheet'; l.href = 'assets/css/pages/crm.css';
-        document.head.appendChild(l);
-    }
 }
 
 // ── Abas ──────────────────────────────────────────────────────────────────────

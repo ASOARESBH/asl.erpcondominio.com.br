@@ -13,7 +13,6 @@ let _state = {
 
 // ── Ciclo de vida ─────────────────────────────────────────────────────────────
 export async function init() {
-    _carregarCSS();
     _setupTabs();
     _setupColaboradores();
     _setupPonto();
@@ -35,18 +34,6 @@ export async function init() {
 
 export function destroy() {
     delete window.ModuleRH;
-}
-
-// ── CSS dinâmico ──────────────────────────────────────────────────────────────
-function _carregarCSS() {
-    const id = 'css-recursos-humanos';
-    if (!document.getElementById(id)) {
-        const lnk = document.createElement('link');
-        lnk.id   = id;
-        lnk.rel  = 'stylesheet';
-        lnk.href = 'assets/css/pages/recursos_humanos.css';
-        document.head.appendChild(lnk);
-    }
 }
 
 // ── Abas ──────────────────────────────────────────────────────────────────────
@@ -120,7 +107,7 @@ async function _carregarColaboradores() {
     wrap.innerHTML = '<div class="loading-msg"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
 
     try {
-        const r = await fetch(`api/api_rh_colaboradores.php?acao=listar&busca=${encodeURIComponent(busca)}&ativo=${ativo}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_colaboradores.php?acao=listar&busca=${encodeURIComponent(busca)}&ativo=${ativo}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         _renderColaboradores(d.dados ?? []);
@@ -161,7 +148,7 @@ function _renderColaboradores(list) {
 
 async function _editarColaborador(id) {
     try {
-        const r = await fetch(`api/api_rh_colaboradores.php?acao=obter&id=${id}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_colaboradores.php?acao=obter&id=${id}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         const c = d.dados;
@@ -208,7 +195,7 @@ async function _editarColaborador(id) {
 async function _excluirColaborador(id, nome) {
     if (!confirm(`Deseja remover o colaborador "${nome}"?`)) return;
     try {
-        const r = await fetch(`api/api_rh_colaboradores.php?acao=excluir`, {
+        const r = await fetch(`../api/api_rh_colaboradores.php?acao=excluir`, {
             method: 'DELETE', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id }),
@@ -240,7 +227,7 @@ async function _salvarColaborador(e) {
     btn.disabled = true;
 
     try {
-        const url = `api/api_rh_colaboradores.php?acao=${acao}${id ? '&id=' + id : ''}`;
+        const url = `../api/api_rh_colaboradores.php?acao=${acao}${id ? '&id=' + id : ''}`;
         const r   = await fetch(url, { method: 'POST', credentials: 'include', body: fd });
         const d   = await r.json();
         _toast(d.mensagem, d.sucesso ? 'success' : 'error');
@@ -304,7 +291,7 @@ async function _abrirPeriodo() {
     if (!colab_id) return _toast('Selecione um colaborador', 'error');
 
     try {
-        const r = await fetch(`api/api_rh_ponto.php?acao=listar_periodos&colaborador_id=${colab_id}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_ponto.php?acao=listar_periodos&colaborador_id=${colab_id}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         const periodo = (d.dados ?? []).find(p => p.mes == mes && p.ano == ano);
@@ -321,7 +308,7 @@ async function _criarPeriodo() {
     if (!colab_id) return _toast('Selecione um colaborador', 'error');
 
     try {
-        const r = await fetch(`api/api_rh_ponto.php?acao=criar_periodo`, {
+        const r = await fetch(`../api/api_rh_ponto.php?acao=criar_periodo`, {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ colaborador_id: parseInt(colab_id), mes, ano }),
@@ -359,7 +346,7 @@ function _atualizarTotais(p) {
 
 async function _carregarLancamentos(periodo_id, readonly = false) {
     try {
-        const r = await fetch(`api/api_rh_ponto.php?acao=listar_lancamentos&periodo_id=${periodo_id}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_ponto.php?acao=listar_lancamentos&periodo_id=${periodo_id}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         _state.lancamentos = d.dados ?? [];
@@ -417,7 +404,7 @@ async function _salvarLinhaPonto(el) {
     tr.querySelectorAll('[data-campo]').forEach(inp => { campos[inp.dataset.campo] = inp.value; });
 
     try {
-        const r = await fetch('api/api_rh_ponto.php?acao=salvar_lancamento', {
+        const r = await fetch('../api/api_rh_ponto.php?acao=salvar_lancamento', {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ periodo_id, colaborador_id: colab_id, data, ...campos }),
@@ -439,7 +426,7 @@ async function _salvarLinhaPonto(el) {
 
 async function _recarregarTotaisPeriodo(periodo_id) {
     try {
-        const r = await fetch(`api/api_rh_ponto.php?acao=obter_periodo&id=${periodo_id}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_ponto.php?acao=obter_periodo&id=${periodo_id}`, { credentials: 'include' });
         const d = await r.json();
         if (d.sucesso) { _state.periodoAtual = d.dados; _atualizarTotais(d.dados); }
     } catch {}
@@ -449,7 +436,7 @@ async function _fecharPeriodo() {
     if (!_state.periodoAtual) return;
     if (!confirm('Fechar este período? Não será mais possível lançar horas.')) return;
     try {
-        const r = await fetch(`api/api_rh_ponto.php?acao=fechar_periodo&id=${_state.periodoAtual.id}`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: '{}' });
+        const r = await fetch(`../api/api_rh_ponto.php?acao=fechar_periodo&id=${_state.periodoAtual.id}`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: '{}' });
         const d = await r.json();
         _toast(d.mensagem, d.sucesso ? 'success' : 'error');
         if (d.sucesso) { _state.periodoAtual.status = 'fechado'; _exibirFolha(_state.periodoAtual); }
@@ -459,7 +446,7 @@ async function _fecharPeriodo() {
 async function _reabrirPeriodo() {
     if (!_state.periodoAtual) return;
     try {
-        const r = await fetch(`api/api_rh_ponto.php?acao=reabrir_periodo&id=${_state.periodoAtual.id}`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: '{}' });
+        const r = await fetch(`../api/api_rh_ponto.php?acao=reabrir_periodo&id=${_state.periodoAtual.id}`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: '{}' });
         const d = await r.json();
         _toast(d.mensagem, d.sucesso ? 'success' : 'error');
         if (d.sucesso) { _state.periodoAtual.status = 'aberto'; _exibirFolha(_state.periodoAtual); }
@@ -507,7 +494,7 @@ async function _carregarEscalas() {
     document.getElementById('btnEscalaNova').style.display = '';
 
     try {
-        const r = await fetch(`api/api_rh_escala.php?acao=listar&colaborador_id=${colab_id}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_escala.php?acao=listar&colaborador_id=${colab_id}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         _renderEscalas(d.dados ?? []);
@@ -550,7 +537,7 @@ function _renderEscalas(list) {
 
 async function _editarEscala(id) {
     try {
-        const r = await fetch(`api/api_rh_escala.php?acao=obter&id=${id}`, { credentials: 'include' });
+        const r = await fetch(`../api/api_rh_escala.php?acao=obter&id=${id}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         const e = d.dados;
@@ -580,7 +567,7 @@ async function _editarEscala(id) {
 async function _excluirEscala(id) {
     if (!confirm('Remover esta escala?')) return;
     try {
-        const r = await fetch('api/api_rh_escala.php?acao=excluir', {
+        const r = await fetch('../api/api_rh_escala.php?acao=excluir', {
             method: 'DELETE', credentials: 'include',
             headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }),
         });
@@ -611,7 +598,7 @@ async function _salvarEscala(e) {
     if (id) payload.id = parseInt(id);
 
     try {
-        const url = `api/api_rh_escala.php?acao=${acao}${id ? '&id=' + id : ''}`;
+        const url = `../api/api_rh_escala.php?acao=${acao}${id ? '&id=' + id : ''}`;
         const r   = await fetch(url, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d   = await r.json();
         _toast(d.mensagem, d.sucesso ? 'success' : 'error');
@@ -655,33 +642,33 @@ async function _gerarRelatorio(tipo) {
 
     switch (tipo) {
         case 'totais_horas':
-            url = `api/api_rh_relatorios.php?acao=totais_horas&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
+            url = `../api/api_rh_relatorios.php?acao=totais_horas&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
             tituloText = `Totais de Horas — ${_nomeMes(mes)}/${ano}`;
             break;
         case 'espelho_ponto':
             if (!colab_id) { _toast('Selecione um colaborador para o espelho', 'error'); return; }
-            url = `api/api_rh_relatorios.php?acao=espelho_ponto&colaborador_id=${colab_id}&mes=${mes}&ano=${ano}`;
+            url = `../api/api_rh_relatorios.php?acao=espelho_ponto&colaborador_id=${colab_id}&mes=${mes}&ano=${ano}`;
             tituloText = `Espelho de Ponto — ${_nomeMes(mes)}/${ano}`;
             break;
         case 'faltas':
-            url = `api/api_rh_relatorios.php?acao=faltas&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
+            url = `../api/api_rh_relatorios.php?acao=faltas&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
             tituloText = `Faltas e Afastamentos — ${_nomeMes(mes)}/${ano}`;
             break;
         case 'horas_extras':
-            url = `api/api_rh_relatorios.php?acao=horas_extras&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
+            url = `../api/api_rh_relatorios.php?acao=horas_extras&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
             tituloText = `Horas Extras — ${_nomeMes(mes)}/${ano}`;
             break;
         case 'atrasos':
-            url = `api/api_rh_relatorios.php?acao=atrasos&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
+            url = `../api/api_rh_relatorios.php?acao=atrasos&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
             tituloText = `Atrasos — ${_nomeMes(mes)}/${ano}`;
             break;
         case 'banco_horas':
             if (!colab_id) { _toast('Selecione um colaborador para o banco de horas', 'error'); return; }
-            url = `api/api_rh_relatorios.php?acao=banco_horas&colaborador_id=${colab_id}&ate_mes=${mes}&ate_ano=${ano}`;
+            url = `../api/api_rh_relatorios.php?acao=banco_horas&colaborador_id=${colab_id}&ate_mes=${mes}&ate_ano=${ano}`;
             tituloText = 'Banco de Horas';
             break;
         case 'aniversariantes':
-            url = `api/api_rh_relatorios.php?acao=aniversariantes&mes=${mes}`;
+            url = `../api/api_rh_relatorios.php?acao=aniversariantes&mes=${mes}`;
             tituloText = `Aniversariantes de ${_nomeMes(mes)}`;
             break;
         default: return;
@@ -797,7 +784,7 @@ function _imprimirRelatorio() {
 // ────────────────────────────────────────────────────────────────────────────
 async function _popularSelects() {
     try {
-        const r = await fetch('api/api_rh_colaboradores.php?acao=listar&ativo=1', { credentials: 'include' });
+        const r = await fetch('../api/api_rh_colaboradores.php?acao=listar&ativo=1', { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) return;
         const opts = d.dados.map(c => `<option value="${c.id}">${_esc(c.nome)}</option>`).join('');
@@ -810,7 +797,7 @@ async function _popularSelects() {
     } catch {}
 
     try {
-        const r = await fetch('api/api_rh_colaboradores.php?acao=departamentos', { credentials: 'include' });
+        const r = await fetch('../api/api_rh_colaboradores.php?acao=departamentos', { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) return;
         const sel = document.getElementById('rel-departamento');
