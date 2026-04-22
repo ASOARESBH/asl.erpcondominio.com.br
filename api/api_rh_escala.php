@@ -58,7 +58,8 @@ if ($acao === 'listar') {
     $stmt->bind_param('i', $colab_id);
     $stmt->execute();
     $list = [];
-    while ($r = $stmt->get_result()->fetch_assoc()) $list[] = $r;
+    $res = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) $list[] = $r;
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'OK', $list);
 }

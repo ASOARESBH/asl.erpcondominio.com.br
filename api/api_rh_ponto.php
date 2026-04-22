@@ -66,7 +66,8 @@ if ($acao === 'listar_periodos') {
     $stmt->bind_param('i', $colab_id);
     $stmt->execute();
     $list = [];
-    while ($r = $stmt->get_result()->fetch_assoc()) $list[] = $r;
+    $res = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) $list[] = $r;
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'OK', $list);
 }
@@ -207,7 +208,7 @@ if ($acao === 'salvar_lancamento' && $metodo === 'POST') {
              tipo_dia=?,horas_trabalhadas_min=?,horas_extras_min=?,atraso_min=?,observacoes=?
              WHERE periodo_id=? AND data=?"
         );
-        $stmt->bind_param('sssssiiissi',
+        $stmt->bind_param('sssssiiisis',
             $he,$has,$har,$hs,$tipo_dia,
             $calc['trabalhadas'],$calc['extras'],$calc['atraso'],$obs,
             $periodo_id,$data

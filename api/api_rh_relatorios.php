@@ -169,7 +169,8 @@ if ($acao === 'faltas') {
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $list = [];
-    while ($r = $stmt->get_result()->fetch_assoc()) $list[] = $r;
+    $res = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) $list[] = $r;
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'OK', $list);
 }
@@ -283,7 +284,8 @@ if ($acao === 'aniversariantes') {
     $stmt->bind_param('i', $mes);
     $stmt->execute();
     $list = [];
-    while ($r = $stmt->get_result()->fetch_assoc()) $list[] = $r;
+    $res = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) $list[] = $r;
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'OK', $list);
 }

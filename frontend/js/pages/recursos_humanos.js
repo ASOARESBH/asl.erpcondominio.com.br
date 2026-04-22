@@ -11,8 +11,11 @@ let _state = {
     escalaDias       : ['seg','ter','qua','qui','sex'],
 };
 
+const RH_DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E";
+
 // ── Ciclo de vida ─────────────────────────────────────────────────────────────
 export async function init() {
+    window.ModuleRHDefaultAvatar = RH_DEFAULT_AVATAR;
     _setupTabs();
     _setupColaboradores();
     _setupPonto();
@@ -34,6 +37,7 @@ export async function init() {
 
 export function destroy() {
     delete window.ModuleRH;
+    delete window.ModuleRHDefaultAvatar;
 }
 
 // ── Abas ──────────────────────────────────────────────────────────────────────
@@ -62,11 +66,62 @@ function _toast(msg, type = 'info') {
     setTimeout(() => t.remove(), 3500);
 }
 
+function _setFormStatus(msg = '', type = 'info') {
+    const el = document.getElementById('rh-form-status');
+    if (!el) return;
+
+    if (!msg) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+    }
+
+    const palette = {
+        success: { bg: '#dcfce7', border: '#16a34a', color: '#166534', icon: 'fa-circle-check' },
+        error: { bg: '#fee2e2', border: '#dc2626', color: '#991b1b', icon: 'fa-circle-exclamation' },
+        info: { bg: '#dbeafe', border: '#2563eb', color: '#1d4ed8', icon: 'fa-circle-info' },
+    };
+    const config = palette[type] || palette.info;
+
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.gap = '10px';
+    el.style.padding = '12px 14px';
+    el.style.marginBottom = '16px';
+    el.style.borderRadius = '10px';
+    el.style.border = `1px solid ${config.border}`;
+    el.style.background = config.bg;
+    el.style.color = config.color;
+    el.innerHTML = `<i class="fas ${config.icon}"></i><span>${_esc(msg)}</span>`;
+}
+
+async function _fetchJson(url, options = {}) {
+    const response = await fetch(url, options);
+    const raw = await response.text();
+
+    let data = null;
+    if (raw) {
+        try {
+            data = JSON.parse(raw);
+        } catch (error) {
+            const preview = raw.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180);
+            throw new Error(preview || 'Resposta inv\u00e1lida do servidor.');
+        }
+    }
+
+    if (!response.ok) {
+        throw new Error(data?.mensagem || `Erro HTTP ${response.status}`);
+    }
+
+    return data || {};
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // ABA: COLABORADORES
 // ────────────────────────────────────────────────────────────────────────────
 function _setupColaboradores() {
     _carregarColaboradores();
+    _setFormStatus();
 
     document.getElementById('btnRhBuscar')?.addEventListener('click', _carregarColaboradores);
     document.getElementById('rh-busca')?.addEventListener('keydown', e => { if (e.key === 'Enter') _carregarColaboradores(); });
@@ -74,7 +129,14 @@ function _setupColaboradores() {
 
     document.getElementById('btnRhNovoColab')?.addEventListener('click', _limparFormColab);
     document.getElementById('btnRhCancelar')?.addEventListener('click', _limparFormColab);
-    document.getElementById('formColaborador')?.addEventListener('submit', _salvarColaborador);
+
+    const form = document.getElementById('formColaborador');
+    if (form) {
+        form.noValidate = true;
+        form.method = 'post';
+        form.action = 'javascript:void(0)';
+        form.addEventListener('submit', _salvarColaborador);
+    }
 
     // Foto preview
     document.getElementById('rh-foto-input')?.addEventListener('change', e => {
@@ -107,8 +169,7 @@ async function _carregarColaboradores() {
     wrap.innerHTML = '<div class="loading-msg"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
 
     try {
-        const r = await fetch(`../api/api_rh_colaboradores.php?acao=listar&busca=${encodeURIComponent(busca)}&ativo=${ativo}`, { credentials: 'include' });
-        const d = await r.json();
+        const d = await _fetchJson(`../api/api_rh_colaboradores.php?acao=listar&busca=${encodeURIComponent(busca)}&ativo=${ativo}`, { credentials: 'include' });
         if (!d.sucesso) throw new Error(d.mensagem);
         _renderColaboradores(d.dados ?? []);
     } catch (err) {
@@ -123,22 +184,22 @@ function _renderColaboradores(list) {
     wrap.innerHTML = list.map(c => `
         <div class="rh-colab-card">
             <img class="rh-colab-avatar"
-                 src="${c.foto_path ? c.foto_path : 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E'}"
+                 src="${c.foto_path ? c.foto_path : RH_DEFAULT_AVATAR}"
                  alt="${_esc(c.nome)}"
-                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E'">
+                 onerror="this.onerror=null;this.src=window.ModuleRHDefaultAvatar||''">
             <div class="rh-colab-info">
                 <div class="rh-colab-nome">${_esc(c.nome)}</div>
                 <div class="rh-colab-sub">${_esc(c.cargo||'—')} · ${_esc(c.departamento||'—')} · CPF: ${_esc(c.cpf||'—')}</div>
             </div>
             <span class="rh-badge ${c.ativo == 1 ? 'rh-badge-ativo' : 'rh-badge-inativo'}">${c.ativo == 1 ? 'Ativo' : 'Inativo'}</span>
             <div style="display:flex;gap:6px;flex-shrink:0;">
-                <button class="action-btn" title="Registrar ponto" onclick="window.ModuleRH.abrirPontoColab(${c.id},'${_esc(c.nome)}')">
+                <button class="action-btn" title="Registrar ponto" onclick='window.ModuleRH.abrirPontoColab(${c.id}, "${_escAttr(c.nome)}")'>
                     <i class="fas fa-clock"></i>
                 </button>
                 <button class="action-btn" title="Editar" onclick="window.ModuleRH.editarColaborador(${c.id})">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="action-btn" title="Excluir" onclick="window.ModuleRH.excluirColaborador(${c.id},'${_esc(c.nome)}')">
+                <button class="action-btn" title="Excluir" onclick='window.ModuleRH.excluirColaborador(${c.id}, "${_escAttr(c.nome)}")'>
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -148,8 +209,7 @@ function _renderColaboradores(list) {
 
 async function _editarColaborador(id) {
     try {
-        const r = await fetch(`../api/api_rh_colaboradores.php?acao=obter&id=${id}`, { credentials: 'include' });
-        const d = await r.json();
+        const d = await _fetchJson(`../api/api_rh_colaboradores.php?acao=obter&id=${id}`, { credentials: 'include' });
         if (!d.sucesso) throw new Error(d.mensagem);
         const c = d.dados;
 
@@ -182,7 +242,8 @@ async function _editarColaborador(id) {
         document.getElementById('rh-pix').value           = c.pix ?? '';
         document.getElementById('rh-observacoes').value   = c.observacoes ?? '';
 
-        if (c.foto_path) document.getElementById('rh-foto-preview').src = c.foto_path;
+        document.getElementById('rh-foto-preview').src = c.foto_path || RH_DEFAULT_AVATAR;
+        _setFormStatus();
 
         document.getElementById('rh-form-titulo').innerHTML = '<i class="fas fa-edit"></i> Editar Colaborador';
         document.getElementById('btnRhCancelar').style.display = '';
@@ -195,12 +256,11 @@ async function _editarColaborador(id) {
 async function _excluirColaborador(id, nome) {
     if (!confirm(`Deseja remover o colaborador "${nome}"?`)) return;
     try {
-        const r = await fetch(`../api/api_rh_colaboradores.php?acao=excluir`, {
+        const d = await _fetchJson(`../api/api_rh_colaboradores.php?acao=excluir`, {
             method: 'DELETE', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id }),
         });
-        const d = await r.json();
         _toast(d.mensagem, d.sucesso ? 'success' : 'error');
         if (d.sucesso) _carregarColaboradores();
     } catch (err) { _toast(err.message, 'error'); }
@@ -208,6 +268,7 @@ async function _excluirColaborador(id, nome) {
 
 async function _salvarColaborador(e) {
     e.preventDefault();
+    _setFormStatus();
     const id   = document.getElementById('rh-id').value;
     const acao = id ? 'atualizar' : 'criar';
     const fd   = new FormData(e.target);
@@ -225,24 +286,35 @@ async function _salvarColaborador(e) {
 
     const btn = document.getElementById('btnRhSalvar');
     btn.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${id ? 'Salvando...' : 'Cadastrando...'}`;
 
     try {
         const url = `../api/api_rh_colaboradores.php?acao=${acao}${id ? '&id=' + id : ''}`;
-        const r   = await fetch(url, { method: 'POST', credentials: 'include', body: fd });
-        const d   = await r.json();
+        const d   = await _fetchJson(url, { method: 'POST', credentials: 'include', body: fd });
         _toast(d.mensagem, d.sucesso ? 'success' : 'error');
-        if (d.sucesso) { _limparFormColab(); _carregarColaboradores(); _popularSelects(); }
-    } catch (err) { _toast(err.message, 'error'); }
-    finally { btn.disabled = false; }
+        if (!d.sucesso) throw new Error(d.mensagem || 'N\u00e3o foi poss\u00edvel salvar o colaborador.');
+        _setFormStatus(d.mensagem || 'Colaborador salvo com sucesso.', 'success');
+        _limparFormColab({ preserveStatus: true });
+        _carregarColaboradores();
+        _popularSelects();
+    } catch (err) {
+        const mensagem = err.message || 'Ocorreu um erro ao salvar o colaborador.';
+        _setFormStatus(mensagem, 'error');
+        _toast(mensagem, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Salvar Colaborador';
+    }
 }
 
-function _limparFormColab() {
+function _limparFormColab(options = {}) {
     document.getElementById('formColaborador').reset();
     document.getElementById('rh-id').value = '';
-    document.getElementById('rh-foto-preview').src = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E';
+    document.getElementById('rh-foto-preview').src = RH_DEFAULT_AVATAR;
     document.getElementById('rh-foto-input').value = '';
     document.getElementById('rh-form-titulo').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Colaborador';
     document.getElementById('btnRhCancelar').style.display = 'none';
+    if (!options.preserveStatus) _setFormStatus();
 }
 
 async function _buscarCep() {
@@ -784,8 +856,7 @@ function _imprimirRelatorio() {
 // ────────────────────────────────────────────────────────────────────────────
 async function _popularSelects() {
     try {
-        const r = await fetch('../api/api_rh_colaboradores.php?acao=listar&ativo=1', { credentials: 'include' });
-        const d = await r.json();
+        const d = await _fetchJson('../api/api_rh_colaboradores.php?acao=listar&ativo=1', { credentials: 'include' });
         if (!d.sucesso) return;
         const opts = d.dados.map(c => `<option value="${c.id}">${_esc(c.nome)}</option>`).join('');
         ['ponto-colaborador-id','escala-colaborador-id','rel-colaborador-id'].forEach(id => {
@@ -797,8 +868,7 @@ async function _popularSelects() {
     } catch {}
 
     try {
-        const r = await fetch('../api/api_rh_colaboradores.php?acao=departamentos', { credentials: 'include' });
-        const d = await r.json();
+        const d = await _fetchJson('../api/api_rh_colaboradores.php?acao=departamentos', { credentials: 'include' });
         if (!d.sucesso) return;
         const sel = document.getElementById('rel-departamento');
         if (sel) sel.innerHTML = '<option value="">Todos</option>' + d.dados.map(dp => `<option value="${_esc(dp)}">${_esc(dp)}</option>`).join('');
@@ -810,6 +880,14 @@ async function _popularSelects() {
 // ────────────────────────────────────────────────────────────────────────────
 function _esc(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _escAttr(str) {
+    return String(str ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/\r?\n/g, ' ');
 }
 
 function _setSelect(id, val) {

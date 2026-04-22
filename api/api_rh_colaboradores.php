@@ -137,7 +137,7 @@ if ($metodo === 'POST' && $acao === 'criar') {
         $d['cep'],$d['logradouro'],$d['numero'],$d['complemento'],$d['bairro'],$d['cidade'],$d['estado'],
         $d['banco'],$d['agencia'],$d['conta'],$d['pix'],$foto_path,$d['observacoes']
     );
-    if (!$stmt->execute()) { $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao criar colaborador'); }
+    if (!$stmt->execute()) { $erro = $stmt->error ?: $conn->error; $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao criar colaborador: ' . $erro); }
     $novo_id = $conn->insert_id;
     $stmt->close();
     fechar_conexao($conn);
@@ -188,7 +188,7 @@ if ($metodo === 'POST' && $acao === 'atualizar') {
     $vals[] = $id; $types .= 'i';
     $stmt->bind_param($types, ...$vals);
 
-    if (!$stmt->execute()) { $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao atualizar'); }
+    if (!$stmt->execute()) { $erro = $stmt->error ?: $conn->error; $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao atualizar colaborador: ' . $erro); }
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'Colaborador atualizado com sucesso');
 }
