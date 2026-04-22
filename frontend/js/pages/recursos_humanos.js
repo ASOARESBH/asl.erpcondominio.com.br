@@ -3,8 +3,6 @@
  * Abas: Colaboradores | Registro de Ponto | Escala | Relatórios
  */
 
-import { showToast } from '../utils/toast.js';
-
 // ── Estado ─────────────────────────────────────────────────────────────────────
 let _state = {
     colaboradorAtual : null,
@@ -65,7 +63,6 @@ function _setupTabs() {
 
 // ── Toast helper ──────────────────────────────────────────────────────────────
 function _toast(msg, type = 'info') {
-    if (typeof showToast === 'function') { showToast(msg, type); return; }
     const colors = { success: '#16a34a', error: '#dc2626', info: '#667eea' };
     const t = Object.assign(document.createElement('div'), {
         textContent: msg,
@@ -139,9 +136,9 @@ function _renderColaboradores(list) {
     wrap.innerHTML = list.map(c => `
         <div class="rh-colab-card">
             <img class="rh-colab-avatar"
-                 src="${c.foto_path ? c.foto_path : 'assets/img/avatar-placeholder.png'}"
+                 src="${c.foto_path ? c.foto_path : 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E'}"
                  alt="${_esc(c.nome)}"
-                 onerror="this.src='assets/img/avatar-placeholder.png'">
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E'">
             <div class="rh-colab-info">
                 <div class="rh-colab-nome">${_esc(c.nome)}</div>
                 <div class="rh-colab-sub">${_esc(c.cargo||'—')} · ${_esc(c.departamento||'—')} · CPF: ${_esc(c.cpf||'—')}</div>
@@ -255,7 +252,7 @@ async function _salvarColaborador(e) {
 function _limparFormColab() {
     document.getElementById('formColaborador').reset();
     document.getElementById('rh-id').value = '';
-    document.getElementById('rh-foto-preview').src = 'assets/img/avatar-placeholder.png';
+    document.getElementById('rh-foto-preview').src = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='0 0 110 110'%3E%3Ccircle cx='55' cy='55' r='55' fill='%23e2e8f0'/%3E%3Ccircle cx='55' cy='42' r='18' fill='%2394a3b8'/%3E%3Cellipse cx='55' cy='85' rx='28' ry='20' fill='%2394a3b8'/%3E%3C/svg%3E';
     document.getElementById('rh-foto-input').value = '';
     document.getElementById('rh-form-titulo').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Colaborador';
     document.getElementById('btnRhCancelar').style.display = 'none';

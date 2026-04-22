@@ -2,6 +2,58 @@
    Recursos Humanos — estilos de página
    ============================================================ */
 
+/* --- Abas (CRÍTICO: oculta conteúdo inativo) --- */
+.page-recursos-humanos .tab-content {
+    display: none;
+}
+
+.page-recursos-humanos .tab-content.active {
+    display: block;
+    animation: rhFadeIn 0.25s ease;
+}
+
+@keyframes rhFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.page-recursos-humanos .tabs-container {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+    flex-wrap: wrap;
+}
+
+.page-recursos-humanos .tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary, #64748b);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 6px 6px 0 0;
+}
+
+.page-recursos-humanos .tab-btn:hover {
+    background: var(--bg-secondary, #f1f5f9);
+    color: var(--primary-color, #1e40af);
+}
+
+.page-recursos-humanos .tab-btn.active {
+    color: var(--primary-color, #1e40af);
+    border-bottom-color: var(--primary-color, #1e40af);
+    background: var(--bg-secondary, #eff6ff);
+    font-weight: 600;
+}
+
 /* Foto do colaborador */
 .rh-foto-wrap {
     display: flex;
@@ -234,6 +286,7 @@
     border: 2px solid var(--border-color, #e2e8f0);
     background: var(--card-bg, #fff);
     color: var(--text-secondary, #64748b);
+    -webkit-user-select: none;
     user-select: none;
     transition: all .15s;
 }
