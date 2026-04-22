@@ -9,13 +9,14 @@
  *   2. Log de debug para diagnóstico
  *
  * Sub-páginas disponíveis:
- *   - protocolos   → /pages/protocolos.html
- *   - contratos    → /pages/contratos.html
- *   - eventos      → /pages/eventos.html
- *   - checklists   → /pages/checklists.html
- *   - inventario   → /pages/inventario.html
- *   - marketplace  → /pages/marketplace.html
- *   - estoque      → /pages/estoque.html
+ *   - protocolos            → /pages/protocolos.html
+ *   - contratos             → /pages/contratos.html
+ *   - eventos               → /pages/eventos.html
+ *   - checklists            → /pages/checklists.html
+ *   - inventario            → /pages/inventario.html
+ *   - marketplace           → /pages/marketplace.html
+ *   - crm                   → /pages/crm.html
+ *   - cadastro_fornecedor_admin → /pages/cadastro_fornecedor_admin.html
  */
 'use strict';
 
