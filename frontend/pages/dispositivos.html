@@ -1,916 +1,262 @@
-<div id="page-metadata" data-title="Dispositivos" data-icon="fa-microchip" style="display:none;"></div>
+<div id="page-metadata" data-title="Dispositivos Control iD" data-icon="fa-microchip" style="display:none;"></div>
 
 <div class="page-wrapper page-dispositivos">
 
-  <!-- Page Header -->
+  <!-- Header -->
   <div class="page-header">
-    <h1><i class="fas fa-microchip"></i> Dispositivos de Acesso</h1>
-    <p>Cadastro e integração de leitores Control ID (IDUHF, iDAccess, etc.) com o sistema</p>
+    <div class="page-header-content">
+      <h1><i class="fas fa-microchip" style="color:#2563eb;margin-right:10px;"></i>Dispositivos Control iD</h1>
+      <p>Gerenciamento de leitores UHF em Modo Push — o dispositivo inicia todas as conexões</p>
+    </div>
   </div>
 
   <!-- Abas -->
   <div class="tabs-container">
     <button class="tab-btn active" data-tab="dispositivos">
-      <i class="fas fa-server"></i> Dispositivos
-    </button>
-    <button class="tab-btn" data-tab="push">
-      <i class="fas fa-bolt"></i> Modo Push
+      <i class="fas fa-microchip"></i> Dispositivos
     </button>
     <button class="tab-btn" data-tab="eventos">
-      <i class="fas fa-stream"></i> Eventos
+      <i class="fas fa-history"></i> Eventos
+      <span id="badge-eventos" style="display:none;background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;"></span>
     </button>
-    <button class="tab-btn" data-tab="sincronizacao">
-      <i class="fas fa-sync-alt"></i> Sincronização
-    </button>
-    <button class="tab-btn" data-tab="leituras">
-      <i class="fas fa-list-alt"></i> Leituras
-    </button>
-    <button class="tab-btn" data-tab="guia">
-      <i class="fas fa-book"></i> Guia de Integração
-    </button>
-    <button class="tab-btn" data-tab="bridge">
-      <i class="fas fa-key"></i> Bridge / API Key
+    <button class="tab-btn" data-tab="fila">
+      <i class="fas fa-terminal"></i> Fila de Comandos
+      <span id="badge-fila" style="display:none;background:#f59e0b;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;"></span>
     </button>
   </div>
 
-  <!-- ===================== ABA: DISPOSITIVOS ===================== -->
+  <!-- ═══════════════════════════════ ABA: DISPOSITIVOS ═══════════════════════════════ -->
   <div id="tab-dispositivos" class="tab-content active">
 
-    <!-- Formulário de cadastro -->
-    <div class="page-card">
+    <!-- Formulário -->
+    <div class="page-card" id="disp-form-card">
       <div class="card-header-row">
-        <h2 id="form-titulo"><i class="fas fa-plus-circle"></i> Novo Dispositivo</h2>
-        <button class="btn-secondary-modern" id="btnLimparForm" type="button" style="display:none;">
-          <i class="fas fa-times"></i> Cancelar Edição
+        <h2 id="disp-form-titulo"><i class="fas fa-plus-circle"></i> Novo Dispositivo</h2>
+        <button class="btn-secondary-modern" id="btnDispCancelar" style="display:none;" type="button">
+          <i class="fas fa-times"></i> Cancelar
         </button>
       </div>
 
-      <form id="formDispositivo" autocomplete="off">
-        <input type="hidden" id="disp-id" value="">
-
-        <div class="form-grid">
-          <div>
-            <label>Nome do Dispositivo *</label>
-            <input type="text" id="disp-nome" placeholder="Ex: Leitor UHF Portaria Principal" required>
-          </div>
-          <div>
-            <label>Modelo *</label>
-            <select id="disp-modelo">
-              <option value="IDUHF">IDUHF — Leitor UHF Veicular 15m</option>
-              <option value="iDAccess Nano">iDAccess Nano</option>
-              <option value="iDAccess Pro">iDAccess Pro</option>
-              <option value="iDFace">iDFace — Reconhecimento Facial</option>
-              <option value="iDFlex">iDFlex</option>
-              <option value="iDBlock">iDBlock — Catraca</option>
-              <option value="Outro">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label>Tipo de Leitura *</label>
-            <select id="disp-tipo">
-              <option value="uhf">UHF (TAG Veicular 15m)</option>
-              <option value="rfid">RFID / Wiegand (Cartão Proximidade)</option>
-              <option value="facial">Reconhecimento Facial</option>
-              <option value="biometria">Biometria Digital</option>
-              <option value="qrcode">QR Code</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label>Área de Instalação</label>
-            <input type="text" id="disp-area" placeholder="Ex: Portaria Principal, Garagem B">
-          </div>
-          <div>
-            <label>Endereço IP *</label>
-            <input type="text" id="disp-ip" placeholder="Ex: 192.168.1.100" required>
-          </div>
-          <div>
-            <label>Porta HTTP</label>
-            <input type="number" id="disp-porta" value="80" min="1" max="65535">
-          </div>
-          <div>
-            <label>Usuário da API</label>
-            <input type="text" id="disp-usuario" value="admin" placeholder="admin">
-          </div>
-          <div>
-            <label>Senha da API *</label>
-            <div class="input-with-toggle">
-              <input type="password" id="disp-senha" placeholder="Senha de acesso ao equipamento">
-              <button type="button" class="btn-toggle-senha" onclick="toggleSenha('disp-senha', this)">
-                <i class="fas fa-eye"></i>
-              </button>
-            </div>
-            <small id="disp-senha-hint" style="display:none; color:#888;">Deixe em branco para manter a senha atual</small>
-          </div>
-          <div class="full-width">
-            <label>Descrição / Observações</label>
-            <textarea id="disp-descricao" rows="2" placeholder="Informações adicionais sobre o dispositivo"></textarea>
-          </div>
-          <div>
-            <label>Status</label>
-            <select id="disp-ativo">
-              <option value="1">Ativo</option>
-              <option value="0">Inativo</option>
-            </select>
-          </div>
+      <div class="form-grid">
+        <div>
+          <label>Nome do Dispositivo *</label>
+          <input type="text" id="disp-nome" placeholder="Ex: Cancela Moradores — Entrada">
         </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn-primary-modern" id="btnSalvarDisp">
-            <i class="fas fa-save"></i> Salvar Dispositivo
-          </button>
+        <div>
+          <label>Serial Number (Device ID) *</label>
+          <input type="text" id="disp-serial" placeholder="Ex: CID-UHFA1B2C3">
         </div>
-      </form>
+        <div style="grid-column: 1 / -1;">
+          <label>Descrição</label>
+          <input type="text" id="disp-descricao" placeholder="Localização, modelo, observações...">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn-primary-modern" id="btnDispSalvar" type="button">
+          <i class="fas fa-save"></i> Salvar Dispositivo
+        </button>
+      </div>
     </div>
 
-    <!-- Lista de dispositivos -->
-    <div class="page-card">
+    <!-- Listagem -->
+    <div class="page-card" style="margin-top:20px;">
       <div class="card-header-row">
         <h2><i class="fas fa-list"></i> Dispositivos Cadastrados</h2>
-        <button class="btn-secondary-modern" id="btnAtualizarLista" type="button">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="disp-busca" placeholder="Buscar por nome ou serial..." style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;width:240px;">
+          <button class="btn-secondary-modern" id="btnDispBuscar" type="button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="disp-lista">
+        <div style="text-align:center;padding:40px;color:#94a3b8;">
+          <i class="fas fa-spinner fa-spin" style="font-size:28px;display:block;margin-bottom:12px;"></i>
+          Carregando dispositivos...
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-dispositivos -->
+
+  <!-- ═══════════════════════════════ ABA: EVENTOS ═══════════════════════════════ -->
+  <div id="tab-eventos" class="tab-content">
+
+    <div class="page-card">
+      <div class="card-header-row">
+        <h2><i class="fas fa-history"></i> Eventos de Acesso</h2>
+        <button class="btn-secondary-modern" id="btnEventosRefresh" type="button">
           <i class="fas fa-sync-alt"></i> Atualizar
         </button>
       </div>
 
-      <div id="loading-dispositivos" class="loading" style="display:none;">
-        <i class="fas fa-spinner fa-spin"></i> Carregando dispositivos...
+      <!-- Filtros -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-end;">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">Dispositivo</label>
+          <select id="ev-filtro-serial" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">Tipo de Evento</label>
+          <select id="ev-filtro-tipo" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+            <option value="">Todos</option>
+            <option value="7">7 — Acesso Liberado</option>
+            <option value="4">4 — Acesso Negado</option>
+            <option value="1">1 — Saída</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">De</label>
+          <input type="date" id="ev-filtro-de" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">Até</label>
+          <input type="date" id="ev-filtro-ate" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+        </div>
+        <button class="btn-primary-modern" id="btnEventosBuscar" type="button" style="align-self:flex-end;">
+          <i class="fas fa-search"></i> Buscar
+        </button>
       </div>
 
-      <div class="table-responsive">
-        <table class="data-table" id="tabelaDispositivos">
+      <div class="table-container">
+        <table>
           <thead>
             <tr>
-              <th>Status</th>
-              <th>Nome</th>
-              <th>Modelo / Tipo</th>
-              <th>IP : Porta</th>
-              <th>Área</th>
-              <th>Último Ping</th>
-              <th>Ações</th>
+              <th>#</th>
+              <th>Dispositivo (Serial)</th>
+              <th>User ID</th>
+              <th>Tipo Evento</th>
+              <th>Data / Hora</th>
             </tr>
           </thead>
-          <tbody id="tbody-dispositivos">
-            <tr><td colspan="7" class="text-center text-muted">Nenhum dispositivo cadastrado.</td></tr>
+          <tbody id="ev-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:30px;color:#94a3b8;">
+              <i class="fas fa-spinner fa-spin"></i> Carregando...
+            </td></tr>
           </tbody>
         </table>
       </div>
+
+      <div id="ev-paginacao" style="display:flex;justify-content:center;gap:8px;margin-top:14px;flex-wrap:wrap;"></div>
     </div>
-  </div>
 
-  <!-- ===================== ABA: MODO PUSH ===================== -->
-  <div id="tab-push" class="tab-content" style="display:none;">
+  </div><!-- /tab-eventos -->
 
-    <!-- Status Push por dispositivo -->
-    <div class="page-card">
+  <!-- ═══════════════════════════════ ABA: FILA DE COMANDOS ═══════════════════════════════ -->
+  <div id="tab-fila" class="tab-content">
+
+    <!-- Formulário de novo comando -->
+    <div class="page-card" style="margin-bottom:20px;">
       <div class="card-header-row">
-        <h2><i class="fas fa-bolt"></i> Modo Push — Configuração e Status</h2>
-        <button class="btn-secondary-modern" id="btnAtualizarStatusPush" type="button">
-          <i class="fas fa-sync-alt"></i> Atualizar
-        </button>
+        <h2><i class="fas fa-plus-circle"></i> Novo Comando</h2>
       </div>
-      <p class="card-subtitle">
-        No <strong>Modo Push</strong>, o equipamento inicia a comunicação periodicamente com o servidor,
-        eliminando a necessidade de acesso de rede do servidor ao equipamento.
-        Ideal para redes NAT ou equipamentos atrás de firewall.
-      </p>
-
       <div class="form-grid">
         <div>
-          <label>Dispositivo *</label>
-          <select id="push-dispositivo-id">
-            <option value="">— Selecione um dispositivo —</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Status cards -->
-      <div id="push-status-area" style="display:none;">
-        <div class="push-status-cards">
-          <div class="push-stat-card">
-            <div class="push-stat-icon push-icon-modo"><i class="fas fa-cog"></i></div>
-            <div class="push-stat-info">
-              <span class="push-stat-label">Modo de Operação</span>
-              <span class="push-stat-value" id="push-stat-modo">—</span>
-            </div>
-          </div>
-          <div class="push-stat-card">
-            <div class="push-stat-icon push-icon-status"><i class="fas fa-circle"></i></div>
-            <div class="push-stat-info">
-              <span class="push-stat-label">Status</span>
-              <span class="push-stat-value" id="push-stat-status">—</span>
-            </div>
-          </div>
-          <div class="push-stat-card">
-            <div class="push-stat-icon push-icon-ping"><i class="fas fa-clock"></i></div>
-            <div class="push-stat-info">
-              <span class="push-stat-label">Último Contato</span>
-              <span class="push-stat-value" id="push-stat-ping">—</span>
-            </div>
-          </div>
-          <div class="push-stat-card">
-            <div class="push-stat-icon push-icon-fila"><i class="fas fa-list"></i></div>
-            <div class="push-stat-info">
-              <span class="push-stat-label">Comandos na Fila</span>
-              <span class="push-stat-value" id="push-stat-fila">0</span>
-            </div>
-          </div>
-          <div class="push-stat-card">
-            <div class="push-stat-icon push-icon-eventos"><i class="fas fa-stream"></i></div>
-            <div class="push-stat-info">
-              <span class="push-stat-label">Total Eventos</span>
-              <span class="push-stat-value" id="push-stat-eventos">0</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="push-url-info">
-          <span class="push-url-label"><i class="fas fa-link"></i> URL Push configurada:</span>
-          <code id="push-stat-url">—</code>
-        </div>
-      </div>
-    </div>
-
-    <!-- Configurar Push Mode -->
-    <div class="page-card">
-      <h2><i class="fas fa-satellite-dish"></i> Configurar Push Mode no Equipamento</h2>
-      <p class="card-subtitle">
-        Envia a configuração diretamente ao equipamento via API REST (requer acesso de rede ao IP do equipamento).
-        Após configurado, o equipamento passa a enviar dados proativamente para o servidor.
-      </p>
-
-      <div class="form-grid">
-        <div class="full-width">
-          <label>URL do Servidor Push</label>
-          <input type="text" id="push-url" placeholder="https://asl.erpcondominio.com.br/api/controlid"
-                 title="URL base que o equipamento usará para polling. Deixe em branco para usar a URL padrão do sistema.">
-          <small class="field-hint">URL que o equipamento chamará periodicamente. Deixe em branco para usar a URL padrão do sistema.</small>
-        </div>
-        <div>
-          <label>Intervalo de Polling (segundos)</label>
-          <input type="number" id="push-periodo" value="10" min="5" max="300"
-                 title="Intervalo em segundos entre cada polling do equipamento">
-          <small class="field-hint">Recomendado: 10s. Mínimo: 5s.</small>
-        </div>
-        <div>
-          <label>Timeout do Request (ms)</label>
-          <input type="number" id="push-timeout" value="30000" min="5000" max="120000"
-                 title="Timeout em milissegundos para cada request de polling">
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button class="btn-primary-modern" id="btnConfigurarPush" type="button">
-          <i class="fas fa-satellite-dish"></i> Configurar Push Mode
-        </button>
-      </div>
-
-      <div id="push-config-resultado" style="display:none;" class="sync-resultado-box"></div>
-    </div>
-
-    <!-- Configurar Online Mode -->
-    <div class="page-card">
-      <h2><i class="fas fa-wifi"></i> Configurar Online Mode no Equipamento</h2>
-      <p class="card-subtitle">
-        No <strong>Online Mode</strong>, o equipamento envia cada identificação em tempo real para o servidor,
-        que autoriza ou nega o acesso imediatamente. Disponível nos modos Pro e Enterprise.
-      </p>
-
-      <div class="form-grid">
-        <div>
-          <label>Endereço do Servidor Online</label>
-          <input type="text" id="online-servidor" placeholder="asl.erpcondominio.com.br"
-                 title="Hostname ou IP do servidor para o modo online (sem https://)">
-          <small class="field-hint">Hostname que o equipamento usará para enviar eventos de identificação.</small>
-        </div>
-        <div>
-          <label>Modo Online</label>
-          <select id="online-modo" title="Modo de operação online do equipamento">
-            <option value="pro">Pro — Identificação no equipamento, autorização no servidor</option>
-            <option value="enterprise">Enterprise — Identificação e autorização no servidor</option>
+          <label>Dispositivo (Serial) *</label>
+          <select id="fila-serial">
+            <option value="">Selecione o dispositivo...</option>
           </select>
         </div>
         <div>
-          <label>Ação ao Liberar Acesso</label>
-          <select id="online-acao-acesso" title="Tipo de relay/acionamento ao conceder acesso">
-            <option value="door">door — Relay interno (iDAccess, iDFlex, iDFit)</option>
-            <option value="sec_box">sec_box — Relay externo MAE (iDUHF, iDAccess Pro)</option>
-            <option value="catra">catra — Catraca (iDBlock)</option>
-          </select>
-        </div>
-        <div>
-          <label>Parâmetros da Ação</label>
-          <input type="text" id="online-acao-params" value="door=1"
-                 placeholder="door=1 | id=65793, reason=1 | allow=clockwise"
-                 title="Parâmetros enviados ao relay. Exemplos: door=1, id=65793 reason=1, allow=clockwise">
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button class="btn-success-modern" id="btnConfigurarOnline" type="button">
-          <i class="fas fa-wifi"></i> Configurar Online Mode
-        </button>
-      </div>
-
-      <div id="online-config-resultado" style="display:none;" class="sync-resultado-box"></div>
-    </div>
-
-    <!-- Enviar Comando Push -->
-    <div class="page-card">
-      <h2><i class="fas fa-terminal"></i> Enviar Comando via Push</h2>
-      <p class="card-subtitle">
-        Enfileira um comando para ser executado pelo equipamento no próximo ciclo de polling.
-        Útil para acionar sincronizações, coletar logs ou executar ações sem login direto.
-      </p>
-
-      <div class="form-grid">
-        <div>
-          <label>Comando (Endpoint Control ID)</label>
-          <select id="push-cmd-endpoint" title="Endpoint da API Control ID a ser executado no equipamento">
-            <option value="load_objects">load_objects — Listar objetos</option>
-            <option value="create_objects">create_objects — Criar objetos</option>
-            <option value="destroy_objects">destroy_objects — Remover objetos</option>
-            <option value="set_configuration">set_configuration — Configurar equipamento</option>
-            <option value="message_to_screen">message_to_screen — Mensagem na tela</option>
-          </select>
-        </div>
-        <div>
-          <label>Método HTTP</label>
-          <select id="push-cmd-verb" title="Método HTTP do comando">
-            <option value="POST">POST</option>
+          <label>Verbo HTTP</label>
+          <select id="fila-verbo">
+            <option value="POST" selected>POST</option>
             <option value="GET">GET</option>
+            <option value="PUT">PUT</option>
+            <option value="DELETE">DELETE</option>
           </select>
         </div>
-        <div class="full-width">
-          <label>Body do Comando (JSON)</label>
-          <textarea id="push-cmd-body" rows="4"
-                    placeholder='{"object": "access_logs", "limit": 100}'
-                    title="JSON do corpo do comando a enviar ao equipamento"></textarea>
+        <div style="grid-column: 1 / -1;">
+          <label>Endpoint *</label>
+          <input type="text" id="fila-endpoint" placeholder="Ex: /access/v1/grant_access">
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label>Corpo JSON (opcional)</label>
+          <textarea id="fila-corpo" rows="4" placeholder='{"user_id": 42, "timeout": 5}'
+            style="width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-family:monospace;background:#f8fafc;resize:vertical;box-sizing:border-box;"></textarea>
         </div>
       </div>
-
-      <div class="form-actions">
-        <button class="btn-secondary-modern" id="btnEnviarComandoPush" type="button">
+      <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button class="btn-primary-modern" id="btnFilaEnfileirar" type="button">
           <i class="fas fa-paper-plane"></i> Enfileirar Comando
         </button>
       </div>
-
-      <div id="push-cmd-resultado" style="display:none;" class="sync-resultado-box"></div>
     </div>
 
-    <!-- Fila de Comandos -->
+    <!-- Listagem da fila -->
     <div class="page-card">
       <div class="card-header-row">
-        <h2><i class="fas fa-list-ol"></i> Fila de Comandos Push</h2>
-        <button class="btn-secondary-modern" id="btnAtualizarFila" type="button">
-          <i class="fas fa-sync-alt"></i> Atualizar
-        </button>
+        <h2><i class="fas fa-list-ul"></i> Comandos na Fila</h2>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="fila-filtro-status" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+            <option value="">Todos os status</option>
+            <option value="pendente">Pendente</option>
+            <option value="enviado">Enviado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <button class="btn-secondary-modern" id="btnFilaRefresh" type="button">
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
       </div>
-      <div class="table-responsive">
-        <table class="data-table">
+
+      <div class="table-container">
+        <table>
           <thead>
             <tr>
               <th>#</th>
               <th>Dispositivo</th>
+              <th>Verbo</th>
               <th>Endpoint</th>
-              <th>Método</th>
               <th>Status</th>
-              <th>Tentativas</th>
               <th>Criado em</th>
-              <th>Executado em</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-fila-push">
-            <tr><td colspan="8" class="text-center text-muted">Nenhum comando na fila.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================== ABA: EVENTOS ===================== -->
-  <div id="tab-eventos" class="tab-content" style="display:none;">
-    <div class="page-card">
-      <div class="card-header-row">
-        <h2><i class="fas fa-stream"></i> Eventos Recebidos em Tempo Real</h2>
-        <div class="table-tools">
-          <select id="filtro-eventos-disp" title="Filtrar por dispositivo">
-            <option value="">Todos os dispositivos</option>
-          </select>
-          <select id="filtro-eventos-tipo" title="Filtrar por tipo de evento">
-            <option value="">Todos os tipos</option>
-            <option value="uhf_tag">UHF Tag</option>
-            <option value="card">Cartão</option>
-            <option value="qrcode">QR Code</option>
-            <option value="user_identified">Usuário Identificado</option>
-            <option value="dao">Monitor DAO</option>
-            <option value="heartbeat">Heartbeat</option>
-            <option value="door">Porta/Relay</option>
-          </select>
-          <label class="auto-refresh-toggle">
-            <input type="checkbox" id="eventos-auto-refresh" checked>
-            Auto-refresh (10s)
-          </label>
-          <button class="btn-secondary-modern" id="btnAtualizarEventos" type="button">
-            <i class="fas fa-sync-alt"></i> Atualizar
-          </button>
-        </div>
-      </div>
-
-      <div id="eventos-live-badge" class="live-badge" style="display:none;">
-        <span class="live-dot"></span> LIVE
-      </div>
-
-      <div class="table-responsive">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Dispositivo</th>
-              <th>Tipo</th>
-              <th>TAG / Cartão / QR</th>
-              <th>Veículo</th>
-              <th>Morador</th>
-              <th>Acesso</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-eventos">
-            <tr><td colspan="7" class="text-center text-muted">Nenhum evento recebido.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================== ABA: SINCRONIZAÇÃO ===================== -->
-  <div id="tab-sincronizacao" class="tab-content" style="display:none;">
-
-    <div class="page-card">
-      <h2><i class="fas fa-sync-alt"></i> Sincronizar TAGs com Control ID</h2>
-      <p class="card-subtitle">
-        Envia as TAGs UHF dos veículos cadastrados no ERP para o leitor Control ID selecionado.
-        Cada veículo é criado como um <strong>usuário</strong> no equipamento com sua TAG vinculada.
-      </p>
-
-      <div class="form-grid">
-        <div>
-          <label>Dispositivo *</label>
-          <select id="sync-dispositivo-id">
-            <option value="">— Selecione um dispositivo —</option>
-          </select>
-        </div>
-        <div>
-          <label>Modo de Sincronização</label>
-          <select id="sync-modo">
-            <option value="1">Apenas veículos não sincronizados (recomendado)</option>
-            <option value="0">Todos os veículos ativos (forçar resincronização)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button class="btn-primary-modern" id="btnTestarConexao" type="button">
-          <i class="fas fa-plug"></i> Testar Conexão
-        </button>
-        <button class="btn-success-modern" id="btnSincronizar" type="button">
-          <i class="fas fa-upload"></i> Sincronizar TAGs
-        </button>
-        <button class="btn-secondary-modern" id="btnColetarLogs" type="button">
-          <i class="fas fa-download"></i> Coletar Logs do Equipamento
-        </button>
-      </div>
-
-      <!-- Resultado da operação -->
-      <div id="sync-resultado" style="display:none;" class="sync-resultado-box">
-        <div id="sync-resultado-content"></div>
-      </div>
-
-      <!-- Progresso -->
-      <div id="sync-progresso" style="display:none;" class="sync-progresso">
-        <i class="fas fa-spinner fa-spin"></i>
-        <span id="sync-progresso-msg">Processando...</span>
-      </div>
-    </div>
-
-    <!-- Log de sincronizações -->
-    <div class="page-card">
-      <div class="card-header-row">
-        <h2><i class="fas fa-history"></i> Histórico de Sincronizações</h2>
-        <button class="btn-secondary-modern" id="btnAtualizarSyncLog" type="button">
-          <i class="fas fa-sync-alt"></i> Atualizar
-        </button>
-      </div>
-      <div class="table-responsive">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Dispositivo</th>
               <th>Ação</th>
-              <th>Status</th>
-              <th>Enviados</th>
-              <th>Erros</th>
-              <th>Detalhes</th>
             </tr>
           </thead>
-          <tbody id="tbody-sync-log">
-            <tr><td colspan="7" class="text-center text-muted">Nenhum registro.</td></tr>
+          <tbody id="fila-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8;">
+              <i class="fas fa-spinner fa-spin"></i> Carregando...
+            </td></tr>
           </tbody>
         </table>
       </div>
     </div>
-  </div>
 
-  <!-- ===================== ABA: LEITURAS ===================== -->
-  <div id="tab-leituras" class="tab-content" style="display:none;">
-    <div class="page-card">
-      <div class="card-header-row">
-        <h2><i class="fas fa-car"></i> Leituras de Acesso Coletadas</h2>
-        <div class="table-tools">
-          <select id="filtro-leituras-disp">
-            <option value="">Todos os dispositivos</option>
-          </select>
-          <button class="btn-secondary-modern" id="btnAtualizarLeituras" type="button">
-            <i class="fas fa-sync-alt"></i> Atualizar
-          </button>
-        </div>
-      </div>
-      <div class="table-responsive">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Data/Hora</th>
-              <th>Dispositivo</th>
-              <th>TAG / Cartão</th>
-              <th>Veículo</th>
-              <th>Morador</th>
-              <th>Evento</th>
-              <th>Acesso</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-leituras">
-            <tr><td colspan="7" class="text-center text-muted">Nenhuma leitura importada.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  </div><!-- /tab-fila -->
 
-  <!-- ===================== ABA: GUIA DE INTEGRAÇÃO ===================== -->
-  <div id="tab-guia" class="tab-content" style="display:none;">
-    <div class="page-card guia-integracao">
-      <h2><i class="fas fa-book-open"></i> Guia de Integração — Leitor IDUHF Control ID</h2>
+</div><!-- /.page-dispositivos -->
 
-      <div class="guia-section">
-        <h3><i class="fas fa-network-wired"></i> 1. Configuração de Rede do Equipamento</h3>
-        <ol>
-          <li>Conecte o leitor IDUHF à mesma rede local do servidor (switch ou roteador).</li>
-          <li>Acesse a interface web do equipamento pelo IP padrão de fábrica: <code>192.168.0.1</code> (usuário: <code>admin</code>, senha: <code>admin</code>).</li>
-          <li>Vá em <strong>Configurações → Rede</strong> e defina um IP fixo na sua sub-rede (ex: <code>192.168.1.100</code>).</li>
-          <li>Certifique-se de que o servidor do ERP consegue alcançar esse IP (mesma rede ou roteamento configurado).</li>
-        </ol>
-      </div>
-
-      <div class="guia-section">
-        <h3><i class="fas fa-cogs"></i> 2. Modo de Operação da TAG UHF</h3>
-        <p>O IDUHF suporta dois modos para TAGs UHF:</p>
-        <table class="data-table">
-          <thead><tr><th>Modo</th><th>Objeto na API</th><th>Formato da TAG</th><th>Quando usar</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><strong>Extended</strong> (recomendado)</td>
-              <td><code>uhf_tags</code></td>
-              <td>String hexadecimal (ex: <code>CAFEDAD0</code>)</td>
-              <td>TAGs com EPC de 96 bits — padrão do IDUHF</td>
-            </tr>
-            <tr>
-              <td><strong>Standard</strong></td>
-              <td><code>cards</code></td>
-              <td>Número inteiro (Wiegand)</td>
-              <td>Compatibilidade com leitores RFID tradicionais</td>
-            </tr>
-          </tbody>
-        </table>
-        <p>O sistema tenta primeiro o modo <strong>Extended</strong>. Se falhar, tenta o modo <strong>Standard</strong> automaticamente.</p>
-      </div>
-
-      <div class="guia-section">
-        <h3><i class="fas fa-tag"></i> 3. Formato das TAGs no ERP</h3>
-        <p>No cadastro de veículos, o campo <strong>TAG</strong> deve conter:</p>
-        <ul>
-          <li><strong>Modo Extended (IDUHF):</strong> o código EPC da tag em hexadecimal, ex: <code>MAJJHAG0022</code> ou <code>E2003411B802011820A0B8F3</code></li>
-          <li><strong>Modo Standard:</strong> o número Wiegand da TAG, ex: <code>12345</code></li>
-        </ul>
-        <div class="alert-box alert-info">
-          <i class="fas fa-info-circle"></i>
-          <strong>Como obter o código EPC da TAG:</strong> Aproxime a TAG do leitor IDUHF e consulte os logs de acesso no equipamento (<em>Controle de Acesso → Logs</em>) — o campo <code>uhf_tag</code> mostrará o código EPC lido.
-        </div>
-      </div>
-
-      <div class="guia-section">
-        <h3><i class="fas fa-play-circle"></i> 4. Fluxo de Integração</h3>
-        <div class="fluxo-steps">
-          <div class="fluxo-step">
-            <div class="step-num">1</div>
-            <div class="step-desc">
-              <strong>Cadastre o dispositivo</strong> na aba "Dispositivos" com IP, porta e credenciais.
-            </div>
-          </div>
-          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-          <div class="fluxo-step">
-            <div class="step-num">2</div>
-            <div class="step-desc">
-              <strong>Teste a conexão</strong> — o sistema faz login na API do equipamento e confirma a comunicação.
-            </div>
-          </div>
-          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-          <div class="fluxo-step">
-            <div class="step-num">3</div>
-            <div class="step-desc">
-              <strong>Sincronize as TAGs</strong> — o sistema envia todos os veículos cadastrados como usuários no equipamento, vinculando cada TAG UHF.
-            </div>
-          </div>
-          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-          <div class="fluxo-step">
-            <div class="step-num">4</div>
-            <div class="step-desc">
-              <strong>Coleta automática de logs</strong> — ao clicar em "Coletar Logs", o sistema importa os acessos registrados pelo equipamento e os registra no controle de acesso do ERP.
-            </div>
-          </div>
-          <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-          <div class="fluxo-step">
-            <div class="step-num">5</div>
-            <div class="step-desc">
-              <strong>Novos veículos</strong> — ao cadastrar um novo veículo com TAG, clique em "Sincronizar TAGs" novamente. O sistema enviará apenas os veículos ainda não sincronizados.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="guia-section">
-        <h3><i class="fas fa-bolt"></i> 5. Modo Push — Comunicação Invertida (Recomendado)</h3>
-        <p>No <strong>Modo Push</strong>, o equipamento inicia a comunicação com o servidor — não o contrário.</p>
-        <table class="data-table">
-          <thead><tr><th>Modo</th><th>Quem inicia</th><th>Quando usar</th><th>URL no equipamento</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><strong>PULL (padrão atual)</strong></td>
-              <td>Servidor → Equipamento</td>
-              <td>Servidor tem acesso ao IP do equipamento na rede local</td>
-              <td>IP do equipamento configurado no ERP</td>
-            </tr>
-            <tr>
-              <td><strong>Push Polling</strong></td>
-              <td>Equipamento → Servidor</td>
-              <td>Equipamento tem internet mas servidor não alcança o equipamento (NAT)</td>
-              <td><code>https://asl.erpcondominio.com.br/api/controlid</code></td>
-            </tr>
-            <tr>
-              <td><strong>Online Mode Pro</strong></td>
-              <td>Equipamento → Servidor (cada leitura)</td>
-              <td>Autorização em tempo real — melhor para controle de acesso rigoroso</td>
-              <td><code>asl.erpcondominio.com.br</code></td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="alert-box alert-info" style="margin-top:12px;">
-          <i class="fas fa-info-circle"></i>
-          <strong>Como ativar:</strong> Vá na aba <strong>Modo Push</strong>, selecione o dispositivo,
-          configure a URL e clique em <strong>Configurar Push Mode</strong>. O sistema enviará
-          a configuração diretamente ao equipamento.
-        </div>
-        <h4 style="margin-top:16px;">Endpoints disponíveis no servidor:</h4>
-        <table class="data-table">
-          <thead><tr><th>Método</th><th>URL</th><th>Descrição</th></tr></thead>
-          <tbody>
-            <tr><td>GET</td><td><code>/api/controlid/push</code></td><td>Push polling — equipamento busca comandos</td></tr>
-            <tr><td>POST</td><td><code>/api/controlid/result</code></td><td>Resultado do comando executado</td></tr>
-            <tr><td>POST</td><td><code>/new_uhf_tag.fcgi</code></td><td>Online Mode — leitura UHF</td></tr>
-            <tr><td>POST</td><td><code>/new_user_identified.fcgi</code></td><td>Online Mode Pro — usuário identificado</td></tr>
-            <tr><td>POST</td><td><code>/new_card.fcgi</code></td><td>Online Mode — cartão Wiegand</td></tr>
-            <tr><td>POST</td><td><code>/new_qrcode.fcgi</code></td><td>Online Mode — QR Code</td></tr>
-            <tr><td>POST</td><td><code>/device_is_alive.fcgi</code></td><td>Heartbeat / verificação de conectividade</td></tr>
-            <tr><td>POST</td><td><code>/api/controlid/notifications/dao</code></td><td>Monitor — mudanças em access_logs</td></tr>
-            <tr><td>POST</td><td><code>/api/controlid/notifications/door</code></td><td>Monitor — estado da porta/relay</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="guia-section">
-        <h3><i class="fas fa-exclamation-triangle"></i> 6. Requisitos e Observações</h3>
-        <ul>
-          <li>O servidor do ERP (HostGator) deve ter acesso de rede ao IP do equipamento. Em redes locais, pode ser necessário configurar um <strong>proxy reverso</strong> ou usar o módulo de integração local.</li>
-          <li>A API do Control ID usa HTTP (porta 80 por padrão) — certifique-se de que firewalls não bloqueiam essa porta.</li>
-          <li>O token de sessão da API expira em ~30 minutos. O sistema faz login automaticamente a cada operação.</li>
-          <li>O grupo de acesso padrão usado é o <strong>Grupo 1</strong> do equipamento. Certifique-se de que ele tem regras de acesso configuradas no equipamento.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-  <!-- ===================== ABA: BRIDGE / API KEY ===================== -->
-  <div id="tab-bridge" class="tab-content" style="display:none;">
-
-    <!-- Card: Status do Bridge -->
-    <div class="page-card">
-      <div class="card-header-row">
-        <h2><i class="fas fa-plug"></i> Status do Bridge</h2>
-        <button class="btn-secondary-modern" id="btnAtualizarStatusBridge" type="button">
-          <i class="fas fa-sync-alt"></i> Atualizar
-        </button>
-      </div>
-      <p class="card-subtitle">
-        O <strong>Control ID Bridge</strong> é um programa Python que roda no seu computador local e faz a comunicação entre este ERP (hospedado na internet) e os equipamentos Control ID na rede interna.
-      </p>
-
-      <div class="bridge-status-grid" id="bridge-status-grid">
-        <div class="bridge-stat-card">
-          <div class="bridge-stat-icon bridge-icon-status"><i class="fas fa-circle"></i></div>
-          <div class="bridge-stat-info">
-            <span class="bridge-stat-label">Status do Bridge</span>
-            <span class="bridge-stat-value" id="bridge-stat-status"><span class="badge-offline">Offline</span></span>
-          </div>
-        </div>
-        <div class="bridge-stat-card">
-          <div class="bridge-stat-icon bridge-icon-versao"><i class="fas fa-code-branch"></i></div>
-          <div class="bridge-stat-info">
-            <span class="bridge-stat-label">Versão</span>
-            <span class="bridge-stat-value" id="bridge-stat-versao">—</span>
-          </div>
-        </div>
-        <div class="bridge-stat-card">
-          <div class="bridge-stat-icon bridge-icon-ping"><i class="fas fa-clock"></i></div>
-          <div class="bridge-stat-info">
-            <span class="bridge-stat-label">Último Contato</span>
-            <span class="bridge-stat-value" id="bridge-stat-ping">—</span>
-          </div>
-        </div>
-        <div class="bridge-stat-card">
-          <div class="bridge-stat-icon bridge-icon-disp"><i class="fas fa-server"></i></div>
-          <div class="bridge-stat-info">
-            <span class="bridge-stat-label">Dispositivos Online</span>
-            <span class="bridge-stat-value" id="bridge-stat-dispositivos">0 / 0</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabela de dispositivos conectados via bridge -->
-      <div id="bridge-dispositivos-area" style="margin-top:16px; display:none;">
-        <h3 style="font-size:14px; color:#475569; margin-bottom:8px;"><i class="fas fa-list"></i> Dispositivos reportados pelo Bridge</h3>
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Dispositivo</th>
-                <th>IP</th>
-                <th>Status</th>
-                <th>Último Contato</th>
-                <th>Erros</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-bridge-dispositivos">
-              <tr><td colspan="5" class="text-center text-muted">Aguardando dados do bridge...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Card: Chave de Autenticação -->
-    <div class="page-card">
-      <div class="card-header-row">
-        <h2><i class="fas fa-key"></i> Chave de Autenticação (API Key)</h2>
-      </div>
-      <p class="card-subtitle">
-        A <strong>API Key</strong> é usada pelo Bridge para autenticar as comunicações com o ERP.
-        Copie a chave gerada e cole no arquivo <code>config.json</code> do Bridge no campo <code>api_key</code>.
-      </p>
-
-      <!-- Chave atual -->
-      <div class="bridge-key-display">
-        <label>Chave Atual</label>
-        <div class="bridge-key-row">
-          <input type="password" id="bridge-api-key-input" class="bridge-key-field" readonly
-                 placeholder="Nenhuma chave gerada ainda" autocomplete="off">
-          <button class="btn-icon-action" id="btnToggleKeyVisibility" title="Mostrar/ocultar chave" type="button">
-            <i class="fas fa-eye" id="bridge-key-eye-icon"></i>
-          </button>
-          <button class="btn-icon-action" id="btnCopiarKey" title="Copiar chave" type="button">
-            <i class="fas fa-copy"></i>
-          </button>
-        </div>
-        <div id="bridge-key-copy-feedback" class="copy-feedback" style="display:none;">
-          <i class="fas fa-check-circle"></i> Chave copiada para a área de transferência!
-        </div>
-      </div>
-
-      <!-- Botões de ação -->
-      <div class="bridge-key-actions">
-        <button class="btn-primary-modern" id="btnGerarKey" type="button">
-          <i class="fas fa-magic"></i> Gerar Nova Chave
-        </button>
-        <button class="btn-danger-modern" id="btnRevogarKey" type="button" style="display:none;">
-          <i class="fas fa-ban"></i> Revogar Chave
-        </button>
-      </div>
-
-      <div class="alert-box alert-warning" style="margin-top:16px;">
-        <i class="fas fa-exclamation-triangle"></i>
-        <strong>Atenção:</strong> Ao gerar uma nova chave, a chave anterior será invalidada imediatamente.
-        Você precisará atualizar o <code>config.json</code> do Bridge com a nova chave.
-      </div>
-    </div>
-
-    <!-- Card: Configuração do config.json -->
-    <div class="page-card">
-      <div class="card-header-row">
-        <h2><i class="fas fa-file-code"></i> Configuração do Bridge (config.json)</h2>
-        <button class="btn-secondary-modern" id="btnCopiarConfigJson" type="button">
-          <i class="fas fa-copy"></i> Copiar JSON
-        </button>
-      </div>
-      <p class="card-subtitle">
-        Copie o trecho abaixo e cole no arquivo <code>config.json</code> do Bridge, substituindo os valores de IP e credenciais dos seus equipamentos.
-      </p>
-      <pre id="bridge-config-preview" class="bridge-config-pre">{
-  "erp": {
-    "url": "https://asl.erpcondominios.com.br",
-    "api_key": "(gere a chave acima)",
-    "poll_interval": 10
-  },
-  "dispositivos": [
-    {
-      "id": 1,
-      "nome": "Leitor UHF Portaria",
-      "ip": "192.168.3.150",
-      "porta": 80,
-      "usuario": "admin",
-      "senha": "admin"
-    }
-  ],
-  "bridge": {
-    "porta_local": 8765,
-    "log_level": "INFO"
-  }
-}</pre>
-    </div>
-
-    <!-- Card: Instruções rápidas -->
-    <div class="page-card guia-integracao">
-      <h2><i class="fas fa-rocket"></i> Como usar o Bridge</h2>
-      <div class="fluxo-steps">
-        <div class="fluxo-step">
-          <div class="step-num">1</div>
-          <div class="step-desc">
-            <strong>Baixe o Bridge</strong> — faça download do arquivo <code>ControlID_Bridge.zip</code> (disponível no suporte) e extraia numa pasta no seu computador.
-          </div>
-        </div>
-        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-        <div class="fluxo-step">
-          <div class="step-num">2</div>
-          <div class="step-desc">
-            <strong>Gere a API Key</strong> — clique em <em>Gerar Nova Chave</em> acima e copie a chave gerada.
-          </div>
-        </div>
-        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-        <div class="fluxo-step">
-          <div class="step-num">3</div>
-          <div class="step-desc">
-            <strong>Configure o config.json</strong> — cole a chave no campo <code>api_key</code> e ajuste os IPs dos equipamentos.
-          </div>
-        </div>
-        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-        <div class="fluxo-step">
-          <div class="step-num">4</div>
-          <div class="step-desc">
-            <strong>Execute o Bridge</strong> — dê duplo clique em <code>ControlID_Bridge.exe</code> ou execute como serviço Windows com <code>instalar_servico.bat</code>.
-          </div>
-        </div>
-        <div class="fluxo-arrow"><i class="fas fa-arrow-down"></i></div>
-        <div class="fluxo-step">
-          <div class="step-num">5</div>
-          <div class="step-desc">
-            <strong>Verifique o status</strong> — volte nesta aba e clique em <em>Atualizar</em>. O bridge aparecerá como <span class="badge-online" style="display:inline-block; padding:2px 8px; border-radius:12px; background:#dcfce7; color:#166534; font-size:12px;">Online</span>.
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-<!-- Modal de confirmação de exclusão -->
-<div id="modal-excluir-disp" class="modal-overlay" style="display:none;">
-  <div class="modal-box">
-    <h3><i class="fas fa-exclamation-triangle text-danger"></i> Confirmar Exclusão</h3>
-    <p>Tem certeza que deseja remover o dispositivo <strong id="modal-excluir-nome"></strong>?</p>
-    <p class="text-muted">Esta ação também removerá todos os logs e leituras associados.</p>
-    <div class="modal-actions">
-      <button class="btn-danger-modern" id="btnConfirmarExcluir">
-        <i class="fas fa-trash"></i> Excluir
+<!-- ══════════════════════════════════════════════════
+     MODAL: TOKEN
+══════════════════════════════════════════════════════ -->
+<div id="disp-token-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <h3 style="margin:0;font-size:1rem;color:#1e293b;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-key" style="color:#2563eb;"></i> Token de Autenticação
+      </h3>
+      <button onclick="document.getElementById('disp-token-overlay').style.display='none'"
+        style="background:none;border:none;cursor:pointer;color:#64748b;font-size:1.1rem;padding:4px 8px;border-radius:6px;">
+        <i class="fas fa-times"></i>
       </button>
-      <button class="btn-secondary-modern" id="btnCancelarExcluir">
-        <i class="fas fa-times"></i> Cancelar
+    </div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+      Configure este token no dispositivo Control iD como <strong>X-ControlID-Token</strong> no header das requisições Push.
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="token-display" readonly
+        style="flex:1;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:13px;background:#f8fafc;color:#1e293b;">
+      <button onclick="window.DispModule?.copiarToken()" class="btn-secondary-modern" type="button">
+        <i class="fas fa-copy"></i> Copiar
+      </button>
+    </div>
+    <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="window.DispModule?.regenerarToken()" class="btn-primary-modern" type="button">
+        <i class="fas fa-sync-alt"></i> Gerar Novo Token
       </button>
     </div>
   </div>

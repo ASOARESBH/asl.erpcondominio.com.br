@@ -1,418 +1,226 @@
-/* ============================================================
-   dispositivos.css — Módulo de Dispositivos Control ID v1.0
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| PAGE-SPECIFIC STYLES ONLY - DISPOSITIVOS CONTROL iD
+|--------------------------------------------------------------------------
+*/
 
-/* --- Abas --- */
+/* ============================================================
+   ABAS
+   ============================================================ */
+.page-dispositivos .tab-content { display: none; }
+.page-dispositivos .tab-content.active {
+    display: block;
+    animation: dispFadeIn 0.3s ease;
+}
+
+@keyframes dispFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .page-dispositivos .tabs-container {
     display: flex;
-    gap: 4px;
-    margin-bottom: 20px;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
     border-bottom: 2px solid #e2e8f0;
     flex-wrap: wrap;
 }
 
 .page-dispositivos .tab-btn {
-    padding: 10px 20px;
+    padding: 1rem 1.5rem;
     border: none;
     background: transparent;
     color: #64748b;
     font-size: 0.9rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     border-radius: 6px 6px 0 0;
 }
 
-.page-dispositivos .tab-btn:hover {
-    background: #f1f5f9;
-    color: #1e40af;
-}
+.page-dispositivos .tab-btn:hover  { color: #2563eb; background: rgba(37,99,235,.04); }
+.page-dispositivos .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; background: #eff6ff; font-weight: 700; }
 
-.page-dispositivos .tab-btn.active {
-    color: #1e40af;
-    border-bottom-color: #1e40af;
-    background: #eff6ff;
-    font-weight: 600;
-}
-
-/* --- Grid de formulário --- */
-.page-dispositivos .form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
-}
-
-.page-dispositivos .form-grid .full-width {
-    grid-column: 1 / -1;
-}
-
-.page-dispositivos .form-grid label {
+/* ============================================================
+   FORMULÁRIO
+   ============================================================ */
+.page-dispositivos label {
     display: block;
-    font-size: 0.82rem;
+    font-size: 13px;
     font-weight: 600;
     color: #475569;
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    margin-bottom: 6px;
 }
 
-.page-dispositivos .form-grid input,
-.page-dispositivos .form-grid select,
-.page-dispositivos .form-grid textarea {
+.page-dispositivos input:not([type="file"]):not([type="checkbox"]),
+.page-dispositivos select,
+.page-dispositivos textarea {
     width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid #e2e8f0;
+    padding: 10px 14px;
     border-radius: 8px;
-    font-size: 0.9rem;
-    background: #fff;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #1e293b;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
     box-sizing: border-box;
 }
 
-.page-dispositivos .form-grid input:focus,
-.page-dispositivos .form-grid select:focus,
-.page-dispositivos .form-grid textarea:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+.page-dispositivos input:not([type="file"]):not([type="checkbox"]):focus,
+.page-dispositivos select:focus,
+.page-dispositivos textarea:focus {
     outline: none;
+    border-color: #3b82f6;
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(59,130,246,.1);
 }
 
-/* --- Input com toggle de senha --- */
-.input-with-toggle {
-    position: relative;
-    display: flex;
-    align-items: center;
+.page-dispositivos .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1rem;
 }
 
-.input-with-toggle input {
-    padding-right: 40px !important;
-}
-
-.btn-toggle-senha {
-    position: absolute;
-    right: 10px;
-    background: none;
-    border: none;
-    color: #94a3b8;
-    cursor: pointer;
-    padding: 4px;
-    font-size: 0.9rem;
-    transition: color 0.2s;
-}
-
-.btn-toggle-senha:hover { color: #3b82f6; }
-
-/* --- Card header row --- */
-.card-header-row {
+.page-dispositivos .card-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
 }
 
-.card-header-row h2 {
-    margin: 0;
-    font-size: 1.1rem;
+.page-dispositivos .card-header-row h2 {
+    font-size: 1rem;
+    font-weight: 700;
     color: #1e293b;
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* --- Tabela --- */
-.page-dispositivos .table-responsive {
-    overflow-x: auto;
+/* ============================================================
+   BOTÕES
+   ============================================================ */
+.page-dispositivos .btn-primary-modern {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border: none;
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
-}
-
-.page-dispositivos .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-}
-
-.page-dispositivos .data-table th {
-    background: #1e3a5f;
+    padding: 10px 20px;
     color: #fff;
-    padding: 10px 14px;
-    text-align: left;
     font-weight: 600;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    white-space: nowrap;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(37,99,235,.2);
 }
 
-.page-dispositivos .data-table td {
-    padding: 10px 14px;
-    border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
-    color: #374151;
+.page-dispositivos .btn-primary-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(37,99,235,.3);
+    filter: brightness(1.1);
 }
 
-.page-dispositivos .data-table tr:hover td { background: #f8fafc; }
-.page-dispositivos .data-table .row-inativo td { opacity: 0.55; }
+.page-dispositivos .btn-primary-modern:active  { transform: translateY(0); }
+.page-dispositivos .btn-primary-modern:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-/* --- Badges --- */
-.badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
+.page-dispositivos .btn-secondary-modern {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    font-size: 14px;
     font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s ease;
 }
 
-.badge-success { background: #dcfce7; color: #166534; }
-.badge-danger  { background: #fee2e2; color: #991b1b; }
-.badge-warning { background: #fef9c3; color: #854d0e; }
-.badge-info    { background: #dbeafe; color: #1e40af; }
+.page-dispositivos .btn-secondary-modern:hover { background: #f1f5f9; }
 
-/* --- Botões de ação na tabela --- */
-.actions-col { white-space: nowrap; }
-
-.btn-icon {
+/* ============================================================
+   BOTÕES DE AÇÃO (ícone)
+   ============================================================ */
+.page-dispositivos .action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: all 0.2s;
-    margin: 0 2px;
-}
-
-.btn-primary-icon  { background: #dbeafe; color: #1d4ed8; }
-.btn-success-icon  { background: #dcfce7; color: #15803d; }
-.btn-danger-icon   { background: #fee2e2; color: #dc2626; }
-
-.btn-primary-icon:hover  { background: #1d4ed8; color: #fff; }
-.btn-success-icon:hover  { background: #15803d; color: #fff; }
-.btn-danger-icon:hover   { background: #dc2626; color: #fff; }
-
-/* --- Sincronização --- */
-.sync-resultado-box {
-    margin-top: 20px;
-    padding: 16px 20px;
-    border-radius: 10px;
     border: 1px solid #e2e8f0;
-}
-
-.sync-resultado-sucesso { background: #f0fdf4; border-color: #86efac; }
-.sync-resultado-erro    { background: #fef2f2; border-color: #fca5a5; }
-
-.resultado-sucesso {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    color: #166534;
-    font-size: 0.95rem;
-}
-
-.resultado-sucesso i { font-size: 1.2rem; margin-top: 2px; }
-
-.resultado-erro {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #991b1b;
-    font-size: 0.95rem;
-}
-
-.resultado-stats {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-}
-
-.stat-item {
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
-}
-
-.stat-total   { background: #e0f2fe; color: #0369a1; }
-.stat-sucesso { background: #dcfce7; color: #166534; }
-.stat-erro    { background: #fee2e2; color: #991b1b; }
-
-.sync-progresso {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 20px;
-    background: #eff6ff;
-    border-radius: 10px;
-    color: #1e40af;
-    font-size: 0.95rem;
-    margin-top: 16px;
-}
-
-.sync-progresso i { font-size: 1.2rem; }
-
-/* --- Guia de Integração --- */
-.guia-integracao h2 {
-    color: #1e3a5f;
-    margin-bottom: 24px;
-    font-size: 1.2rem;
-}
-
-.guia-section {
-    margin-bottom: 28px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.guia-section:last-child { border-bottom: none; }
-
-.guia-section h3 {
-    color: #1e3a5f;
-    font-size: 1rem;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.guia-section ol, .guia-section ul {
-    padding-left: 20px;
-    color: #374151;
-    font-size: 0.9rem;
-    line-height: 1.8;
-}
-
-.guia-section code {
-    background: #f1f5f9;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.88rem;
-    color: #1e40af;
-}
-
-.alert-box {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-top: 12px;
-    font-size: 0.88rem;
-}
-
-.alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
-.alert-info i { margin-top: 2px; }
-
-/* --- Fluxo de integração --- */
-.fluxo-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-.fluxo-step {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 14px 16px;
-    background: #f8fafc;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-}
-
-.step-num {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: #1e3a5f;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.9rem;
-    flex-shrink: 0;
-}
-
-.step-desc {
-    font-size: 0.9rem;
-    color: #374151;
-    line-height: 1.6;
-    padding-top: 4px;
-}
-
-.fluxo-arrow {
-    text-align: center;
-    color: #94a3b8;
-    font-size: 1.1rem;
-    padding: 4px 0;
-    margin-left: 16px;
-}
-
-/* --- Modal --- */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
-
-.modal-box {
     background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.page-dispositivos .action-btn i { font-size: 13px; }
+.page-dispositivos .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,.06); }
+.page-dispositivos .action-btn.edit:hover   { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+.page-dispositivos .action-btn.delete:hover { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
+
+/* ============================================================
+   TABELA
+   ============================================================ */
+.page-dispositivos .table-container {
     border-radius: 12px;
-    padding: 28px 32px;
-    max-width: 440px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
 }
 
-.modal-box h3 {
-    margin: 0 0 12px;
-    font-size: 1.1rem;
-    color: #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.page-dispositivos .table-container table {
+    width: 100%;
+    border-collapse: collapse;
 }
 
-.modal-box p { color: #475569; font-size: 0.9rem; margin: 6px 0; }
-
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-    justify-content: flex-end;
+.page-dispositivos .table-container thead {
+    background: linear-gradient(90deg, #1e3a8a, #2563eb);
 }
 
-.text-danger { color: #dc2626; }
-.text-muted  { color: #94a3b8; font-size: 0.82rem; }
-.text-center { text-align: center; }
+.page-dispositivos .table-container th {
+    color: #fff;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 16px;
+    text-align: left;
+}
 
-/* --- Responsivo --- */
-@media (max-width: 640px) {
-    .page-dispositivos .form-grid {
-        grid-template-columns: 1fr;
-    }
-    .page-dispositivos .tabs-container {
-        gap: 2px;
-    }
-    .page-dispositivos .tab-btn {
-        padding: 8px 12px;
-        font-size: 0.82rem;
-    }
+.page-dispositivos .table-container td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 13px;
+}
+
+.page-dispositivos .table-container tbody tr { transition: background 0.2s ease; }
+.page-dispositivos .table-container tbody tr:hover { background: rgba(37,99,235,.04); }
+.page-dispositivos .table-container tbody tr:last-child td { border-bottom: none; }
+
+/* ============================================================
+   RESPONSIVO
+   ============================================================ */
+@media (max-width: 768px) {
+    .page-dispositivos .form-grid { grid-template-columns: 1fr; }
+    .page-dispositivos .tabs-container { gap: 0; }
+    .page-dispositivos .tab-btn { padding: 0.75rem 1rem; font-size: 0.8rem; }
+    .page-dispositivos .table-container { overflow-x: auto; }
+    .page-dispositivos .card-header-row { flex-direction: column; align-items: flex-start; }
 }
