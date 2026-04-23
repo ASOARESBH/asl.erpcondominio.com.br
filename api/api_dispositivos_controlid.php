@@ -19,17 +19,16 @@
 
 declare(strict_types=1);
 
+// ob_start evita que warnings PHP corrompam o JSON de resposta
+ob_start();
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/api_usuario_logado.php';
+require_once __DIR__ . '/auth_helper.php';
+ob_end_clean();
 
 header('Content-Type: application/json; charset=utf-8');
 
-$usuario = obter_usuario_logado();
-if (!$usuario) {
-    http_response_code(401);
-    echo json_encode(['sucesso' => false, 'erro' => 'Não autenticado']);
-    exit;
-}
+// verificarAutenticacao() encerra com 401 automaticamente se não logado
+$usuario = verificarAutenticacao();
 
 $conn = conectar_banco();
 if (!($conn instanceof mysqli)) {
