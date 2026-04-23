@@ -148,7 +148,42 @@ function responder_criar(mysqli $conn, array $body): void
         _erro($conn, 'nome_dispositivo e serial_number são obrigatórios', 400);
     }
 
-    $token = _gerar_token();
+    $existente = _buscar_dispositivo_por_serial($conn, $serial);
+    if ($existente && (int) ($existente['ativo'] ?? 0) === 1) {
+        fechar_conexao($conn);
+        http_response_code(409);
+        echo json_encode([
+            'sucesso' => false,
+            'erro' => 'Este Serial Number / Device ID ja esta cadastrado. Use editar ou exclua o cadastro existente antes de criar outro.',
+            'id' => (int) $existente['id'],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    // Firmware antigo do Control iD nao permite configurar token. Por isso o
+    // cadastro novo nasce sem token; a autenticacao fica pelo identificador.
+    $token = '';
+
+    if ($existente) {
+        $stmt = $conn->prepare(
+            'UPDATE controlid_dispositivos
+             SET nome_dispositivo = ?, descricao = ?, token_autenticacao = ?, ativo = 1
+             WHERE id = ?'
+        );
+        if (!$stmt) {
+            _erro($conn, 'Prepare reativar: ' . $conn->error);
+        }
+        $id = (int) $existente['id'];
+        $stmt->bind_param('sssi', $nome, $desc, $token, $id);
+        if (!$stmt->execute()) {
+            $err = $stmt->error;
+            $stmt->close();
+            _erro($conn, 'Erro ao reativar dispositivo: ' . $err);
+        }
+        $stmt->close();
+        fechar_conexao($conn);
+        _ok(['id' => $id, 'token_autenticacao' => $token, 'reativado' => true]);
+    }
 
     $stmt = $conn->prepare(
         'INSERT INTO controlid_dispositivos
@@ -470,6 +505,25 @@ function _erro(mysqli $conn, string $msg, int $code = 500): void
 function _gerar_token(): string
 {
     return bin2hex(random_bytes(32));
+}
+
+function _buscar_dispositivo_por_serial(mysqli $conn, string $serial): ?array
+{
+    $stmt = $conn->prepare(
+        'SELECT id, serial_number, ativo
+         FROM controlid_dispositivos
+         WHERE serial_number = ?
+         LIMIT 1'
+    );
+    if (!$stmt) {
+        _erro($conn, 'Prepare buscar serial: ' . $conn->error);
+    }
+    $stmt->bind_param('s', $serial);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $stmt->close();
+    return $row ?: null;
 }
 
 function _esta_online(?string $ultimo_keep_alive): bool

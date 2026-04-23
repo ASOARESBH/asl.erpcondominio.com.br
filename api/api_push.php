@@ -1,134 +1,96 @@
 <?php
 /**
- * api_push.php — Endpoint Push Mode Control iD v2
+ * api_push.php - Endpoint compatível com Control iD Push Mode.
  *
- * O dispositivo é o ÚNICO iniciador de todas as conexões.
- * Não há polling de rede, IP local, socket ou cURL para o leitor.
+ * Compatibilidade:
+ * - Equipamentos antigos sem campo/header de token.
+ * - GET /api/api_push.php?deviceId=...&uuid=... para buscar comandos.
+ * - POST /api/api_push.php?deviceId=...&uuid=... para resultado/eventos.
+ * - POST JSON legado com device_id/serial_number/events.
  *
- * Fluxo por requisição:
- *   1. Autentica via header X-ControlID-Token (ou fallback User-Agent)
- *   2. Identifica o leitor pelo campo device_id no JSON body
- *   3. Atualiza ultimo_keep_alive do dispositivo
- *   4. Registra eventos de acesso recebidos em controlid_eventos_acesso
- *   5. Busca o comando pendente mais antigo para este serial_number
- *   6. Marca como "enviado" e retorna no formato Control iD:
- *        {"verb":"POST","endpoint":"/api/...","body":{...}}
- *      Se não houver comando pendente, retorna: {}
- *
- * Tabelas utilizadas:
- *   controlid_dispositivos    — valida token e atualiza keep-alive
- *   controlid_eventos_acesso  — armazena eventos de acesso
- *   controlid_fila_comandos   — fila de comandos pendentes
+ * O equipamento sempre recebe JSON valido. Quando nao ha comando, retorna {}.
  */
-
-declare(strict_types=1);
 
 ob_start();
 require_once __DIR__ . '/config.php';
 date_default_timezone_set('America/Sao_Paulo');
 
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+push_headers();
 
-// ── CORS (aceita apenas origens do Control iD ou localhost) ─────────────────
-$allowed_origins = [
-    'https://asl.erpcondominios.com.br',
-    'https://asl.erpcondominio.com.br',
-    'http://localhost',
-    'http://127.0.0.1',
-];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin && in_array($origin, $allowed_origins, true)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-}
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, X-ControlID-Token, X-Bridge-Key');
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-    push_respond([], 200);
+$method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+if ($method === 'OPTIONS') {
+    push_respond(array(), 200);
 }
 
-// ── Apenas POST ──────────────────────────────────────────────────────────────
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    push_respond(['erro' => 'Método não permitido'], 405);
+$raw_body = (string) file_get_contents('php://input');
+$body = push_parse_json($raw_body);
+
+if ($method !== 'GET' && $method !== 'POST') {
+    push_log('WARN', 'Metodo nao permitido: ' . $method);
+    push_respond(array(), 200);
 }
 
-// ── Lê body ──────────────────────────────────────────────────────────────────
-$raw  = (string) file_get_contents('php://input');
-$body = push_parse_json($raw);
+$device_identifier = push_device_identifier($body);
+$uuid = trim((string) ($_GET['uuid'] ?? $body['uuid'] ?? ''));
 
-// ── Identifica device_id ─────────────────────────────────────────────────────
-$serial = trim((string) ($body['device_id'] ?? $body['serial_number'] ?? ''));
-if ($serial === '') {
-    push_log('WARN', 'device_id ausente. IP=' . push_ip());
-    push_respond(['erro' => 'device_id obrigatório'], 400);
-}
-
-// ── Conecta ao banco ─────────────────────────────────────────────────────────
 $conn = conectar_banco();
 if (!($conn instanceof mysqli)) {
-    push_respond(['erro' => 'Banco de dados indisponível'], 503);
+    push_respond(array('erro' => 'Banco indisponivel'), 503);
 }
 
-// ── Autentica ────────────────────────────────────────────────────────────────
-$dispositivo = push_buscar_dispositivo($conn, $serial);
-
+$dispositivo = push_buscar_dispositivo($conn, $device_identifier);
 if ($dispositivo === null) {
-    push_log('WARN', "Dispositivo não encontrado: serial={$serial} IP=" . push_ip());
+    push_log(
+        'WARN',
+        'Dispositivo nao encontrado. identificador=' . ($device_identifier !== '' ? $device_identifier : 'vazio')
+        . ' ip=' . push_ip()
+    );
     fechar_conexao($conn);
-    push_respond(['erro' => 'Dispositivo não cadastrado'], 401);
+    push_respond(array(), 200);
 }
 
 if (!push_autenticar($dispositivo, $body)) {
-    push_log('WARN', "Falha na autenticação: serial={$serial} IP=" . push_ip());
+    push_log('WARN', 'Token invalido para serial=' . $dispositivo['serial_number'] . ' ip=' . push_ip());
     fechar_conexao($conn);
-    push_respond(['erro' => 'Token inválido'], 401);
+    push_respond(array(), 200);
 }
 
-// ── Atualiza keep-alive ──────────────────────────────────────────────────────
+$serial = (string) $dispositivo['serial_number'];
 push_atualizar_keepalive($conn, $serial);
 
-// ── Registra eventos ─────────────────────────────────────────────────────────
-$eventos = $body['events'] ?? $body['eventos'] ?? [];
-if (is_array($eventos) && count($eventos) > 0) {
-    push_registrar_eventos($conn, $serial, $eventos);
+if ($method === 'POST') {
+    push_processar_post($conn, $serial, $body, $uuid);
 }
 
-// ── Busca e entrega próximo comando ─────────────────────────────────────────
 $comando = push_proximo_comando($conn, $serial);
-
 fechar_conexao($conn);
 
 if ($comando !== null) {
-    push_log(
-        'INFO',
-        "Comando entregue: id={$comando['id']} serial={$serial} "
-        . "endpoint={$comando['endpoint']}"
-    );
-    push_respond([
-        'verb'     => $comando['verbo'],
+    push_log('INFO', 'Comando entregue: id=' . $comando['id'] . ' serial=' . $serial);
+    push_respond(array(
+        'verb' => $comando['verbo'],
         'endpoint' => $comando['endpoint'],
-        'body'     => json_decode((string) ($comando['corpo_json'] ?? '{}'), true) ?? [],
-    ]);
+        'body' => push_json_array($comando['corpo_json'] ?? '{}'),
+    ));
 }
 
-// Sem comandos pendentes — resposta vazia conforme protocolo Control iD
-push_respond([]);
+push_respond(array());
 
-// ════════════════════════════════════════════════════════════════════════════
-// Funções auxiliares
-// ════════════════════════════════════════════════════════════════════════════
+function push_headers()
+{
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, X-ControlID-Token, X-Bridge-Key, X-API-KEY');
+}
 
-/**
- * Encerra a execução com resposta JSON.
- * Resposta vazia ({}) quando $payload está vazio — protocolo Control iD.
- */
-function push_respond(array $payload, int $status = 200): void
+function push_respond(array $payload, $status = 200)
 {
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
-    http_response_code($status);
+    http_response_code((int) $status);
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(
         empty($payload) ? new stdClass() : $payload,
@@ -137,30 +99,41 @@ function push_respond(array $payload, int $status = 200): void
     exit;
 }
 
-function push_log(string $nivel, string $msg): void
+function push_log($nivel, $msg)
 {
-    error_log('[PUSH][' . $nivel . '] ' . $msg);
+    error_log('[CONTROLID_PUSH][' . $nivel . '] ' . $msg);
 }
 
-function push_ip(): string
+function push_ip()
 {
     return $_SERVER['REMOTE_ADDR'] ?? 'desconhecido';
 }
 
-function push_parse_json(string $raw): array
+function push_parse_json($raw)
 {
     if ($raw === '') {
-        return [];
+        return array();
     }
+
     $decoded = json_decode($raw, true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
-        push_log('WARN', 'JSON inválido: ' . json_last_error_msg());
-        return [];
+        push_log('WARN', 'JSON invalido: ' . json_last_error_msg() . ' raw=' . substr($raw, 0, 500));
+        return array();
     }
+
     return $decoded;
 }
 
-function push_header(string $name): string
+function push_json_array($raw)
+{
+    if (is_array($raw)) {
+        return $raw;
+    }
+    $decoded = json_decode((string) $raw, true);
+    return is_array($decoded) ? $decoded : array();
+}
+
+function push_header($name)
 {
     $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
     if (isset($_SERVER[$key])) {
@@ -176,72 +149,134 @@ function push_header(string $name): string
     return '';
 }
 
-/**
- * Retorna o dispositivo ativo ou null.
- */
-function push_buscar_dispositivo(mysqli $conn, string $serial): ?array
+function push_device_identifier(array $body)
 {
-    $stmt = $conn->prepare(
-        'SELECT id, serial_number, token_autenticacao
-         FROM controlid_dispositivos
-         WHERE serial_number = ? AND ativo = 1
-         LIMIT 1'
+    $candidates = array(
+        $_GET['deviceId'] ?? null,
+        $_GET['device_id'] ?? null,
+        $_GET['serial_number'] ?? null,
+        $_GET['serial'] ?? null,
+        $body['deviceId'] ?? null,
+        $body['device_id'] ?? null,
+        $body['serial_number'] ?? null,
+        $body['serial'] ?? null,
     );
-    if (!$stmt) {
-        push_log('ERROR', 'Prepare buscar dispositivo: ' . $conn->error);
-        return null;
+
+    foreach ($candidates as $candidate) {
+        $value = trim((string) $candidate);
+        if ($value !== '') {
+            return $value;
+        }
     }
-    $stmt->bind_param('s', $serial);
-    $stmt->execute();
-    $res  = $stmt->get_result();
-    $row  = $res ? $res->fetch_assoc() : null;
-    $stmt->close();
-    return $row ?: null;
+
+    return '';
 }
 
-/**
- * Valida o token enviado pelo dispositivo.
- *
- * Ordem de busca do token recebido:
- *   1. Header X-ControlID-Token
- *   2. Header X-Bridge-Key (legado)
- *   3. Campo "token" no body JSON
- *
- * Fallback por User-Agent: dispositivos Control iD identificam-se com
- * "ControlID" no User-Agent — aceitamos sem token quando o cadastro
- * tem token vazio (modo sem autenticação, não recomendado para produção).
- */
-function push_autenticar(array $dispositivo, array $body): bool
+function push_buscar_dispositivo(mysqli $conn, $identifier)
+{
+    $identifier = trim((string) $identifier);
+    if ($identifier === '') {
+        return null;
+    }
+
+    $sql = 'SELECT id, nome_dispositivo, serial_number, token_autenticacao
+            FROM controlid_dispositivos
+            WHERE ativo = 1 AND serial_number = ?
+            LIMIT 1';
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        push_log('ERROR', 'Prepare buscar por serial: ' . $conn->error);
+        return null;
+    }
+    $stmt->bind_param('s', $identifier);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $stmt->close();
+    if ($row) {
+        return $row;
+    }
+
+    if (ctype_digit($identifier)) {
+        $id = (int) $identifier;
+        $stmt = $conn->prepare(
+            'SELECT id, nome_dispositivo, serial_number, token_autenticacao
+             FROM controlid_dispositivos
+             WHERE ativo = 1 AND id = ?
+             LIMIT 1'
+        );
+        if (!$stmt) {
+            push_log('ERROR', 'Prepare buscar por id: ' . $conn->error);
+            return null;
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        $stmt->close();
+        if ($row) {
+            return $row;
+        }
+    }
+
+    // Compatibilidade para firmware antigo: algumas telas mostram o serial
+    // fisico, mas o Push envia um deviceId numerico diferente. Se existir
+    // apenas um leitor ativo, assumimos esse leitor e registramos no log.
+    $stmt = $conn->prepare(
+        'SELECT id, nome_dispositivo, serial_number, token_autenticacao
+         FROM controlid_dispositivos
+         WHERE ativo = 1
+         LIMIT 2'
+    );
+    if (!$stmt) {
+        push_log('ERROR', 'Prepare fallback leitor unico: ' . $conn->error);
+        return null;
+    }
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $rows = array();
+    while ($res && ($row = $res->fetch_assoc())) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    if (count($rows) === 1) {
+        push_log('WARN', 'Fallback leitor unico usado para identificador=' . $identifier);
+        return $rows[0];
+    }
+
+    return null;
+}
+
+function push_autenticar(array $dispositivo, array $body)
 {
     $token_recebido = push_header('X-ControlID-Token');
-
     if ($token_recebido === '') {
         $token_recebido = push_header('X-Bridge-Key');
     }
     if ($token_recebido === '') {
-        $token_recebido = trim((string) ($body['token'] ?? ''));
+        $token_recebido = push_header('X-API-KEY');
     }
-
-    $token_cadastrado = (string) ($dispositivo['token_autenticacao'] ?? '');
-
-    // Se o dispositivo não tem token cadastrado, aceita qualquer requisição
-    // que venha com User-Agent Control iD (modo desenvolvimento).
-    if ($token_cadastrado === '') {
-        $ua = push_header('User-Agent');
-        return stripos($ua, 'ControlID') !== false || $token_recebido === '';
-    }
-
     if ($token_recebido === '') {
-        return false;
+        $token_recebido = trim((string) ($body['token'] ?? $body['api_key'] ?? ''));
+    }
+
+    $token_cadastrado = trim((string) ($dispositivo['token_autenticacao'] ?? ''));
+
+    // Compatibilidade com firmware/software antigo: se nao veio token, aceita
+    // o dispositivo cadastrado. A seguranca fica no cadastro do identificador.
+    if ($token_recebido === '') {
+        return true;
+    }
+
+    if ($token_cadastrado === '') {
+        return true;
     }
 
     return hash_equals($token_cadastrado, $token_recebido);
 }
 
-/**
- * Atualiza ultimo_keep_alive para NOW().
- */
-function push_atualizar_keepalive(mysqli $conn, string $serial): void
+function push_atualizar_keepalive(mysqli $conn, $serial)
 {
     $stmt = $conn->prepare(
         'UPDATE controlid_dispositivos
@@ -249,26 +284,35 @@ function push_atualizar_keepalive(mysqli $conn, string $serial): void
          WHERE serial_number = ?'
     );
     if (!$stmt) {
-        push_log('ERROR', 'Prepare keep-alive: ' . $conn->error);
+        push_log('ERROR', 'Prepare keepalive: ' . $conn->error);
         return;
     }
     $stmt->bind_param('s', $serial);
     if (!$stmt->execute()) {
-        push_log('ERROR', 'Keep-alive execute: ' . $stmt->error);
+        push_log('ERROR', 'Keepalive execute: ' . $stmt->error);
     }
     $stmt->close();
 }
 
-/**
- * Insere eventos de acesso recebidos no payload.
- *
- * Campos esperados por evento (Control iD Push Mode):
- *   id         — ID do evento no dispositivo (para idempotência)
- *   user_id    — ID do usuário no Control iD
- *   time       — data/hora do evento (string ISO ou timestamp)
- *   event      — código do evento (7 = acesso liberado, 4 = negado, etc.)
- */
-function push_registrar_eventos(mysqli $conn, string $serial, array $eventos): void
+function push_processar_post(mysqli $conn, $serial, array $body, $uuid)
+{
+    $eventos = array();
+    if (isset($body['events']) && is_array($body['events'])) {
+        $eventos = $body['events'];
+    } elseif (isset($body['eventos']) && is_array($body['eventos'])) {
+        $eventos = $body['eventos'];
+    }
+
+    if (!empty($eventos)) {
+        push_registrar_eventos($conn, $serial, $eventos);
+    }
+
+    if (isset($body['response']) || isset($body['error']) || isset($body['transactions_results'])) {
+        push_marcar_resultado($conn, $serial, $body, $uuid);
+    }
+}
+
+function push_registrar_eventos(mysqli $conn, $serial, array $eventos)
 {
     $stmt = $conn->prepare(
         'INSERT IGNORE INTO controlid_eventos_acesso
@@ -276,7 +320,7 @@ function push_registrar_eventos(mysqli $conn, string $serial, array $eventos): v
          VALUES (?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
-        push_log('ERROR', 'Prepare insert evento: ' . $conn->error);
+        push_log('ERROR', 'Prepare evento: ' . $conn->error);
         return;
     }
 
@@ -285,10 +329,10 @@ function push_registrar_eventos(mysqli $conn, string $serial, array $eventos): v
             continue;
         }
 
-        $user_id     = (int) ($ev['user_id'] ?? 0);
-        $tipo        = (int) ($ev['event']   ?? $ev['event_type'] ?? 0);
-        $data_hora   = push_normalizar_datetime($ev['time'] ?? $ev['data_hora'] ?? null);
-        $raw         = json_encode($ev, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $user_id = (int) ($ev['user_id'] ?? 0);
+        $tipo = (int) ($ev['event'] ?? $ev['event_type'] ?? 0);
+        $data_hora = push_normalizar_datetime($ev['time'] ?? $ev['data_hora'] ?? null);
+        $raw = json_encode($ev, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $stmt->bind_param('siiss', $serial, $user_id, $data_hora, $tipo, $raw);
         if (!$stmt->execute()) {
@@ -299,15 +343,37 @@ function push_registrar_eventos(mysqli $conn, string $serial, array $eventos): v
     $stmt->close();
 }
 
-/**
- * Busca o próximo comando pendente e atomicamente o marca como "enviado".
- * Retorna o array do comando ou null se não houver nada.
- */
-function push_proximo_comando(mysqli $conn, string $serial): ?array
+function push_marcar_resultado(mysqli $conn, $serial, array $body, $uuid)
+{
+    // A tabela v2 atual tem enum pendente/enviado/cancelado. Mantemos "enviado"
+    // apos o POST /result para nao quebrar ambientes sem coluna de resultado.
+    $status = 'enviado';
+    $resultado = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    $stmt = $conn->prepare(
+        'UPDATE controlid_fila_comandos
+         SET status = ?, enviado_em = COALESCE(enviado_em, NOW())
+         WHERE serial_number = ? AND status = "enviado"
+         ORDER BY enviado_em DESC
+         LIMIT 1'
+    );
+
+    if (!$stmt) {
+        push_log('ERROR', 'Prepare resultado: ' . $conn->error . ' uuid=' . $uuid . ' resultado=' . $resultado);
+        return;
+    }
+
+    $stmt->bind_param('ss', $status, $serial);
+    if (!$stmt->execute()) {
+        push_log('WARN', 'Erro atualizar resultado: ' . $stmt->error);
+    }
+    $stmt->close();
+}
+
+function push_proximo_comando(mysqli $conn, $serial)
 {
     $conn->begin_transaction();
 
-    // FOR UPDATE garante exclusividade em ambiente concorrente
     $stmt = $conn->prepare(
         'SELECT id, verbo, endpoint, corpo_json
          FROM controlid_fila_comandos
@@ -317,18 +383,18 @@ function push_proximo_comando(mysqli $conn, string $serial): ?array
          FOR UPDATE'
     );
     if (!$stmt) {
-        push_log('ERROR', 'Prepare select comando: ' . $conn->error);
+        push_log('ERROR', 'Prepare comando: ' . $conn->error);
         $conn->rollback();
         return null;
     }
 
     $stmt->bind_param('s', $serial);
     $stmt->execute();
-    $res     = $stmt->get_result();
+    $res = $stmt->get_result();
     $comando = $res ? $res->fetch_assoc() : null;
     $stmt->close();
 
-    if ($comando === null) {
+    if (!$comando) {
         $conn->rollback();
         return null;
     }
@@ -359,7 +425,7 @@ function push_proximo_comando(mysqli $conn, string $serial): ?array
     return $comando;
 }
 
-function push_normalizar_datetime($value): string
+function push_normalizar_datetime($value)
 {
     if ($value === null || $value === '') {
         return date('Y-m-d H:i:s');

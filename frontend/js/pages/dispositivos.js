@@ -158,6 +158,8 @@ async function _salvarDispositivo() {
 
     if (!_state.dispositivoEditandoId && data.token_autenticacao) {
         _mostrarToken(data.id, data.token_autenticacao);
+    } else if (!_state.dispositivoEditandoId) {
+        _toast(data.reativado ? 'Dispositivo reativado com sucesso.' : 'Dispositivo cadastrado com sucesso.', 'success');
     } else {
         _toast('Dispositivo atualizado com sucesso.', 'success');
     }
