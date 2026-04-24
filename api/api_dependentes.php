@@ -109,8 +109,9 @@ try {
     if ($metodo === 'GET') {
         // Obter filtros de busca
         $filtro_morador = isset($_GET['morador_id']) ? trim($_GET['morador_id']) : '';
-        $filtro_nome = isset($_GET['nome']) ? trim($_GET['nome']) : '';
-        $filtro_cpf = isset($_GET['cpf']) ? trim($_GET['cpf']) : '';
+        $filtro_nome    = isset($_GET['nome'])       ? trim($_GET['nome'])       : '';
+        $filtro_cpf     = isset($_GET['cpf'])        ? trim($_GET['cpf'])        : '';
+        $filtro_busca   = isset($_GET['busca'])      ? trim($_GET['busca'])      : '';
         
         // Construir query com prepared statement
         $sql = "SELECT d.id, d.morador_id, d.nome_completo, d.cpf, d.email, d.telefone, d.celular,
@@ -124,15 +125,34 @@ try {
         $tipos_param = "";
         $params = array();
         
-        // Aplicar filtros com prepared statements
+        // Busca unificada: nome, CPF ou nome do morador
+        if ($filtro_busca !== '') {
+            $cpf_busca = preg_replace('/[^0-9]/', '', $filtro_busca);
+            if ($cpf_busca !== '' && strlen($cpf_busca) >= 3) {
+                // Parece um CPF — busca por CPF ou nome
+                $sql .= " AND (d.nome_completo LIKE ? OR REPLACE(REPLACE(REPLACE(d.cpf, '.', ''), '-', ''), ' ', '') LIKE ? OR m.nome LIKE ?)";
+                $tipos_param .= "sss";
+                $params[] = "%" . $filtro_busca . "%";
+                $params[] = "%" . $cpf_busca . "%";
+                $params[] = "%" . $filtro_busca . "%";
+            } else {
+                // Busca textual: nome do dependente ou nome do morador
+                $sql .= " AND (d.nome_completo LIKE ? OR m.nome LIKE ?)";
+                $tipos_param .= "ss";
+                $params[] = "%" . $filtro_busca . "%";
+                $params[] = "%" . $filtro_busca . "%";
+            }
+        }
+        
+        // Aplicar filtros individuais (retrocompatibilidade)
         if ($filtro_morador) {
-            $sql .= " AND morador_id = ?";
+            $sql .= " AND d.morador_id = ?";
             $tipos_param .= "i";
             $params[] = (int)$filtro_morador;
         }
         
         if ($filtro_nome) {
-            $sql .= " AND nome LIKE ?";
+            $sql .= " AND d.nome_completo LIKE ?";
             $tipos_param .= "s";
             $params[] = "%" . $filtro_nome . "%";
         }
@@ -140,12 +160,12 @@ try {
         if ($filtro_cpf) {
             // Remover pontuação do CPF para busca
             $cpf_limpo = preg_replace('/[^0-9]/', '', $filtro_cpf);
-            $sql .= " AND REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '') LIKE ?";
+            $sql .= " AND REPLACE(REPLACE(REPLACE(d.cpf, '.', ''), '-', ''), ' ', '') LIKE ?";
             $tipos_param .= "s";
             $params[] = "%" . $cpf_limpo . "%";
         }
         
-        $sql .= " ORDER BY nome_completo ASC";
+        $sql .= " ORDER BY d.nome_completo ASC";
         
         // Preparar e executar statement
         $stmt = $conexao->prepare($sql);
