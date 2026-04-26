@@ -1,4 +1,6 @@
 <?php
+file_put_contents("log_push.txt", date("Y-m-d H:i:s")." OK\n", FILE_APPEND);
+
 /**
  * api_push.php - Endpoint compatível com Control iD Push Mode.
  *
