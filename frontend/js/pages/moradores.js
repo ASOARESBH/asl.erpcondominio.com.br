@@ -42,6 +42,7 @@ export function init() {
         fecharModalMorador:  _fecharModalMorador,
         salvarEdicaoMorador: _salvarEdicaoMorador,
         // Dependentes
+        buscarDependentes:      _buscarDependentes,
         editarDependente:       _abrirModalEditarDependente,
         excluirDependente:      _excluirDependente,
         fecharModalDependente:  _fecharModalDependente,
@@ -52,6 +53,19 @@ export function init() {
         enviarAnexo:       _enviarAnexo,
         excluirAnexo:      _excluirAnexo,
     };
+
+    // Debounce no campo de busca de dependentes
+    const inputBuscaDep = document.getElementById('searchDependente');
+    if (inputBuscaDep) {
+        let _debounceTimer = null;
+        inputBuscaDep.addEventListener('input', () => {
+            clearTimeout(_debounceTimer);
+            _debounceTimer = setTimeout(() => _buscarDependentes(), 350);
+        });
+        inputBuscaDep.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { clearTimeout(_debounceTimer); _buscarDependentes(); }
+        });
+    }
 
     log('Módulo inicializado. window.MoradoresPage exposto.');
 }
@@ -414,6 +428,23 @@ function _renderDependentes(lista) {
             </td>
         </tr>`;
     }).join('');
+}
+
+function _buscarDependentes() {
+    const termo = document.getElementById('searchDependente')?.value?.trim() || '';
+    log('Buscando dependentes com termo:', termo);
+
+    fetch(`${API_DEPENDENTES}?busca=${encodeURIComponent(termo)}`)
+        .then(r => r.json())
+        .then(data => {
+            log('Resultado busca dependentes:', data);
+            if (data.sucesso) _renderDependentes(data.dados || []);
+            else _toast('Erro na busca: ' + (data.mensagem || ''), 'error');
+        })
+        .catch(err => {
+            log('Erro na busca de dependentes:', err);
+            _toast('Falha de comunicação na busca de dependentes', 'error');
+        });
 }
 
 function _salvarDependente() {

@@ -165,6 +165,12 @@
         <!-- Lista de dependentes -->
         <div class="page-card">
             <h2><i class="fas fa-list"></i> Lista de Dependentes</h2>
+            <div class="search-box">
+                <input type="text" id="searchDependente" placeholder="Pesquisar por nome, CPF ou morador...">
+                <button class="btn-primary-modern" onclick="window.MoradoresPage?.buscarDependentes()">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
             <div class="table-container">
                 <table id="tabelaDependentes">
                     <thead>
