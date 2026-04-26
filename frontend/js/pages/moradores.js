@@ -47,6 +47,11 @@ export function init() {
         excluirDependente:      _excluirDependente,
         fecharModalDependente:  _fecharModalDependente,
         salvarEdicaoDependente: _salvarEdicaoDependente,
+        // Relatórios
+        relFiltrarUnidade:   _relFiltrarUnidade,
+        relFiltrarDependente: _relFiltrarDependente,
+        relFiltrarContato:   _relFiltrarContato,
+        relExportarCSV:      _relExportarCSV,
         // Anexos
         abrirAnexos:       _abrirModalAnexos,
         fecharModalAnexos: _fecharModalAnexos,
@@ -66,6 +71,9 @@ export function init() {
             if (e.key === 'Enter') { clearTimeout(_debounceTimer); _buscarDependentes(); }
         });
     }
+
+    // Debounce nos filtros de relatórios
+    _setupRelatoriosDebounce();
 
     log('Módulo inicializado. window.MoradoresPage exposto.');
 }
@@ -396,7 +404,7 @@ function _renderDependentes(lista) {
     if (!tbody) return;
 
     if (!lista || lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;opacity:.6;">Nenhum dependente encontrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;opacity:.6;">Nenhum dependente encontrado</td></tr>';
         return;
     }
 
@@ -404,6 +412,7 @@ function _renderDependentes(lista) {
         const id         = dep.id || dep.dependente_id || '-';
         const nome       = dep.nome_completo || dep.nome || '-';
         const morador    = dep.morador_nome || dep.nome_morador || '-';
+        const unidade    = dep.morador_unidade || dep.unidade || '-';
         const parentesco = dep.parentesco || '-';
         const cpf        = dep.cpf || '-';
         const email      = dep.email || '-';
@@ -414,6 +423,7 @@ function _renderDependentes(lista) {
             <td>${id}</td>
             <td>${nome}</td>
             <td>${morador}</td>
+            <td><span class="rel-badge-unidade">${unidade}</span></td>
             <td>${parentesco}</td>
             <td>${cpf}</td>
             <td>${email}</td>
@@ -797,6 +807,331 @@ function _excluirAnexo(id) {
             log('Erro ao remover anexo:', err);
             _toast('Falha de comunicação ao remover documento', 'error');
         });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── RELATÓRIOS ───────────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Cache dos dados de relatórios
+let _relDados = { moradores: [], dependentes: [] };
+let _relGrafico = null;
+
+function _setupRelatoriosDebounce() {
+    const mapInputFn = [
+        ['rel-filtro-unidade',    _relFiltrarUnidade],
+        ['rel-filtro-dependente', _relFiltrarDependente],
+    ];
+    mapInputFn.forEach(([id, fn]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let t = null;
+        el.addEventListener('input', () => { clearTimeout(t); t = setTimeout(fn, 350); });
+        el.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(t); fn(); } });
+    });
+    // Quando a aba Relatórios é ativada, carrega os dados
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.tab === 'relatorios') _relCarregarDados();
+        });
+    });
+}
+
+function _relCarregarDados() {
+    log('Carregando dados para relatórios...');
+    Promise.all([
+        fetch(API_MORADORES).then(r => r.json()),
+        fetch(API_DEPENDENTES).then(r => r.json()),
+    ]).then(([resMor, resDep]) => {
+        _relDados.moradores   = (resMor.sucesso  ? resMor.dados  : []) || [];
+        _relDados.dependentes = (resDep.sucesso  ? resDep.dados  : []) || [];
+        log('Dados relatórios:', { moradores: _relDados.moradores.length, dependentes: _relDados.dependentes.length });
+        _relAtualizarKPIs();
+        _relFiltrarUnidade();
+        _relFiltrarContato();
+        _relRenderRanking();
+    }).catch(err => {
+        log('Erro ao carregar dados de relatórios:', err);
+        _toast('Falha ao carregar dados dos relatórios', 'error');
+    });
+}
+
+function _relAtualizarKPIs() {
+    const totalMor = _relDados.moradores.length;
+    const totalDep = _relDados.dependentes.length;
+
+    // Unidades únicas com pelo menos 1 dependente
+    const unidadesComDep = new Set(
+        _relDados.dependentes.map(d => d.morador_unidade).filter(Boolean)
+    ).size;
+
+    // Média de dependentes por unidade (considerando apenas unidades com dep)
+    const media = unidadesComDep > 0 ? (totalDep / unidadesComDep).toFixed(1) : '0';
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('rel-total-moradores',   totalMor);
+    set('rel-total-dependentes', totalDep);
+    set('rel-unidades-com-dep',  unidadesComDep);
+    set('rel-media-dep',         media);
+}
+
+function _relFiltrarUnidade() {
+    const termo = (document.getElementById('rel-filtro-unidade')?.value || '').trim().toLowerCase();
+    log('Relatório: filtrar por unidade:', termo);
+
+    // Agrupar dependentes por morador
+    const depPorMorador = {};
+    _relDados.dependentes.forEach(d => {
+        const mid = d.morador_id;
+        if (!depPorMorador[mid]) depPorMorador[mid] = 0;
+        depPorMorador[mid]++;
+    });
+
+    const lista = _relDados.moradores.filter(m => {
+        if (!termo) return true;
+        return (m.unidade || '').toLowerCase().includes(termo);
+    });
+
+    const tbody = document.querySelector('#rel-tabela-unidade tbody');
+    if (!tbody) return;
+
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;opacity:.6;">Nenhum morador encontrado</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lista.map(m => {
+        const id  = m.id || m.id_morador;
+        const qtd = depPorMorador[id] || 0;
+        return `<tr>
+            <td><span class="rel-badge-unidade">${m.unidade || '-'}</span></td>
+            <td>${m.nome || '-'}</td>
+            <td>${m.cpf || '-'}</td>
+            <td>${m.email || '-'}</td>
+            <td>${m.telefone || '-'}</td>
+            <td>${m.celular || '-'}</td>
+            <td style="text-align:center;"><span class="rel-badge-count">${qtd}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function _relFiltrarDependente() {
+    const termo = (document.getElementById('rel-filtro-dependente')?.value || '').trim().toLowerCase();
+    log('Relatório: filtrar por dependente:', termo);
+
+    const lista = _relDados.dependentes.filter(d => {
+        if (!termo) return true;
+        const nome = (d.nome_completo || '').toLowerCase();
+        const cpf  = (d.cpf || '').replace(/[^0-9]/g, '');
+        const termoCpf = termo.replace(/[^0-9]/g, '');
+        return nome.includes(termo) || (termoCpf && cpf.includes(termoCpf));
+    });
+
+    const tbody = document.querySelector('#rel-tabela-dependente tbody');
+    if (!tbody) return;
+
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;opacity:.6;">Nenhum dependente encontrado</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lista.map(d => `<tr>
+        <td>${d.nome_completo || '-'}</td>
+        <td>${d.cpf || '-'}</td>
+        <td>${d.parentesco || '-'}</td>
+        <td>${d.morador_nome || '-'}</td>
+        <td><span class="rel-badge-unidade">${d.morador_unidade || '-'}</span></td>
+        <td>${d.email || '-'}</td>
+        <td>${d.celular || '-'}</td>
+    </tr>`).join('');
+}
+
+function _relFiltrarContato() {
+    const tipo = document.getElementById('rel-filtro-contato-tipo')?.value || 'todos';
+    log('Relatório: filtrar contato tipo:', tipo);
+
+    // Contar dependentes por morador
+    const depPorMorador = {};
+    _relDados.dependentes.forEach(d => {
+        const mid = d.morador_id;
+        if (!depPorMorador[mid]) depPorMorador[mid] = 0;
+        depPorMorador[mid]++;
+    });
+
+    const lista = _relDados.moradores.filter(m => {
+        if (tipo === 'com_email')    return !!(m.email && m.email.trim());
+        if (tipo === 'sem_email')    return !(m.email && m.email.trim());
+        if (tipo === 'com_celular')  return !!(m.celular && m.celular.trim());
+        if (tipo === 'sem_celular')  return !(m.celular && m.celular.trim());
+        return true;
+    });
+
+    const tbody = document.querySelector('#rel-tabela-contato tbody');
+    if (!tbody) return;
+
+    if (!lista.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;opacity:.6;">Nenhum morador encontrado</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lista.map(m => {
+        const id  = m.id || m.id_morador;
+        const qtd = depPorMorador[id] || 0;
+        const emailCls  = (m.email  && m.email.trim())  ? 'rel-badge-ok' : 'rel-badge-miss';
+        const celCls    = (m.celular && m.celular.trim()) ? 'rel-badge-ok' : 'rel-badge-miss';
+        return `<tr>
+            <td>${m.nome || '-'}</td>
+            <td><span class="rel-badge-unidade">${m.unidade || '-'}</span></td>
+            <td>${m.cpf || '-'}</td>
+            <td><span class="${emailCls}">${m.email || '<em>não informado</em>'}</span></td>
+            <td>${m.telefone || '-'}</td>
+            <td><span class="${celCls}">${m.celular || '<em>não informado</em>'}</span></td>
+            <td style="text-align:center;"><span class="rel-badge-count">${qtd}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function _relRenderRanking() {
+    // Agrupar dependentes por unidade
+    const porUnidade = {};
+    _relDados.dependentes.forEach(d => {
+        const unidade = d.morador_unidade || 'Sem unidade';
+        const morador = d.morador_nome || '-';
+        const key = unidade;
+        if (!porUnidade[key]) porUnidade[key] = { unidade, morador, count: 0 };
+        porUnidade[key].count++;
+    });
+
+    const ranking = Object.values(porUnidade).sort((a, b) => b.count - a.count);
+
+    // Tabela ranking
+    const tbody = document.querySelector('#rel-tabela-ranking tbody');
+    if (tbody) {
+        if (!ranking.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;opacity:.6;">Nenhum dado disponível</td></tr>';
+        } else {
+            tbody.innerHTML = ranking.map((r, i) => `<tr>
+                <td><strong>#${i + 1}</strong></td>
+                <td><span class="rel-badge-unidade">${r.unidade}</span></td>
+                <td>${r.morador}</td>
+                <td style="text-align:center;"><span class="rel-badge-count">${r.count}</span></td>
+            </tr>`).join('');
+        }
+    }
+
+    // Gráfico de barras (Chart.js via CDN)
+    _relRenderGrafico(ranking.slice(0, 10));
+}
+
+function _relRenderGrafico(ranking) {
+    const canvas = document.getElementById('rel-grafico-dep');
+    if (!canvas) return;
+
+    const renderChart = () => {
+        if (_relGrafico) { _relGrafico.destroy(); _relGrafico = null; }
+        const labels = ranking.map(r => r.unidade);
+        const values = ranking.map(r => r.count);
+        _relGrafico = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Dependentes',
+                    data: values,
+                    backgroundColor: 'rgba(37,99,235,0.7)',
+                    borderColor: '#1e3a8a',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }],
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} dependente(s)` } },
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                    x: { ticks: { maxRotation: 45, minRotation: 30 } },
+                },
+            },
+        });
+    };
+
+    if (typeof Chart !== 'undefined') {
+        renderChart();
+    } else {
+        log('Chart.js não encontrado, carregando via CDN...');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        script.onload = renderChart;
+        document.head.appendChild(script);
+    }
+}
+
+function _relExportarCSV(tipo) {
+    log('Exportar CSV tipo:', tipo);
+    let rows = [];
+    let filename = 'relatorio.csv';
+
+    if (tipo === 'unidade') {
+        filename = 'moradores_por_unidade.csv';
+        const depPorMorador = {};
+        _relDados.dependentes.forEach(d => {
+            const mid = d.morador_id;
+            if (!depPorMorador[mid]) depPorMorador[mid] = 0;
+            depPorMorador[mid]++;
+        });
+        rows.push(['Unidade', 'Morador', 'CPF', 'Email', 'Telefone', 'Celular', 'Dependentes']);
+        const termo = (document.getElementById('rel-filtro-unidade')?.value || '').trim().toLowerCase();
+        _relDados.moradores
+            .filter(m => !termo || (m.unidade || '').toLowerCase().includes(termo))
+            .forEach(m => {
+                const id = m.id || m.id_morador;
+                rows.push([m.unidade || '', m.nome || '', m.cpf || '', m.email || '', m.telefone || '', m.celular || '', depPorMorador[id] || 0]);
+            });
+    } else if (tipo === 'dependente') {
+        filename = 'moradores_por_dependente.csv';
+        rows.push(['Dependente', 'CPF Dep.', 'Parentesco', 'Morador', 'Unidade', 'Email Dep.', 'Celular Dep.']);
+        const termo = (document.getElementById('rel-filtro-dependente')?.value || '').trim().toLowerCase();
+        _relDados.dependentes
+            .filter(d => {
+                if (!termo) return true;
+                const nome = (d.nome_completo || '').toLowerCase();
+                const cpf  = (d.cpf || '').replace(/[^0-9]/g, '');
+                const tc   = termo.replace(/[^0-9]/g, '');
+                return nome.includes(termo) || (tc && cpf.includes(tc));
+            })
+            .forEach(d => rows.push([d.nome_completo || '', d.cpf || '', d.parentesco || '', d.morador_nome || '', d.morador_unidade || '', d.email || '', d.celular || '']));
+    } else if (tipo === 'contato') {
+        filename = 'relatorio_contato.csv';
+        const depPorMorador = {};
+        _relDados.dependentes.forEach(d => { const mid = d.morador_id; if (!depPorMorador[mid]) depPorMorador[mid] = 0; depPorMorador[mid]++; });
+        rows.push(['Morador', 'Unidade', 'CPF', 'Email', 'Telefone', 'Celular', 'Dependentes']);
+        const tipo2 = document.getElementById('rel-filtro-contato-tipo')?.value || 'todos';
+        _relDados.moradores
+            .filter(m => {
+                if (tipo2 === 'com_email')   return !!(m.email && m.email.trim());
+                if (tipo2 === 'sem_email')   return !(m.email && m.email.trim());
+                if (tipo2 === 'com_celular') return !!(m.celular && m.celular.trim());
+                if (tipo2 === 'sem_celular') return !(m.celular && m.celular.trim());
+                return true;
+            })
+            .forEach(m => {
+                const id = m.id || m.id_morador;
+                rows.push([m.nome || '', m.unidade || '', m.cpf || '', m.email || '', m.telefone || '', m.celular || '', depPorMorador[id] || 0]);
+            });
+    }
+
+    if (!rows.length) { _toast('Nenhum dado para exportar', 'info'); return; }
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    _toast('<i class="fas fa-check-circle"></i> CSV exportado com sucesso!', 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

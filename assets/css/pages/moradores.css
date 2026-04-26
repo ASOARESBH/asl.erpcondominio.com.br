@@ -282,3 +282,116 @@
     font-size: 24px;
     margin-bottom: 10px;
 }
+/* ══════════════════════════════════════════════════════
+   ABA RELATÓRIOS — Estilos específicos
+   ══════════════════════════════════════════════════════ */
+
+/* KPI Grid */
+.page-moradores .rel-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.page-moradores .rel-kpi-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    transition: box-shadow .2s;
+}
+
+.page-moradores .rel-kpi-card:hover {
+    box-shadow: 0 4px 16px rgba(37,99,235,.1);
+}
+
+.page-moradores .rel-kpi-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.page-moradores .rel-kpi-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.page-moradores .rel-kpi-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+
+.page-moradores .rel-kpi-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+}
+
+/* Badge Unidade */
+.page-moradores .rel-badge-unidade {
+    display: inline-block;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Badge Contagem */
+.page-moradores .rel-badge-count {
+    display: inline-block;
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 28px;
+    text-align: center;
+}
+
+/* Badge OK / Faltando */
+.page-moradores .rel-badge-ok {
+    color: #166534;
+}
+
+.page-moradores .rel-badge-miss {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Select no search-box */
+.page-moradores .search-box select {
+    flex: 0 0 auto;
+    background: #fff;
+    min-width: 160px;
+}
+
+/* Responsividade KPI */
+@media (max-width: 640px) {
+    .page-moradores .rel-kpi-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .page-moradores .rel-kpi-value {
+        font-size: 1.4rem;
+    }
+}

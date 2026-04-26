@@ -25,6 +25,9 @@
         <button class="tab-button" data-tab="dependentes">
             <i class="fas fa-user-friends"></i> Dependentes
         </button>
+        <button class="tab-button" data-tab="relatorios">
+            <i class="fas fa-chart-bar"></i> Relatórios
+        </button>
     </div>
 
     <!-- ══════════════════════════════════════════════════════
@@ -178,6 +181,7 @@
                             <th>ID</th>
                             <th>Nome</th>
                             <th>Morador</th>
+                            <th>Unidade</th>
                             <th>Parentesco</th>
                             <th>CPF</th>
                             <th>Email</th>
@@ -190,6 +194,133 @@
             </div>
         </div>
     </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         TAB: RELATÓRIOS
+    ══════════════════════════════════════════════════════ -->
+    <div id="tab-relatorios" class="tab-content">
+
+        <!-- KPIs rápidos -->
+        <div class="rel-kpi-grid">
+            <div class="rel-kpi-card">
+                <div class="rel-kpi-icon" style="background:#dbeafe;color:#2563eb;"><i class="fas fa-users"></i></div>
+                <div class="rel-kpi-info">
+                    <span class="rel-kpi-label">Total de Moradores</span>
+                    <span class="rel-kpi-value" id="rel-total-moradores">—</span>
+                </div>
+            </div>
+            <div class="rel-kpi-card">
+                <div class="rel-kpi-icon" style="background:#dcfce7;color:#16a34a;"><i class="fas fa-user-friends"></i></div>
+                <div class="rel-kpi-info">
+                    <span class="rel-kpi-label">Total de Dependentes</span>
+                    <span class="rel-kpi-value" id="rel-total-dependentes">—</span>
+                </div>
+            </div>
+            <div class="rel-kpi-card">
+                <div class="rel-kpi-icon" style="background:#fef9c3;color:#ca8a04;"><i class="fas fa-home"></i></div>
+                <div class="rel-kpi-info">
+                    <span class="rel-kpi-label">Unidades com Dependentes</span>
+                    <span class="rel-kpi-value" id="rel-unidades-com-dep">—</span>
+                </div>
+            </div>
+            <div class="rel-kpi-card">
+                <div class="rel-kpi-icon" style="background:#fce7f3;color:#db2777;"><i class="fas fa-chart-line"></i></div>
+                <div class="rel-kpi-info">
+                    <span class="rel-kpi-label">Média Dep. por Unidade</span>
+                    <span class="rel-kpi-value" id="rel-media-dep">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtro: Moradores por Unidade -->
+        <div class="page-card">
+            <h2><i class="fas fa-home"></i> Moradores por Unidade</h2>
+            <div class="search-box">
+                <input type="text" id="rel-filtro-unidade" placeholder="Filtrar por unidade (ex: Gleba 1, Lote 5...)">
+                <button class="btn-primary-modern" onclick="window.MoradoresPage?.relFiltrarUnidade()">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+                <button class="btn-secondary-modern" onclick="window.MoradoresPage?.relExportarCSV('unidade')">
+                    <i class="fas fa-file-csv"></i> Exportar CSV
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="rel-tabela-unidade">
+                    <thead><tr>
+                        <th>Unidade</th><th>Morador</th><th>CPF</th><th>Email</th><th>Telefone</th><th>Celular</th><th>Dependentes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Filtro: Moradores por Dependente -->
+        <div class="page-card">
+            <h2><i class="fas fa-user-friends"></i> Moradores por Dependente</h2>
+            <div class="search-box">
+                <input type="text" id="rel-filtro-dependente" placeholder="Buscar dependente por nome ou CPF...">
+                <button class="btn-primary-modern" onclick="window.MoradoresPage?.relFiltrarDependente()">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+                <button class="btn-secondary-modern" onclick="window.MoradoresPage?.relExportarCSV('dependente')">
+                    <i class="fas fa-file-csv"></i> Exportar CSV
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="rel-tabela-dependente">
+                    <thead><tr>
+                        <th>Dependente</th><th>CPF Dep.</th><th>Parentesco</th><th>Morador</th><th>Unidade</th><th>Email Dep.</th><th>Celular Dep.</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Gráfico: Unidades com mais dependentes -->
+        <div class="page-card">
+            <h2><i class="fas fa-chart-bar"></i> Ranking — Unidades com Mais Dependentes</h2>
+            <div id="rel-grafico-container">
+                <canvas id="rel-grafico-dep" style="max-height:320px;"></canvas>
+            </div>
+            <div class="table-container" style="margin-top:20px;">
+                <table id="rel-tabela-ranking">
+                    <thead><tr>
+                        <th>#</th><th>Unidade</th><th>Morador</th><th>Qtd. Dependentes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Relatório de Contato -->
+        <div class="page-card">
+            <h2><i class="fas fa-address-book"></i> Relatório de Contato dos Moradores</h2>
+            <div class="search-box">
+                <select id="rel-filtro-contato-tipo" style="max-width:200px;">
+                    <option value="todos">Todos</option>
+                    <option value="com_email">Com e-mail</option>
+                    <option value="sem_email">Sem e-mail</option>
+                    <option value="com_celular">Com celular</option>
+                    <option value="sem_celular">Sem celular</option>
+                </select>
+                <button class="btn-primary-modern" onclick="window.MoradoresPage?.relFiltrarContato()">
+                    <i class="fas fa-filter"></i> Aplicar
+                </button>
+                <button class="btn-secondary-modern" onclick="window.MoradoresPage?.relExportarCSV('contato')">
+                    <i class="fas fa-file-csv"></i> Exportar CSV
+                </button>
+            </div>
+            <div class="table-container">
+                <table id="rel-tabela-contato">
+                    <thead><tr>
+                        <th>Morador</th><th>Unidade</th><th>CPF</th><th>Email</th><th>Telefone</th><th>Celular</th><th>Dependentes</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div><!-- /#tab-relatorios -->
 
     <!-- ══════════════════════════════════════════════════════
          MODAL: EDITAR MORADOR
