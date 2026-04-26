@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS rh_escala (
     id                          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     colaborador_id              INT UNSIGNED NOT NULL,
     nome_escala                 VARCHAR(100) NOT NULL DEFAULT 'Principal',
-    tipo                        ENUM('livre','controle_jornada') NOT NULL DEFAULT 'livre',
+    tipo                        ENUM('livre','controle_jornada','alternada') NOT NULL DEFAULT 'livre',
     carga_horaria_diaria_min    INT UNSIGNED DEFAULT 480,   -- minutos (8h = 480)
     dias_trabalho               JSON         DEFAULT NULL,  -- ["seg","ter","qua","qui","sex"]
     hora_entrada                TIME         DEFAULT '08:00:00',
@@ -60,6 +60,12 @@ CREATE TABLE IF NOT EXISTS rh_escala (
     hora_saida                  TIME         DEFAULT '17:00:00',
     tolerancia_minutos          INT UNSIGNED DEFAULT 10,
     intervalo_almoco_min        INT UNSIGNED DEFAULT 60,
+    -- Escala Alternada
+    alternada_ativa             TINYINT(1)   DEFAULT 0,     -- 1 = escala alternada
+    alternada_dia_inicio        DATE         DEFAULT NULL,  -- data de início da 1ª semana
+    alternada_semana_a          JSON         DEFAULT NULL,  -- dias da semana A ["seg","qua","sex","dom"]
+    alternada_semana_b          JSON         DEFAULT NULL,  -- dias da semana B ["ter","qui","sab"]
+    alternada_tipo_folga        ENUM('folga','falta','feriado') DEFAULT 'folga', -- tipo lançado nos dias de folga alternada
     ativo                       TINYINT(1)   NOT NULL DEFAULT 1,
     created_at                  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -97,7 +103,7 @@ CREATE TABLE IF NOT EXISTS rh_ponto_lancamento (
     hora_almoco_saida       TIME         DEFAULT NULL,
     hora_almoco_retorno     TIME         DEFAULT NULL,
     hora_saida              TIME         DEFAULT NULL,
-    tipo_dia                ENUM('normal','folga','falta','feriado','meio_periodo','afastamento') NOT NULL DEFAULT 'normal',
+    tipo_dia                ENUM('normal','folga','falta','feriado','meio_periodo','afastamento','horas_extras') NOT NULL DEFAULT 'normal',
     horas_trabalhadas_min   INT          DEFAULT 0,
     horas_extras_min        INT          DEFAULT 0,
     atraso_min              INT          DEFAULT 0,
@@ -110,3 +116,22 @@ CREATE TABLE IF NOT EXISTS rh_ponto_lancamento (
     INDEX idx_lancamento_data   (data),
     INDEX idx_lancamento_colab  (colaborador_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- MIGRATIONS — execute apenas se o banco já existia
+-- ============================================================
+
+-- 1. Adicionar tipo horas_extras no lançamento de ponto
+ALTER TABLE rh_ponto_lancamento
+    MODIFY COLUMN tipo_dia ENUM('normal','folga','falta','feriado','meio_periodo','afastamento','horas_extras') NOT NULL DEFAULT 'normal';
+
+-- 2. Adicionar suporte a escala alternada na tabela de escalas
+ALTER TABLE rh_escala
+    MODIFY COLUMN tipo ENUM('livre','controle_jornada','alternada') NOT NULL DEFAULT 'livre';
+
+ALTER TABLE rh_escala
+    ADD COLUMN IF NOT EXISTS alternada_ativa       TINYINT(1)   DEFAULT 0 AFTER intervalo_almoco_min,
+    ADD COLUMN IF NOT EXISTS alternada_dia_inicio  DATE         DEFAULT NULL AFTER alternada_ativa,
+    ADD COLUMN IF NOT EXISTS alternada_semana_a    JSON         DEFAULT NULL AFTER alternada_dia_inicio,
+    ADD COLUMN IF NOT EXISTS alternada_semana_b    JSON         DEFAULT NULL AFTER alternada_semana_a,
+    ADD COLUMN IF NOT EXISTS alternada_tipo_folga  ENUM('folga','falta','feriado') DEFAULT 'folga' AFTER alternada_semana_b;

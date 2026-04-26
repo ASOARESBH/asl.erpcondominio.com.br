@@ -433,11 +433,13 @@ function _renderLancamentos(readonly) {
         return;
     }
 
-    const TIPOS = ['normal','folga','falta','feriado','meio_periodo','afastamento'];
+    const TIPOS = ['normal','folga','falta','feriado','meio_periodo','afastamento','horas_extras'];
     const diasPt = { Monday:'Segunda', Tuesday:'Terça', Wednesday:'Quarta', Thursday:'Quinta', Friday:'Sexta', Saturday:'Sábado', Sunday:'Domingo' };
 
     tbody.innerHTML = _state.lancamentos.map(l => {
-        const cls = ['folga','falta','feriado'].includes(l.tipo_dia) ? `dia-${l.tipo_dia}` : '';
+        // horas_extras recebe classe visual diferenciada (verde claro)
+        const cls = l.tipo_dia === 'horas_extras' ? 'dia-horas-extras'
+                  : ['folga','falta','feriado'].includes(l.tipo_dia) ? `dia-${l.tipo_dia}` : '';
         const dis  = readonly ? 'disabled' : '';
         const trab = l.horas_trabalhadas_min > 0 ? `<span class="${l.horas_extras_min > 0 ? 'horas-extra' : ''}">${_minParaHoras(l.horas_trabalhadas_min)}</span>` : '—';
         const ext  = l.horas_extras_min > 0 ? `<span class="horas-extra">${_minParaHoras(l.horas_extras_min)}</span>` : '—';
@@ -546,13 +548,16 @@ function _setupEscala() {
     });
     document.getElementById('formEscala')?.addEventListener('submit', _salvarEscala);
 
-    // Dias clicáveis
-    document.querySelectorAll('.page-recursos-humanos .dia-tag').forEach(tag => {
+    // Dias clicáveis (grid principal de dias de trabalho)
+    document.querySelectorAll('.page-recursos-humanos #escala-dias-grid .dia-tag').forEach(tag => {
         tag.addEventListener('click', () => {
             tag.classList.toggle('ativo');
-            _state.escalaDias = Array.from(document.querySelectorAll('.page-recursos-humanos .dia-tag.ativo')).map(t => t.dataset.dia);
+            _state.escalaDias = Array.from(document.querySelectorAll('.page-recursos-humanos #escala-dias-grid .dia-tag.ativo')).map(t => t.dataset.dia);
         });
     });
+
+    // Inicializa bloco de escala alternada
+    _setupEscalaAlternada();
 }
 
 async function _carregarEscalas() {
@@ -578,9 +583,39 @@ function _renderEscalas(list) {
     if (!list.length) { container.innerHTML = '<p style="padding:16px;color:var(--text-secondary,#64748b);">Nenhuma escala cadastrada.</p>'; return; }
 
     const diasLabel = { seg:'Seg', ter:'Ter', qua:'Qua', qui:'Qui', sex:'Sex', sab:'Sáb', dom:'Dom' };
+    const tipoLabels = { livre:'Livre', controle_jornada:'Controle de Jornada', alternada:'Escala Alternada' };
+
     container.innerHTML = list.map(e => {
-        const dias = JSON.parse(e.dias_trabalho || '[]');
-        const tipoLabel = e.tipo === 'controle_jornada' ? 'Controle de Jornada' : 'Livre';
+        const dias  = JSON.parse(e.dias_trabalho || '[]');
+        const tipoLabel = tipoLabels[e.tipo] ?? e.tipo;
+        const isAlt = e.tipo === 'alternada' || e.alternada_ativa;
+
+        // Bloco de semanas A e B para escala alternada
+        let altHtml = '';
+        if (isAlt) {
+            const semA = typeof e.alternada_semana_a === 'string' ? JSON.parse(e.alternada_semana_a || '[]') : (e.alternada_semana_a ?? []);
+            const semB = typeof e.alternada_semana_b === 'string' ? JSON.parse(e.alternada_semana_b || '[]') : (e.alternada_semana_b ?? []);
+            altHtml = `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+                <div>
+                    <div style="font-size:11px;font-weight:600;color:#0369a1;margin-bottom:4px;">Semana A</div>
+                    <div class="dias-semana-grid" style="pointer-events:none;">
+                        ${['seg','ter','qua','qui','sex','sab','dom'].map(d => `<span class="dia-tag ${semA.includes(d)?'ativo':''}">${diasLabel[d]}</span>`).join('')}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:11px;font-weight:600;color:#7c3aed;margin-bottom:4px;">Semana B</div>
+                    <div class="dias-semana-grid" style="pointer-events:none;">
+                        ${['seg','ter','qua','qui','sex','sab','dom'].map(d => `<span class="dia-tag ${semB.includes(d)?'ativo':''}">${diasLabel[d]}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+            <div style="font-size:11px;color:#64748b;margin-top:4px;">
+                <i class="fas fa-calendar-day"></i> Início Semana A: <strong>${e.alternada_dia_inicio || '—'}</strong> &nbsp;|
+                Folga alternada: <strong>${e.alternada_tipo_folga || 'folga'}</strong>
+            </div>`;
+        }
+
         return `
         <div class="escala-card">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
@@ -593,15 +628,16 @@ function _renderEscalas(list) {
                     <button class="action-btn" onclick="window.ModuleRH.excluirEscala(${e.id})"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
+            ${!isAlt ? `
             <div style="margin:6px 0 4px;font-size:12px;color:var(--text-secondary,#64748b);">Dias de trabalho:</div>
             <div class="dias-semana-grid" style="pointer-events:none;">
                 ${['seg','ter','qua','qui','sex','sab','dom'].map(d => `<span class="dia-tag ${dias.includes(d)?'ativo':''}">${diasLabel[d]}</span>`).join('')}
-            </div>
+            </div>` : altHtml}
             <div class="escala-horarios" style="margin-top:8px;">
                 <span><i class="fas fa-sign-in-alt"></i> ${e.hora_entrada?.slice(0,5)||'—'}</span>
                 <span><i class="fas fa-utensils"></i> ${e.hora_almoco_saida?.slice(0,5)||'—'} – ${e.hora_almoco_retorno?.slice(0,5)||'—'}</span>
                 <span><i class="fas fa-sign-out-alt"></i> ${e.hora_saida?.slice(0,5)||'—'}</span>
-                ${e.tipo==='controle_jornada'?`<span><i class="fas fa-clock"></i> ${Math.floor(e.carga_horaria_diaria_min/60)}h carga / ${e.tolerancia_minutos}min tolerância</span>`:''}
+                <span><i class="fas fa-clock"></i> ${Math.floor((e.carga_horaria_diaria_min??480)/60)}h carga / ${e.tolerancia_minutos??10}min tolerância</span>
             </div>
         </div>`;
     }).join('');
@@ -630,6 +666,25 @@ async function _editarEscala(id) {
         });
         _state.escalaDias = dias;
 
+        // Preenche campos de escala alternada (se aplicável)
+        const tipoSel = document.getElementById('escala-tipo');
+        if (tipoSel) tipoSel.value = e.tipo ?? 'livre';
+        // Dispara o toggle do bloco alternado
+        tipoSel?.dispatchEvent(new Event('change'));
+
+        if (e.tipo === 'alternada' || e.alternada_ativa) {
+            const altInicio = document.getElementById('escala-alt-inicio');
+            if (altInicio && e.alternada_dia_inicio) altInicio.value = e.alternada_dia_inicio;
+
+            const altTipoFolga = document.getElementById('escala-alt-tipo-folga');
+            if (altTipoFolga && e.alternada_tipo_folga) altTipoFolga.value = e.alternada_tipo_folga;
+
+            const semA = typeof e.alternada_semana_a === 'string' ? JSON.parse(e.alternada_semana_a || '[]') : (e.alternada_semana_a ?? []);
+            const semB = typeof e.alternada_semana_b === 'string' ? JSON.parse(e.alternada_semana_b || '[]') : (e.alternada_semana_b ?? []);
+            _setDiasAlternados('escala-alt-semana-a', semA);
+            _setDiasAlternados('escala-alt-semana-b', semB);
+        }
+
         document.getElementById('escala-form-titulo').innerHTML = '<i class="fas fa-edit"></i> Editar Escala';
         document.getElementById('escala-form-card').style.display = '';
         document.getElementById('escala-form-card').scrollIntoView({ behavior: 'smooth' });
@@ -654,10 +709,13 @@ async function _salvarEscala(e) {
     const id   = document.getElementById('escala-id').value;
     const acao = id ? 'atualizar' : 'criar';
     const carga_h = parseFloat(document.getElementById('escala-carga-h').value) || 8;
+    const tipo    = document.getElementById('escala-tipo').value;
+    const isAlt   = tipo === 'alternada';
+
     const payload = {
         colaborador_id           : parseInt(document.getElementById('escala-colaborador-id').value),
         nome_escala              : document.getElementById('escala-nome').value,
-        tipo                     : document.getElementById('escala-tipo').value,
+        tipo,
         carga_horaria_diaria_min : Math.round(carga_h * 60),
         dias_trabalho            : _state.escalaDias,
         hora_entrada             : document.getElementById('escala-entrada').value + ':00',
@@ -667,6 +725,20 @@ async function _salvarEscala(e) {
         tolerancia_minutos       : parseInt(document.getElementById('escala-tolerancia').value),
         intervalo_almoco_min     : parseInt(document.getElementById('escala-intervalo').value),
     };
+
+    // Campos de escala alternada
+    if (isAlt) {
+        const altInicio = document.getElementById('escala-alt-inicio')?.value;
+        if (!altInicio) { _toast('Informe a data de início da Semana A', 'error'); return; }
+        payload.alternada_dia_inicio  = altInicio;
+        payload.alternada_tipo_folga  = document.getElementById('escala-alt-tipo-folga')?.value ?? 'folga';
+        payload.alternada_semana_a    = _getDiasAlternados('escala-alt-semana-a');
+        payload.alternada_semana_b    = _getDiasAlternados('escala-alt-semana-b');
+        if (!payload.alternada_semana_a.length || !payload.alternada_semana_b.length) {
+            _toast('Selecione pelo menos um dia em cada semana (A e B)', 'error'); return;
+        }
+    }
+
     if (id) payload.id = parseInt(id);
 
     try {
@@ -907,6 +979,61 @@ function _nomeMes(m) {
 }
 
 function _tipoDia(t) {
-    const map = { normal:'Normal', folga:'Folga', falta:'Falta', feriado:'Feriado', meio_periodo:'Meio período', afastamento:'Afastamento' };
+    const map = {
+        normal       : 'Normal',
+        folga        : 'Folga',
+        falta        : 'Falta',
+        feriado      : 'Feriado',
+        meio_periodo : 'Meio período',
+        afastamento  : 'Afastamento',
+        horas_extras : 'Horas Extras',   // ← novo tipo
+    };
     return map[t] ?? t;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// ESCALA ALTERNADA — helpers de UI
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mostra/oculta o bloco de configuração de escala alternada conforme o tipo
+ * selecionado no formulário de escala.
+ */
+function _setupEscalaAlternada() {
+    const sel   = document.getElementById('escala-tipo');
+    const bloco = document.getElementById('escala-alternada-bloco');
+    if (!sel || !bloco) return;
+
+    const toggle = () => {
+        const isAlt = sel.value === 'alternada';
+        bloco.style.display = isAlt ? '' : 'none';
+    };
+    sel.addEventListener('change', toggle);
+    toggle(); // aplica no carregamento
+
+    // Clique nos dias da Semana A e B
+    ['escala-alt-semana-a', 'escala-alt-semana-b'].forEach(gridId => {
+        document.getElementById(gridId)?.querySelectorAll('.dia-tag').forEach(tag => {
+            tag.addEventListener('click', () => tag.classList.toggle('ativo'));
+        });
+    });
+}
+
+/**
+ * Lê os dias marcados em um grid de dias alternados.
+ * @param {string} gridId
+ * @returns {string[]}
+ */
+function _getDiasAlternados(gridId) {
+    return Array.from(document.getElementById(gridId)?.querySelectorAll('.dia-tag.ativo') ?? [])
+        .map(t => t.dataset.dia);
+}
+
+/**
+ * Preenche os dias dos grids de semana A e B a partir de arrays.
+ */
+function _setDiasAlternados(gridId, dias) {
+    document.getElementById(gridId)?.querySelectorAll('.dia-tag').forEach(t => {
+        t.classList.toggle('ativo', (dias ?? []).includes(t.dataset.dia));
+    });
 }

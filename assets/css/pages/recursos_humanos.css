@@ -275,6 +275,9 @@
 .ponto-table .dia-folga  td { background: #eff6ff; }
 .ponto-table .dia-falta  td { background: #fff1f2; }
 .ponto-table .dia-feriado td { background: #fef9c3; }
+/* Horas Extras: fundo verde claro para destacar dias extras */
+.ponto-table .dia-horas-extras td { background: #dcfce7; }
+.ponto-table .dia-horas-extras td select { background: #dcfce7; border-color: #86efac; }
 .ponto-table .horas-extra  { color: #16a34a; font-weight: 600; }
 .ponto-table .horas-atraso { color: #dc2626; font-weight: 600; }
 
@@ -461,6 +464,7 @@
 
 .escala-tipo-livre              { background: #e0f2fe; color: #0369a1; }
 .escala-tipo-controle_jornada   { background: #fce7f3; color: #be185d; }
+.escala-tipo-alternada          { background: #ede9fe; color: #6d28d9; }
 
 .escala-horarios {
     display: flex;

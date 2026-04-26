@@ -90,20 +90,30 @@ if ($acao === 'criar' && $metodo === 'POST') {
 
     $dias_json = json_encode($d['dias_trabalho'] ?? ['seg','ter','qua','qui','sex']);
 
+    $semA_json    = $d['alternada_semana_a']    ? json_encode($d['alternada_semana_a'])    : null;
+    $semB_json    = $d['alternada_semana_b']    ? json_encode($d['alternada_semana_b'])    : null;
+    $alt_ativa    = $d['alternada_ativa'];
+    $alt_inicio   = $d['alternada_dia_inicio'];
+    $alt_tfolga   = $d['alternada_tipo_folga'];
+
     $stmt = $conn->prepare(
         "INSERT INTO rh_escala
          (colaborador_id,nome_escala,tipo,carga_horaria_diaria_min,dias_trabalho,
           hora_entrada,hora_almoco_saida,hora_almoco_retorno,hora_saida,
-          tolerancia_minutos,intervalo_almoco_min)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+          tolerancia_minutos,intervalo_almoco_min,
+          alternada_ativa,alternada_dia_inicio,alternada_semana_a,alternada_semana_b,alternada_tipo_folga)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     );
-    $stmt->bind_param('ississsssii',
+    // bind: i=colab_id, s=nome, s=tipo, i=carga, s=dias, s=entrada, s=alm_saida, s=alm_ret, s=saida
+    //        i=toler, i=intervalo, i=alt_ativa, s=alt_inicio, s=semA, s=semB, s=alt_tfolga  (16 total)
+    $stmt->bind_param('ississsssiisssssi',
         $d['colaborador_id'],$d['nome_escala'],$d['tipo'],$d['carga_horaria_diaria_min'],
         $dias_json,
         $d['hora_entrada'],$d['hora_almoco_saida'],$d['hora_almoco_retorno'],$d['hora_saida'],
-        $d['tolerancia_minutos'],$d['intervalo_almoco_min']
+        $d['tolerancia_minutos'],$d['intervalo_almoco_min'],
+        $alt_ativa,$alt_inicio,$semA_json,$semB_json,$alt_tfolga
     );
-    if (!$stmt->execute()) { $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao criar escala'); }
+    if (!$stmt->execute()) { $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao criar escala: ' . $conn->error); }
     $novo_id = $conn->insert_id;
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'Escala criada', ['id' => $novo_id]);
@@ -115,21 +125,31 @@ if ($acao === 'atualizar' && $metodo === 'POST') {
     if ($id <= 0) retornar_json(false, 'ID inválido');
 
     $d = _extrair_escala($body);
-    $dias_json = json_encode($d['dias_trabalho'] ?? ['seg','ter','qua','qui','sex']);
+    $dias_json2  = json_encode($d['dias_trabalho'] ?? ['seg','ter','qua','qui','sex']);
+    $semA_json2  = $d['alternada_semana_a']    ? json_encode($d['alternada_semana_a'])    : null;
+    $semB_json2  = $d['alternada_semana_b']    ? json_encode($d['alternada_semana_b'])    : null;
+    $alt_ativa2  = $d['alternada_ativa'];
+    $alt_inicio2 = $d['alternada_dia_inicio'];
+    $alt_tfolga2 = $d['alternada_tipo_folga'];
 
     $stmt = $conn->prepare(
         "UPDATE rh_escala SET
          nome_escala=?,tipo=?,carga_horaria_diaria_min=?,dias_trabalho=?,
          hora_entrada=?,hora_almoco_saida=?,hora_almoco_retorno=?,hora_saida=?,
-         tolerancia_minutos=?,intervalo_almoco_min=?
+         tolerancia_minutos=?,intervalo_almoco_min=?,
+         alternada_ativa=?,alternada_dia_inicio=?,alternada_semana_a=?,alternada_semana_b=?,alternada_tipo_folga=?
          WHERE id=?"
     );
-    $stmt->bind_param('ssisssssiii',
-        $d['nome_escala'],$d['tipo'],$d['carga_horaria_diaria_min'],$dias_json,
+    // bind: s=nome, s=tipo, i=carga, s=dias, s=entrada, s=alm_saida, s=alm_ret, s=saida
+    //        i=toler, i=intervalo, i=alt_ativa, s=alt_inicio, s=semA, s=semB, s=alt_tfolga, i=id (16 total)
+    $stmt->bind_param('ssisssssiisissssi',
+        $d['nome_escala'],$d['tipo'],$d['carga_horaria_diaria_min'],$dias_json2,
         $d['hora_entrada'],$d['hora_almoco_saida'],$d['hora_almoco_retorno'],$d['hora_saida'],
-        $d['tolerancia_minutos'],$d['intervalo_almoco_min'],$id
+        $d['tolerancia_minutos'],$d['intervalo_almoco_min'],
+        $alt_ativa2,$alt_inicio2,$semA_json2,$semB_json2,$alt_tfolga2,
+        $id
     );
-    if (!$stmt->execute()) { $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao atualizar escala'); }
+    if (!$stmt->execute()) { $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao atualizar escala: ' . $conn->error); }
     $stmt->close(); fechar_conexao($conn);
     retornar_json(true, 'Escala atualizada');
 }
@@ -151,10 +171,20 @@ retornar_json(false, 'Ação não reconhecida');
 
 function _extrair_escala(array $b): array {
     $n = fn($k, $def=null) => isset($b[$k]) && $b[$k] !== '' ? $b[$k] : $def;
+
+    $tipo = $n('tipo', 'livre');
+    $isAlternada = ($tipo === 'alternada');
+
+    // Semana A e B podem vir como array ou JSON string
+    $semA = $n('alternada_semana_a', null);
+    $semB = $n('alternada_semana_b', null);
+    if (is_string($semA)) $semA = json_decode($semA, true);
+    if (is_string($semB)) $semB = json_decode($semB, true);
+
     return [
         'colaborador_id'           => intval($n('colaborador_id', 0)),
         'nome_escala'              => trim($n('nome_escala', 'Principal')),
-        'tipo'                     => $n('tipo', 'livre'),
+        'tipo'                     => $tipo,
         'carga_horaria_diaria_min' => intval($n('carga_horaria_diaria_min', 480)),
         'dias_trabalho'            => $n('dias_trabalho', ['seg','ter','qua','qui','sex']),
         'hora_entrada'             => $n('hora_entrada', '08:00:00'),
@@ -163,6 +193,12 @@ function _extrair_escala(array $b): array {
         'hora_saida'               => $n('hora_saida', '17:00:00'),
         'tolerancia_minutos'       => intval($n('tolerancia_minutos', 10)),
         'intervalo_almoco_min'     => intval($n('intervalo_almoco_min', 60)),
+        // Escala alternada
+        'alternada_ativa'          => $isAlternada ? 1 : 0,
+        'alternada_dia_inicio'     => $isAlternada ? ($n('alternada_dia_inicio', null)) : null,
+        'alternada_semana_a'       => $isAlternada ? $semA : null,
+        'alternada_semana_b'       => $isAlternada ? $semB : null,
+        'alternada_tipo_folga'     => $isAlternada ? ($n('alternada_tipo_folga', 'folga')) : 'folga',
     ];
 }
 ?>

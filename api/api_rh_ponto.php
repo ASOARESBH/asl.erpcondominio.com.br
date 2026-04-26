@@ -278,7 +278,12 @@ function _buscar_escala($conn, int $colab_id): ?array {
 function _calcular_minutos(?string $he, ?string $has, ?string $har, ?string $hs, string $tipo_dia, ?array $escala): array {
     $resultado = ['trabalhadas' => 0, 'extras' => 0, 'atraso' => 0];
 
+    // Dias sem trabalho efetivo — zera tudo
     if (in_array($tipo_dia, ['folga','falta','feriado','afastamento'])) return $resultado;
+
+    // Tipo horas_extras: o colaborador trabalhou em dia de folga/alternado
+    // Trata igual a 'normal' mas garante que TUDO seja contado como extra
+    $is_horas_extras = ($tipo_dia === 'horas_extras');
 
     if (!$he || !$hs) return $resultado;
 
@@ -287,18 +292,27 @@ function _calcular_minutos(?string $he, ?string $has, ?string $har, ?string $hs,
     $mHas = _hora_em_minutos($has ?: '12:00');
     $mHar = _hora_em_minutos($har ?: $has ?: '13:00');
 
-    $intervalo = max(0, $mHar - $mHas);
+    $intervalo   = max(0, $mHar - $mHas);
     $trabalhadas = max(0, ($mHs - $mHe) - $intervalo);
     $resultado['trabalhadas'] = $trabalhadas;
 
-    if ($escala && $escala['tipo'] === 'controle_jornada') {
-        $carga     = $escala['carga_horaria_diaria_min'] ?? 480;
-        $tolerancia = $escala['tolerancia_minutos'] ?? 10;
-        $mEsperado = _hora_em_minutos($escala['hora_entrada'] ?? '08:00');
+    // Se tipo = horas_extras, tudo que trabalhou é extra (sem carga a descontar)
+    if ($is_horas_extras) {
+        $resultado['extras'] = $trabalhadas;
+        return $resultado;
+    }
 
+    // Para escalas com controle de jornada (inclui alternada)
+    if ($escala && in_array($escala['tipo'], ['controle_jornada','alternada'])) {
+        $carga      = $escala['carga_horaria_diaria_min'] ?? 480;
+        $tolerancia = $escala['tolerancia_minutos'] ?? 10;
+        $mEsperado  = _hora_em_minutos($escala['hora_entrada'] ?? '08:00');
+
+        // Horas extras: trabalhou além da carga + tolerância
         if ($trabalhadas > ($carga + $tolerancia)) {
             $resultado['extras'] = $trabalhadas - $carga;
         }
+        // Atraso: entrou depois do esperado + tolerância
         if ($mHe > ($mEsperado + $tolerancia)) {
             $resultado['atraso'] = $mHe - $mEsperado;
         }
@@ -330,14 +344,67 @@ function _recalcular_totais($conn, int $periodo_id): void {
 }
 
 function _gerar_dias_mes($conn, int $periodo_id, int $colab_id, int $mes, int $ano): void {
-    $dias = cal_days_in_month(CAL_GREGORIAN, $mes, $ano);
+    $dias   = cal_days_in_month(CAL_GREGORIAN, $mes, $ano);
+    $escala = _buscar_escala($conn, $colab_id);
+
+    // Mapa de dia da semana PHP (0=Dom..6=Sab) para chaves do sistema
+    $mapDia = [0=>'dom',1=>'seg',2=>'ter',3=>'qua',4=>'qui',5=>'sex',6=>'sab'];
+
+    // Dias fixos de trabalho (escala normal/controle_jornada)
+    $diasTrabalho = [];
+    if ($escala && !empty($escala['dias_trabalho'])) {
+        $diasTrabalho = json_decode($escala['dias_trabalho'], true) ?? [];
+    }
+
+    // Configuração de escala alternada
+    $isAlternada    = $escala && ($escala['tipo'] === 'alternada' || !empty($escala['alternada_ativa']));
+    $semanaA        = [];
+    $semanaB        = [];
+    $diaInicioTs    = null;
+    $tipoFolga      = 'folga';
+    if ($isAlternada) {
+        $semanaA     = json_decode($escala['alternada_semana_a'] ?? '[]', true) ?? [];
+        $semanaB     = json_decode($escala['alternada_semana_b'] ?? '[]', true) ?? [];
+        $tipoFolga   = $escala['alternada_tipo_folga'] ?? 'folga';
+        if (!empty($escala['alternada_dia_inicio'])) {
+            $diaInicioTs = strtotime($escala['alternada_dia_inicio']);
+        }
+    }
+
     $stmt = $conn->prepare(
         "INSERT IGNORE INTO rh_ponto_lancamento (periodo_id, colaborador_id, data, tipo_dia)
-         VALUES (?, ?, ?, 'normal')"
+         VALUES (?, ?, ?, ?)"
     );
+
     for ($d = 1; $d <= $dias; $d++) {
-        $data = sprintf('%04d-%02d-%02d', $ano, $mes, $d);
-        $stmt->bind_param('iis', $periodo_id, $colab_id, $data);
+        $data    = sprintf('%04d-%02d-%02d', $ano, $mes, $d);
+        $dataTs  = strtotime($data);
+        $diaSem  = $mapDia[intval(date('w', $dataTs))]; // seg, ter, ...
+        $tipoDia = 'normal';
+
+        if ($isAlternada && !empty($semanaA) && !empty($semanaB)) {
+            // Calcula qual semana (A ou B) corresponde a esta data
+            // Usa segunda-feira da semana como referência
+            $refTs   = $diaInicioTs ?? strtotime('monday this week', $dataTs);
+            // Número de semanas desde o dia de início
+            $diffSec = $dataTs - $refTs;
+            $diffSem = intval(floor($diffSec / (7 * 86400)));
+            // Semanas negativas: ajustar para ciclo positivo
+            if ($diffSem < 0) $diffSem = (abs($diffSem) % 2 === 0) ? 0 : 1;
+            $isSemanaA = ($diffSem % 2 === 0);
+            $diasAtivos = $isSemanaA ? $semanaA : $semanaB;
+
+            if (in_array($diaSem, $diasAtivos)) {
+                $tipoDia = 'normal';
+            } else {
+                $tipoDia = $tipoFolga; // folga, falta ou feriado conforme configurado
+            }
+        } elseif (!empty($diasTrabalho)) {
+            // Escala normal: dias não listados são folga
+            $tipoDia = in_array($diaSem, $diasTrabalho) ? 'normal' : 'folga';
+        }
+
+        $stmt->bind_param('iiss', $periodo_id, $colab_id, $data, $tipoDia);
         $stmt->execute();
     }
     $stmt->close();
