@@ -698,7 +698,122 @@
 
             .hidro-stats { grid-template-columns: repeat(2, 1fr); }
 
-            .nav-tab { padding: .8rem .85rem; font-size: .82rem; }
+            /* ====== MARKETPLACE ====== */
+        .nav-tab-marketplace { color: #7c3aed !important; }
+        .nav-tab-marketplace.active { border-bottom-color: #7c3aed !important; color: #7c3aed !important; }
+        .nav-tab-marketplace:hover  { background: #f5f3ff !important; }
+
+        .mkt-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:1.25rem; }
+        .mkt-tab  {
+            padding:.75rem 1.25rem; border:none; background:transparent;
+            color:var(--text-secondary); font-size:.9rem; font-weight:600;
+            cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;
+            display:flex; align-items:center; gap:.4rem; transition:all .2s;
+        }
+        .mkt-tab:hover  { color:var(--primary); background:var(--primary-light); }
+        .mkt-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+        .mkt-badge { background:#ef4444; color:#fff; border-radius:999px; font-size:.72rem; font-weight:700; padding:1px 6px; }
+
+        .mkt-panel { display:none; }
+        .mkt-panel.active { display:block; }
+
+        .mkt-filtros { display:flex; gap:.75rem; flex-wrap:wrap; }
+        .mkt-filtro-busca { position:relative; flex:1; min-width:200px; }
+        .mkt-filtro-busca input { width:100%; padding:.6rem .75rem .6rem 2.2rem; border:1px solid var(--border); border-radius:var(--radius-md); font-size:.9rem; outline:none; transition:border-color .2s; }
+        .mkt-filtro-busca input:focus { border-color:var(--primary); }
+        .mkt-filtro-icon { position:absolute; left:.7rem; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:.85rem; }
+        .mkt-filtros select { padding:.6rem .75rem; border:1px solid var(--border); border-radius:var(--radius-md); font-size:.88rem; background:#fff; cursor:pointer; }
+
+        .mkt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1.25rem; margin-bottom:1.5rem; }
+        .mkt-card {
+            background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg);
+            box-shadow:var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column;
+            transition:transform .18s, box-shadow .18s;
+        }
+        .mkt-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
+        .mkt-card-img {
+            width:100%; height:140px; object-fit:cover; background:linear-gradient(135deg,#eff6ff,#dbeafe);
+            display:flex; align-items:center; justify-content:center; font-size:3rem; color:var(--primary);
+        }
+        .mkt-card-img img { width:100%; height:100%; object-fit:cover; }
+        .mkt-card-body { padding:1rem; flex:1; display:flex; flex-direction:column; gap:.5rem; }
+        .mkt-card-tipo { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+        .mkt-card-tipo.servico { color:#7c3aed; background:#f5f3ff; padding:2px 8px; border-radius:999px; display:inline-block; }
+        .mkt-card-tipo.produto { color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:999px; display:inline-block; }
+        .mkt-card-nome { font-size:1rem; font-weight:700; color:var(--text-primary); line-height:1.3; }
+        .mkt-card-fornecedor { font-size:.82rem; color:var(--text-secondary); display:flex; align-items:center; gap:.3rem; }
+        .mkt-card-ramo { font-size:.78rem; color:var(--text-muted); }
+        .mkt-card-desc { font-size:.85rem; color:var(--text-secondary); line-height:1.5; flex:1; }
+        .mkt-card-footer { display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; border-top:1px solid var(--border); background:var(--bg-subtle); }
+        .mkt-card-valor { font-size:1rem; font-weight:700; color:var(--primary); }
+        .mkt-card-nota { display:flex; align-items:center; gap:.3rem; font-size:.82rem; color:#d97706; }
+        .mkt-btn-contratar { background:var(--primary); color:#fff; border:none; border-radius:var(--radius-md); padding:.5rem 1rem; font-size:.85rem; font-weight:600; cursor:pointer; transition:background .2s; }
+        .mkt-btn-contratar:hover { background:var(--primary-dark); }
+
+        .mkt-loading { text-align:center; padding:3rem 1rem; color:var(--text-muted); font-size:1rem; }
+        .mkt-empty  { text-align:center; padding:3rem 1rem; color:var(--text-muted); }
+        .mkt-empty i { font-size:3rem; margin-bottom:1rem; display:block; }
+
+        .mkt-paginacao { display:flex; justify-content:center; gap:.4rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+        .mkt-pag-btn { padding:.45rem .9rem; border:1px solid var(--border); border-radius:var(--radius-md); background:#fff; cursor:pointer; font-size:.85rem; transition:all .2s; }
+        .mkt-pag-btn:hover  { background:var(--primary-light); border-color:var(--primary); color:var(--primary); }
+        .mkt-pag-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+        .mkt-pag-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+        /* Detalhe no modal */
+        .mkt-detalhe-header { display:flex; gap:1rem; align-items:flex-start; margin-bottom:1rem; }
+        .mkt-fornecedor-avatar { width:56px; height:56px; border-radius:var(--radius-md); background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:var(--primary); flex-shrink:0; overflow:hidden; }
+        .mkt-fornecedor-avatar img { width:100%; height:100%; object-fit:cover; }
+        .mkt-detalhe-info { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.75rem; margin:.75rem 0; }
+        .mkt-detalhe-info-item { background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-md); padding:.65rem .85rem; }
+        .mkt-detalhe-info-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:600; }
+        .mkt-detalhe-info-value { font-size:.9rem; font-weight:600; color:var(--text-primary); margin-top:.2rem; }
+        .mkt-av-item { border-left:3px solid var(--primary); padding:.5rem .75rem; margin-bottom:.5rem; background:var(--bg-subtle); border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+        .mkt-av-nota { color:#d97706; font-size:.85rem; }
+        .mkt-av-comentario { font-size:.85rem; color:var(--text-secondary); margin:.2rem 0; }
+        .mkt-av-autor { font-size:.75rem; color:var(--text-muted); }
+
+        /* Pedidos */
+        .mkt-pedido-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.25rem; margin-bottom:1rem; box-shadow:var(--shadow-sm); }
+        .mkt-pedido-header { display:flex; justify-content:space-between; align-items:flex-start; gap:.75rem; flex-wrap:wrap; margin-bottom:.75rem; }
+        .mkt-pedido-titulo { font-size:1rem; font-weight:700; color:var(--text-primary); }
+        .mkt-pedido-fornecedor { font-size:.85rem; color:var(--text-secondary); }
+        .mkt-pedido-data { font-size:.78rem; color:var(--text-muted); }
+        .mkt-pedido-desc { font-size:.88rem; color:var(--text-secondary); margin:.5rem 0; line-height:1.5; }
+        .mkt-pedido-valor { font-size:.95rem; font-weight:700; color:var(--primary); }
+        .mkt-pedido-acoes { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.75rem; }
+        .mkt-pedido-acoes button { padding:.45rem .9rem; border:none; border-radius:var(--radius-md); font-size:.82rem; font-weight:600; cursor:pointer; transition:opacity .2s; }
+        .mkt-pedido-acoes button:hover { opacity:.85; }
+        .mkt-btn-cancelar { background:#fee2e2; color:#991b1b; }
+        .mkt-btn-confirmar { background:#dcfce7; color:#166534; }
+        .mkt-btn-avaliar   { background:#fef3c7; color:#92400e; }
+        .mkt-btn-historico { background:#f1f5f9; color:var(--text-secondary); }
+
+        /* Status badges */
+        .mkt-status { display:inline-flex; align-items:center; gap:.3rem; padding:3px 10px; border-radius:999px; font-size:.75rem; font-weight:700; }
+        .mkt-status.aguardando  { background:#fef3c7; color:#92400e; }
+        .mkt-status.executando  { background:#dbeafe; color:#1e40af; }
+        .mkt-status.finalizado  { background:#dcfce7; color:#166534; }
+        .mkt-status.concluido   { background:#d1fae5; color:#065f46; }
+        .mkt-status.cancelado   { background:#fee2e2; color:#991b1b; }
+
+        /* Status filter buttons */
+        .mkt-status-btn { padding:.4rem .85rem; border:1px solid var(--border); border-radius:999px; background:#fff; font-size:.82rem; font-weight:600; cursor:pointer; transition:all .2s; color:var(--text-secondary); }
+        .mkt-status-btn:hover  { border-color:var(--primary); color:var(--primary); }
+        .mkt-status-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+
+        /* Stars input */
+        .mkt-stars-input { display:flex; justify-content:center; gap:.5rem; margin:.75rem 0; }
+        .mkt-star-btn { background:none; border:none; font-size:2rem; cursor:pointer; color:#d1d5db; transition:color .15s; }
+        .mkt-star-btn.selected, .mkt-star-btn:hover { color:#f59e0b; }
+
+        @media (max-width: 600px) {
+            .mkt-grid { grid-template-columns:1fr; }
+            .mkt-filtros { flex-direction:column; }
+            .mkt-tabs { overflow-x:auto; }
+        }
+
+        .nav-tab { padding: .8rem .85rem; font-size: .82rem; }
 
             .modal { padding: 1.5rem; }
         }
@@ -902,6 +1017,10 @@
         <button class="nav-tab" onclick="abrirAba('veiculos', this)" aria-label="Veículos">
             <i class="fas fa-car" aria-hidden="true"></i>
             <span>Veículos</span>
+        </button>
+        <button class="nav-tab nav-tab-marketplace" onclick="abrirAba('marketplace', this)" aria-label="Marketplace">
+            <i class="fas fa-store" aria-hidden="true"></i>
+            <span>Marketplace</span>
         </button>
     </div>
 </nav>
@@ -1329,7 +1448,174 @@
 
     </div>
 
+    <!-- ============================================================
+         ABA: MARKETPLACE
+         ============================================================ -->
+    <div id="panel-marketplace" class="tab-panel" role="tabpanel">
+
+        <!-- Sub-abas internas: Vitrine | Meus Pedidos -->
+        <div class="mkt-tabs">
+            <button class="mkt-tab active" id="mktTabVitrine" onclick="mktAbrirSubAba('vitrine', this)">
+                <i class="fas fa-th-large"></i> Vitrine de Ofertas
+            </button>
+            <button class="mkt-tab" id="mktTabPedidos" onclick="mktAbrirSubAba('pedidos', this)">
+                <i class="fas fa-list-alt"></i> Meus Pedidos
+                <span id="mktBadgePedidos" class="mkt-badge" style="display:none;"></span>
+            </button>
+        </div>
+
+        <!-- ======== VITRINE ======== -->
+        <div id="mktPanelVitrine" class="mkt-panel active">
+
+            <!-- Filtros -->
+            <div class="card" style="padding:1.25rem;margin-bottom:1rem;">
+                <div class="mkt-filtros">
+                    <div class="mkt-filtro-busca">
+                        <i class="fas fa-search mkt-filtro-icon"></i>
+                        <input type="text" id="mktBusca" placeholder="Buscar serviços ou fornecedores..." oninput="mktDebounce()" autocomplete="off">
+                    </div>
+                    <select id="mktTipo" onchange="mktCarregarVitrine(1)">
+                        <option value="">Todos os tipos</option>
+                        <option value="servico">Serviços</option>
+                        <option value="produto">Produtos</option>
+                    </select>
+                    <select id="mktRamo" onchange="mktCarregarVitrine(1)">
+                        <option value="">Todas as categorias</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid de cards -->
+            <div id="mktGrid" class="mkt-grid">
+                <div class="mkt-loading"><i class="fas fa-spinner fa-spin"></i> Carregando ofertas...</div>
+            </div>
+
+            <!-- Paginação -->
+            <div id="mktPaginacao" class="mkt-paginacao"></div>
+        </div>
+
+        <!-- ======== MEUS PEDIDOS ======== -->
+        <div id="mktPanelPedidos" class="mkt-panel">
+
+            <!-- Filtro de status -->
+            <div class="card" style="padding:1.25rem;margin-bottom:1rem;">
+                <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
+                    <span style="font-weight:600;color:var(--text-secondary);font-size:.9rem;">Filtrar:</span>
+                    <button class="mkt-status-btn active" data-status="" onclick="mktFiltrarPedidos('', this)">Todos</button>
+                    <button class="mkt-status-btn" data-status="aguardando" onclick="mktFiltrarPedidos('aguardando', this)">Aguardando</button>
+                    <button class="mkt-status-btn" data-status="executando" onclick="mktFiltrarPedidos('executando', this)">Em Execução</button>
+                    <button class="mkt-status-btn" data-status="finalizado" onclick="mktFiltrarPedidos('finalizado', this)">Finalizado</button>
+                    <button class="mkt-status-btn" data-status="concluido" onclick="mktFiltrarPedidos('concluido', this)">Concluído</button>
+                    <button class="mkt-status-btn" data-status="cancelado" onclick="mktFiltrarPedidos('cancelado', this)">Cancelado</button>
+                </div>
+            </div>
+
+            <div id="mktListaPedidos">
+                <div class="mkt-loading"><i class="fas fa-spinner fa-spin"></i> Carregando pedidos...</div>
+            </div>
+        </div>
+
+    </div>
+
 </main>
+
+<!-- ================================================================
+     MODAL: CONTRATAR SERVIÇO
+     ================================================================ -->
+<div class="modal-overlay" id="modalContratar" role="dialog" aria-modal="true" aria-labelledby="modalContratarTitle">
+    <div class="modal" style="max-width:540px;">
+        <div class="modal-header">
+            <h3 id="modalContratarTitle"><i class="fas fa-handshake"></i> Contratar Serviço</h3>
+            <button class="modal-close" onclick="mktFecharModalContratar()" aria-label="Fechar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="modalContratarBody">
+            <div class="mkt-detalhe-header">
+                <div id="mktDetFornecedorLogo" class="mkt-fornecedor-avatar"><i class="fas fa-store"></i></div>
+                <div>
+                    <div id="mktDetNome" style="font-size:1.1rem;font-weight:700;"></div>
+                    <div id="mktDetFornecedor" style="color:var(--text-secondary);font-size:.88rem;"></div>
+                    <div id="mktDetRamo" style="margin-top:.3rem;"></div>
+                </div>
+            </div>
+            <div id="mktDetDescricao" style="color:var(--text-secondary);font-size:.9rem;margin:1rem 0;line-height:1.6;"></div>
+            <div class="mkt-detalhe-info">
+                <div class="mkt-detalhe-info-item">
+                    <span class="mkt-detalhe-info-label">Valor</span>
+                    <span id="mktDetValor" class="mkt-detalhe-info-value"></span>
+                </div>
+                <div class="mkt-detalhe-info-item">
+                    <span class="mkt-detalhe-info-label">Contato</span>
+                    <span id="mktDetContato" class="mkt-detalhe-info-value"></span>
+                </div>
+                <div class="mkt-detalhe-info-item">
+                    <span class="mkt-detalhe-info-label">Avaliação</span>
+                    <span id="mktDetNota" class="mkt-detalhe-info-value"></span>
+                </div>
+                <div class="mkt-detalhe-info-item" id="mktDetHorarioBox">
+                    <span class="mkt-detalhe-info-label">Horário</span>
+                    <span id="mktDetHorario" class="mkt-detalhe-info-value"></span>
+                </div>
+            </div>
+            <div id="mktDetAvaliacoes" style="margin:1rem 0;"></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0;">
+            <form id="formContratar" onsubmit="mktEnviarPedido(event)">
+                <input type="hidden" id="contratarProdutoId">
+                <div class="form-group">
+                    <label for="contratarDescricao">Descreva o que você precisa *</label>
+                    <textarea id="contratarDescricao" rows="3" placeholder="Ex: Preciso trocar 3 tomadas no quarto e instalar um interruptor na sala..." required style="resize:vertical;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="contratarValor">Valor proposto (R$) <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
+                    <input type="number" id="contratarValor" min="0" step="0.01" placeholder="Deixe em branco para usar o valor da oferta">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="mktFecharModalContratar()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnEnviarPedido">
+                        <i class="fas fa-paper-plane"></i> Enviar Solicitação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     MODAL: AVALIAR FORNECEDOR
+     ================================================================ -->
+<div class="modal-overlay" id="modalAvaliar" role="dialog" aria-modal="true" aria-labelledby="modalAvaliarTitle">
+    <div class="modal" style="max-width:460px;">
+        <div class="modal-header">
+            <h3 id="modalAvaliarTitle"><i class="fas fa-star"></i> Avaliar Fornecedor</h3>
+            <button class="modal-close" onclick="mktFecharModalAvaliar()" aria-label="Fechar">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom:1rem;color:var(--text-secondary);">Como foi sua experiência com <strong id="avaliarFornecedorNome"></strong>?</p>
+            <input type="hidden" id="avaliarPedidoId">
+            <div class="mkt-stars-input" id="mktStarsInput">
+                <button type="button" class="mkt-star-btn" data-nota="1" onclick="mktSelecionarEstrela(1)"><i class="fas fa-star"></i></button>
+                <button type="button" class="mkt-star-btn" data-nota="2" onclick="mktSelecionarEstrela(2)"><i class="fas fa-star"></i></button>
+                <button type="button" class="mkt-star-btn" data-nota="3" onclick="mktSelecionarEstrela(3)"><i class="fas fa-star"></i></button>
+                <button type="button" class="mkt-star-btn" data-nota="4" onclick="mktSelecionarEstrela(4)"><i class="fas fa-star"></i></button>
+                <button type="button" class="mkt-star-btn" data-nota="5" onclick="mktSelecionarEstrela(5)"><i class="fas fa-star"></i></button>
+            </div>
+            <p id="mktStarLabel" style="text-align:center;font-size:.9rem;color:var(--text-muted);margin:.5rem 0 1rem;">Selecione uma nota</p>
+            <div class="form-group">
+                <label for="avaliarComentario">Comentário <span style="color:var(--text-muted);font-weight:400;">(opcional)</span></label>
+                <textarea id="avaliarComentario" rows="3" placeholder="Conte como foi o serviço..." style="resize:vertical;"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="mktFecharModalAvaliar()">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnEnviarAvaliacao" onclick="mktEnviarAvaliacao()" disabled>
+                    <i class="fas fa-star"></i> Enviar Avaliação
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ================================================================
      MODAL: EDITAR DEPENDENTE
@@ -1503,7 +1789,8 @@ function abrirAba(aba, btnEl) {
         dependentes: carregarDependentes,
         protocolos:  () => carregarProtocolos(''),
         hidrometro:  carregarHidrometro,
-        veiculos:    carregarVeiculos
+        veiculos:    carregarVeiculos,
+        marketplace: () => { if (!MKT.carregado) mktInicializar(); }
     };
     if (loaders[aba]) loaders[aba]();
 
@@ -2364,6 +2651,438 @@ function corParaCss(cor) {
     };
     return mapa[cor.toLowerCase().trim()] || '#e2e8f0';
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   MARKETPLACE
+   ══════════════════════════════════════════════════════════════════ */
+
+const MKT = {
+    API: window.location.origin + '/api/api_portal_marketplace.php',
+    paginaAtual: 1,
+    totalPaginas: 1,
+    debounceTimer: null,
+    notaEscolhida: 0,
+    carregado: false
+};
+
+function mktApi(params, metodo, body) {
+    const url = MKT.API + '?' + new URLSearchParams(params).toString();
+    const opts = {
+        method: metodo || 'GET',
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    };
+    if (body) {
+        opts.body = body;
+    }
+    return fetch(url, opts).then(r => r.json());
+}
+
+function mktAbrirSubAba(aba, btn) {
+    document.querySelectorAll('.mkt-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.mkt-panel').forEach(p => p.classList.remove('active'));
+    if (aba === 'vitrine') {
+        document.getElementById('mktPanelVitrine').classList.add('active');
+        if (!MKT.carregado) mktInicializar();
+    } else {
+        document.getElementById('mktPanelPedidos').classList.add('active');
+        mktCarregarPedidos('');
+    }
+}
+
+function mktInicializar() {
+    MKT.carregado = true;
+    // Carregar ramos
+    fetch(MKT.API + '?acao=ramos')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.sucesso) return;
+            const sel = document.getElementById('mktRamo');
+            data.dados.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = r.nome;
+                sel.appendChild(opt);
+            });
+        });
+    mktCarregarVitrine(1);
+}
+
+function mktDebounce() {
+    clearTimeout(MKT.debounceTimer);
+    MKT.debounceTimer = setTimeout(() => mktCarregarVitrine(1), 380);
+}
+
+function mktCarregarVitrine(pagina) {
+    MKT.paginaAtual = pagina || 1;
+    const grid = document.getElementById('mktGrid');
+    const pag  = document.getElementById('mktPaginacao');
+    grid.innerHTML = '<div class="mkt-loading"><i class="fas fa-spinner fa-spin"></i> Carregando ofertas...</div>';
+    pag.innerHTML  = '';
+
+    const params = {
+        acao:      'vitrine',
+        busca:     document.getElementById('mktBusca').value.trim(),
+        tipo:      document.getElementById('mktTipo').value,
+        ramo_id:   document.getElementById('mktRamo').value,
+        pagina:    MKT.paginaAtual,
+        por_pagina: 12
+    };
+
+    fetch(MKT.API + '?' + new URLSearchParams(params).toString())
+        .then(r => r.json())
+        .then(data => {
+            if (!data.sucesso) {
+                grid.innerHTML = '<div class="mkt-empty"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar ofertas.</p></div>';
+                return;
+            }
+            const { itens, total, total_paginas } = data.dados;
+            MKT.totalPaginas = total_paginas;
+
+            if (!itens || itens.length === 0) {
+                grid.innerHTML = '<div class="mkt-empty"><i class="fas fa-store-slash"></i><p>Nenhuma oferta encontrada.</p></div>';
+                return;
+            }
+
+            let html = '';
+            itens.forEach(item => {
+                const imgHtml = item.imagem
+                    ? `<div class="mkt-card-img"><img src="${escHtml(item.imagem)}" alt="${escHtml(item.nome)}" loading="lazy"></div>`
+                    : `<div class="mkt-card-img"><i class="fas fa-${escHtml(item.ramo_icone || 'store')}"></i></div>`;
+
+                const valorHtml = item.valor
+                    ? `R$ ${parseFloat(item.valor).toLocaleString('pt-BR', {minimumFractionDigits:2})}${item.valor_negociavel == 1 ? ' <small style="font-weight:400;color:var(--text-muted)">(negociável)</small>' : ''}`
+                    : '<span style="color:var(--text-muted);font-size:.85rem;">A combinar</span>';
+
+                const notaHtml = parseFloat(item.media_nota) > 0
+                    ? `<span class="mkt-card-nota"><i class="fas fa-star"></i> ${parseFloat(item.media_nota).toFixed(1)} <span style="color:var(--text-muted);">(${item.total_avaliacoes})</span></span>`
+                    : `<span style="color:var(--text-muted);font-size:.78rem;">Sem avaliações</span>`;
+
+                html += `
+                <div class="mkt-card">
+                    ${imgHtml}
+                    <div class="mkt-card-body">
+                        <span class="mkt-card-tipo ${escHtml(item.tipo)}">${item.tipo === 'servico' ? 'Serviço' : 'Produto'}</span>
+                        <div class="mkt-card-nome">${escHtml(item.nome)}</div>
+                        <div class="mkt-card-fornecedor"><i class="fas fa-store"></i> ${escHtml(item.fornecedor_nome)}</div>
+                        <div class="mkt-card-ramo"><i class="fas fa-${escHtml(item.ramo_icone || 'tag')}"></i> ${escHtml(item.ramo_nome)}</div>
+                        ${item.descricao ? `<div class="mkt-card-desc">${escHtml(item.descricao.substring(0,100))}${item.descricao.length > 100 ? '...' : ''}</div>` : ''}
+                    </div>
+                    <div class="mkt-card-footer">
+                        <div class="mkt-card-valor">${valorHtml}</div>
+                        ${notaHtml}
+                        <button class="mkt-btn-contratar" onclick="mktAbrirModalContratar(${item.id})">
+                            <i class="fas fa-handshake"></i> Contratar
+                        </button>
+                    </div>
+                </div>`;
+            });
+            grid.innerHTML = html;
+
+            // Paginação
+            if (total_paginas > 1) {
+                let pagHtml = `<button class="mkt-pag-btn" onclick="mktCarregarVitrine(${MKT.paginaAtual - 1})" ${MKT.paginaAtual <= 1 ? 'disabled' : ''}>&#8249;</button>`;
+                for (let i = 1; i <= total_paginas; i++) {
+                    if (i === 1 || i === total_paginas || Math.abs(i - MKT.paginaAtual) <= 1) {
+                        pagHtml += `<button class="mkt-pag-btn${i === MKT.paginaAtual ? ' active' : ''}" onclick="mktCarregarVitrine(${i})">${i}</button>`;
+                    } else if (Math.abs(i - MKT.paginaAtual) === 2) {
+                        pagHtml += `<span style="padding:.45rem .5rem;color:var(--text-muted);">…</span>`;
+                    }
+                }
+                pagHtml += `<button class="mkt-pag-btn" onclick="mktCarregarVitrine(${MKT.paginaAtual + 1})" ${MKT.paginaAtual >= total_paginas ? 'disabled' : ''}>&#8250;</button>`;
+                pag.innerHTML = pagHtml;
+            }
+        })
+        .catch(() => {
+            grid.innerHTML = '<div class="mkt-empty"><i class="fas fa-exclamation-triangle"></i><p>Erro de conexão.</p></div>';
+        });
+}
+
+function mktAbrirModalContratar(id) {
+    const modal = document.getElementById('modalContratar');
+    const body  = document.getElementById('modalContratarBody');
+
+    // Limpar form
+    document.getElementById('contratarProdutoId').value = id;
+    document.getElementById('contratarDescricao').value = '';
+    document.getElementById('contratarValor').value = '';
+
+    // Carregar detalhe
+    fetch(MKT.API + '?acao=detalhe&id=' + id)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.sucesso) { alert('Oferta não encontrada.'); return; }
+            const d = data.dados;
+
+            // Avatar
+            const av = document.getElementById('mktDetFornecedorLogo');
+            av.innerHTML = d.fornecedor_logo
+                ? `<img src="${escHtml(d.fornecedor_logo)}" alt="logo">`
+                : `<i class="fas fa-store"></i>`;
+
+            document.getElementById('mktDetNome').textContent = d.nome;
+            document.getElementById('mktDetFornecedor').textContent = d.fornecedor_nome;
+            document.getElementById('mktDetRamo').innerHTML = `<span class="mkt-card-tipo ${escHtml(d.tipo)}"><i class="fas fa-${escHtml(d.ramo_icone || 'tag')}"></i> ${escHtml(d.ramo_nome)}</span>`;
+            document.getElementById('mktDetDescricao').textContent = d.descricao || '';
+
+            document.getElementById('mktDetValor').innerHTML = d.valor
+                ? `R$ ${parseFloat(d.valor).toLocaleString('pt-BR', {minimumFractionDigits:2})}${d.valor_negociavel == 1 ? ' <small>(negociável)</small>' : ''}`
+                : 'A combinar';
+
+            document.getElementById('mktDetContato').innerHTML = d.fornecedor_telefone
+                ? `<a href="tel:${escHtml(d.fornecedor_telefone)}" style="color:var(--primary);">${escHtml(d.fornecedor_telefone)}</a>`
+                : escHtml(d.fornecedor_email || '—');
+
+            document.getElementById('mktDetNota').innerHTML = parseFloat(d.media_nota) > 0
+                ? `<span style="color:#d97706;"><i class="fas fa-star"></i> ${parseFloat(d.media_nota).toFixed(1)}</span> (${d.total_avaliacoes} avaliações)`
+                : 'Sem avaliações';
+
+            const horBox = document.getElementById('mktDetHorarioBox');
+            if (d.fornecedor_horario) {
+                document.getElementById('mktDetHorario').textContent = d.fornecedor_horario;
+                horBox.style.display = '';
+            } else {
+                horBox.style.display = 'none';
+            }
+
+            // Avaliações recentes
+            let avHtml = '';
+            if (d.avaliacoes_recentes && d.avaliacoes_recentes.length > 0) {
+                avHtml = '<div style="font-size:.82rem;font-weight:600;color:var(--text-muted);margin-bottom:.5rem;">Avaliações recentes</div>';
+                d.avaliacoes_recentes.forEach(av => {
+                    const stars = '★'.repeat(av.nota) + '☆'.repeat(5 - av.nota);
+                    avHtml += `<div class="mkt-av-item">
+                        <div class="mkt-av-nota">${stars}</div>
+                        ${av.comentario ? `<div class="mkt-av-comentario">${escHtml(av.comentario)}</div>` : ''}
+                        <div class="mkt-av-autor">${escHtml(av.morador_nome || 'Morador')} · ${av.data_avaliacao ? new Date(av.data_avaliacao).toLocaleDateString('pt-BR') : ''}</div>
+                    </div>`;
+                });
+            }
+            document.getElementById('mktDetAvaliacoes').innerHTML = avHtml;
+        });
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function mktFecharModalContratar() {
+    document.getElementById('modalContratar').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function mktEnviarPedido(event) {
+    event.preventDefault();
+    const btn = document.getElementById('btnEnviarPedido');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+    const fd = new FormData();
+    fd.append('acao', 'contratar');
+    fd.append('produto_servico_id', document.getElementById('contratarProdutoId').value);
+    fd.append('descricao_pedido',   document.getElementById('contratarDescricao').value.trim());
+    const val = document.getElementById('contratarValor').value;
+    if (val) fd.append('valor_proposto', val);
+
+    fetch(MKT.API, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + Portal.token },
+        body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Solicitação';
+        if (data.sucesso) {
+            mktFecharModalContratar();
+            mostrarAlerta('success', data.mensagem || 'Pedido enviado com sucesso!');
+            // Ir para aba de pedidos
+            setTimeout(() => {
+                document.getElementById('mktTabPedidos').click();
+            }, 1200);
+        } else {
+            mostrarAlerta('error', data.mensagem || 'Erro ao enviar pedido.');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Solicitação';
+        mostrarAlerta('error', 'Erro de conexão. Tente novamente.');
+    });
+}
+
+function mktCarregarPedidos(status) {
+    const lista = document.getElementById('mktListaPedidos');
+    lista.innerHTML = '<div class="mkt-loading"><i class="fas fa-spinner fa-spin"></i> Carregando pedidos...</div>';
+
+    const params = { acao: 'meus_pedidos' };
+    if (status) params.status = status;
+
+    fetch(MKT.API + '?' + new URLSearchParams(params).toString(), {
+        headers: { 'Authorization': 'Bearer ' + Portal.token }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.sucesso) {
+            lista.innerHTML = '<div class="mkt-empty"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar pedidos.</p></div>';
+            return;
+        }
+        const pedidos = data.dados;
+
+        // Badge
+        const pendentes = pedidos.filter(p => ['aguardando','executando','finalizado'].includes(p.status)).length;
+        const badge = document.getElementById('mktBadgePedidos');
+        if (pendentes > 0) { badge.textContent = pendentes; badge.style.display = ''; }
+        else badge.style.display = 'none';
+
+        if (!pedidos || pedidos.length === 0) {
+            lista.innerHTML = '<div class="mkt-empty"><i class="fas fa-box-open"></i><p>Nenhum pedido encontrado.</p></div>';
+            return;
+        }
+
+        const statusLabel = { aguardando:'Aguardando', executando:'Em Execução', finalizado:'Finalizado', concluido:'Concluído', cancelado:'Cancelado' };
+        const statusIcon  = { aguardando:'clock', executando:'cog fa-spin', finalizado:'check-circle', concluido:'trophy', cancelado:'times-circle' };
+
+        let html = '';
+        pedidos.forEach(p => {
+            const dataFmt = p.data_pedido ? new Date(p.data_pedido).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+            const valorFmt = p.valor_proposto && p.valor_proposto > 0
+                ? `R$ ${parseFloat(p.valor_proposto).toLocaleString('pt-BR', {minimumFractionDigits:2})}`
+                : 'A combinar';
+
+            let acoes = '';
+            if (p.status === 'aguardando') {
+                acoes += `<button class="mkt-btn-cancelar" onclick="mktCancelarPedido(${p.id})"><i class="fas fa-times"></i> Cancelar</button>`;
+            }
+            if (p.status === 'executando') {
+                acoes += `<button class="mkt-btn-confirmar" onclick="mktConfirmarConclusao(${p.id})"><i class="fas fa-check"></i> Confirmar Conclusão</button>`;
+            }
+            if (p.status === 'finalizado' && !p.ja_avaliou) {
+                acoes += `<button class="mkt-btn-avaliar" onclick="mktAbrirModalAvaliar(${p.id}, '${escHtml(p.fornecedor_nome)}')"><i class="fas fa-star"></i> Avaliar</button>`;
+            }
+            if (p.motivo_recusa) {
+                acoes += `<span style="font-size:.8rem;color:#991b1b;"><i class="fas fa-info-circle"></i> ${escHtml(p.motivo_recusa)}</span>`;
+            }
+
+            html += `
+            <div class="mkt-pedido-card">
+                <div class="mkt-pedido-header">
+                    <div>
+                        <div class="mkt-pedido-titulo">${escHtml(p.produto_nome)}</div>
+                        <div class="mkt-pedido-fornecedor"><i class="fas fa-store"></i> ${escHtml(p.fornecedor_nome)}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="mkt-status ${escHtml(p.status)}"><i class="fas fa-${statusIcon[p.status] || 'circle'}"></i> ${statusLabel[p.status] || p.status}</span>
+                        <div class="mkt-pedido-data">${dataFmt}</div>
+                    </div>
+                </div>
+                <div class="mkt-pedido-desc">${escHtml(p.descricao_pedido)}</div>
+                <div class="mkt-pedido-valor">${valorFmt}</div>
+                ${acoes ? `<div class="mkt-pedido-acoes">${acoes}</div>` : ''}
+            </div>`;
+        });
+        lista.innerHTML = html;
+    })
+    .catch(() => {
+        lista.innerHTML = '<div class="mkt-empty"><i class="fas fa-exclamation-triangle"></i><p>Erro de conexão.</p></div>';
+    });
+}
+
+function mktFiltrarPedidos(status, btn) {
+    document.querySelectorAll('.mkt-status-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mktCarregarPedidos(status);
+}
+
+function mktCancelarPedido(id) {
+    if (!confirm('Deseja cancelar este pedido?')) return;
+    const fd = new FormData();
+    fd.append('acao', 'cancelar');
+    fd.append('pedido_id', id);
+    fetch(MKT.API, { method:'POST', headers:{'Authorization':'Bearer '+Portal.token}, body:fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.sucesso) { mostrarAlerta('success', data.mensagem); mktCarregarPedidos(''); }
+            else mostrarAlerta('error', data.mensagem);
+        });
+}
+
+function mktConfirmarConclusao(id) {
+    if (!confirm('Confirmar que o serviço foi concluído?')) return;
+    const fd = new FormData();
+    fd.append('acao', 'confirmar_conclusao');
+    fd.append('pedido_id', id);
+    fetch(MKT.API, { method:'POST', headers:{'Authorization':'Bearer '+Portal.token}, body:fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.sucesso) { mostrarAlerta('success', data.mensagem); mktCarregarPedidos(''); }
+            else mostrarAlerta('error', data.mensagem);
+        });
+}
+
+function mktAbrirModalAvaliar(pedidoId, fornecedorNome) {
+    MKT.notaEscolhida = 0;
+    document.getElementById('avaliarPedidoId').value = pedidoId;
+    document.getElementById('avaliarFornecedorNome').textContent = fornecedorNome;
+    document.getElementById('avaliarComentario').value = '';
+    document.getElementById('mktStarLabel').textContent = 'Selecione uma nota';
+    document.getElementById('btnEnviarAvaliacao').disabled = true;
+    document.querySelectorAll('.mkt-star-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('modalAvaliar').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function mktFecharModalAvaliar() {
+    document.getElementById('modalAvaliar').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function mktSelecionarEstrela(nota) {
+    MKT.notaEscolhida = nota;
+    const labels = ['', 'Péssimo', 'Ruim', 'Regular', 'Bom', 'Excelente'];
+    document.getElementById('mktStarLabel').textContent = labels[nota] || '';
+    document.getElementById('btnEnviarAvaliacao').disabled = false;
+    document.querySelectorAll('.mkt-star-btn').forEach(b => {
+        b.classList.toggle('selected', parseInt(b.dataset.nota) <= nota);
+    });
+}
+
+function mktEnviarAvaliacao() {
+    if (!MKT.notaEscolhida) { alert('Selecione uma nota.'); return; }
+    const btn = document.getElementById('btnEnviarAvaliacao');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+    const fd = new FormData();
+    fd.append('acao',       'avaliar');
+    fd.append('pedido_id',  document.getElementById('avaliarPedidoId').value);
+    fd.append('nota',       MKT.notaEscolhida);
+    fd.append('comentario', document.getElementById('avaliarComentario').value.trim());
+
+    fetch(MKT.API, { method:'POST', headers:{'Authorization':'Bearer '+Portal.token}, body:fd })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-star"></i> Enviar Avaliação';
+            if (data.sucesso) {
+                mktFecharModalAvaliar();
+                mostrarAlerta('success', data.mensagem);
+                mktCarregarPedidos('');
+            } else {
+                mostrarAlerta('error', data.mensagem);
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-star"></i> Enviar Avaliação';
+            mostrarAlerta('error', 'Erro de conexão.');
+        });
+}
+
+// Fechar modais ao clicar fora
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'modalContratar') mktFecharModalContratar();
+    if (e.target.id === 'modalAvaliar')   mktFecharModalAvaliar();
+});
 
 /* ──────────────────────────────────────────────────────────────────
    UTILITÁRIOS
