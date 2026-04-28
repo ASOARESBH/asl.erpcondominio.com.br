@@ -22,6 +22,13 @@ const API_ANEXOS = '../api/api_moradores_anexos.php';
 let _currentTab = 'moradores';
 let _listaMoradores = [];   // cache para o select de dependentes
 
+// Paginação de moradores
+const POR_PAGINA = 25;
+let _paginaAtual = 1;
+let _totalPaginas = 1;
+let _totalMoradores = 0;
+let _termoBusca = '';  // termo em uso na paginação atual
+
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT / DESTROY
 // ══════════════════════════════════════════════════════════════════════════════
@@ -37,6 +44,7 @@ export function init() {
     window.MoradoresPage = {
         // Moradores
         buscar:              _buscarMoradores,
+        irPagina:            _irPaginaMoradores,
         editar:              _abrirModalEditarMorador,
         excluir:             _excluirMorador,
         fecharModalMorador:  _fecharModalMorador,
@@ -58,6 +66,19 @@ export function init() {
         enviarAnexo:       _enviarAnexo,
         excluirAnexo:      _excluirAnexo,
     };
+
+    // Debounce no campo de busca de moradores
+    const inputBuscaMor = document.getElementById('searchMorador');
+    if (inputBuscaMor) {
+        let _debounceTimerMor = null;
+        inputBuscaMor.addEventListener('input', () => {
+            clearTimeout(_debounceTimerMor);
+            _debounceTimerMor = setTimeout(() => _buscarMoradores(), 350);
+        });
+        inputBuscaMor.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { clearTimeout(_debounceTimerMor); _buscarMoradores(); }
+        });
+    }
 
     // Debounce no campo de busca de dependentes
     const inputBuscaDep = document.getElementById('searchDependente');
@@ -141,20 +162,34 @@ function _setupForms() {
 // ── MORADORES ────────────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
 
-function _carregarMoradores() {
-    log('Carregando lista de moradores...');
+function _carregarMoradores(pagina = 1) {
+    log('Carregando lista de moradores, página:', pagina);
+    _paginaAtual = pagina;
+
     const loading = document.getElementById('loadingMoradores');
     if (loading) loading.style.display = 'block';
 
-    fetch(API_MORADORES)
+    const params = new URLSearchParams({
+        pagina,
+        por_pagina: POR_PAGINA,
+    });
+    if (_termoBusca) params.set('nome', _termoBusca);
+
+    fetch(`${API_MORADORES}?${params}`)
         .then(r => r.json())
         .then(data => {
             if (loading) loading.style.display = 'none';
             log('Resposta moradores:', data);
             if (data.sucesso) {
-                _listaMoradores = data.dados || [];
+                const d = data.dados;
+                _totalMoradores = d.total ?? 0;
+                _totalPaginas   = d.total_paginas ?? 1;
+                _paginaAtual    = d.pagina ?? 1;
+                _listaMoradores = d.itens || [];
                 _renderMoradores(_listaMoradores);
-                _popularSelectMoradores(_listaMoradores);
+                _renderPaginacaoMoradores();
+                // Popular selects com todos os moradores (sem paginação)
+                _popularSelectMoradoresTodos();
             } else {
                 _toast('Erro ao carregar moradores: ' + (data.mensagem || ''), 'error');
             }
@@ -164,6 +199,19 @@ function _carregarMoradores() {
             log('Erro ao carregar moradores:', err);
             _toast('Falha de comunicação ao carregar moradores', 'error');
         });
+}
+
+// Carrega TODOS os moradores (sem paginação) apenas para popular selects
+function _popularSelectMoradoresTodos() {
+    fetch(`${API_MORADORES}?por_pagina=0`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.sucesso) {
+                const lista = data.dados?.itens || data.dados || [];
+                _popularSelectMoradores(lista);
+            }
+        })
+        .catch(() => {});
 }
 
 function _popularSelectMoradores(lista) {
@@ -187,7 +235,8 @@ function _renderMoradores(lista) {
     if (!tbody) return;
 
     if (!lista || lista.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.6;">Nenhum morador cadastrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;opacity:.6;">Nenhum morador encontrado</td></tr>';
+        _renderPaginacaoMoradores();
         return;
     }
 
@@ -216,6 +265,70 @@ function _renderMoradores(lista) {
             </td>
         </tr>`;
     }).join('');
+}
+
+// ── Paginação ──────────────────────────────────────────────────────────────────
+
+function _renderPaginacaoMoradores() {
+    const wrap = document.getElementById('paginacaoMoradores');
+    if (!wrap) return;
+
+    if (_totalPaginas <= 1) {
+        // Mostra apenas o contador sem botões de navegação
+        wrap.innerHTML = _totalMoradores > 0
+            ? `<span class="pag-info">${_totalMoradores} registro${_totalMoradores !== 1 ? 's' : ''}</span>`
+            : '';
+        return;
+    }
+
+    const inicio = (_paginaAtual - 1) * POR_PAGINA + 1;
+    const fim    = Math.min(_paginaAtual * POR_PAGINA, _totalMoradores);
+
+    let html = `<span class="pag-info">${inicio}–${fim} de ${_totalMoradores}</span>`;
+    html += `<div class="pag-btns">`;
+
+    // Botão anterior
+    html += `<button class="pag-btn${_paginaAtual === 1 ? ' disabled' : ''}" 
+        onclick="window.MoradoresPage.irPagina(${_paginaAtual - 1})" 
+        ${_paginaAtual === 1 ? 'disabled' : ''} title="Página anterior">
+        <i class="fas fa-chevron-left"></i>
+    </button>`;
+
+    // Números de página (máx 7 botões visíveis)
+    const MAX_BTNS = 7;
+    let inicio_pg = Math.max(1, _paginaAtual - Math.floor(MAX_BTNS / 2));
+    let fim_pg    = Math.min(_totalPaginas, inicio_pg + MAX_BTNS - 1);
+    if (fim_pg - inicio_pg < MAX_BTNS - 1) inicio_pg = Math.max(1, fim_pg - MAX_BTNS + 1);
+
+    if (inicio_pg > 1) {
+        html += `<button class="pag-btn" onclick="window.MoradoresPage.irPagina(1)">1</button>`;
+        if (inicio_pg > 2) html += `<span class="pag-ellipsis">…</span>`;
+    }
+    for (let p = inicio_pg; p <= fim_pg; p++) {
+        html += `<button class="pag-btn${p === _paginaAtual ? ' active' : ''}" 
+            onclick="window.MoradoresPage.irPagina(${p})">${p}</button>`;
+    }
+    if (fim_pg < _totalPaginas) {
+        if (fim_pg < _totalPaginas - 1) html += `<span class="pag-ellipsis">…</span>`;
+        html += `<button class="pag-btn" onclick="window.MoradoresPage.irPagina(${_totalPaginas})">${_totalPaginas}</button>`;
+    }
+
+    // Botão próximo
+    html += `<button class="pag-btn${_paginaAtual === _totalPaginas ? ' disabled' : ''}" 
+        onclick="window.MoradoresPage.irPagina(${_paginaAtual + 1})" 
+        ${_paginaAtual === _totalPaginas ? 'disabled' : ''} title="Próxima página">
+        <i class="fas fa-chevron-right"></i>
+    </button>`;
+
+    html += `</div>`;
+    wrap.innerHTML = html;
+}
+
+function _irPaginaMoradores(p) {
+    if (p < 1 || p > _totalPaginas || p === _paginaAtual) return;
+    _carregarMoradores(p);
+    // Rola suavemente até o topo da tabela
+    document.getElementById('tabelaMoradores')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function _salvarMorador() {
@@ -260,16 +373,9 @@ function _salvarMorador() {
 }
 
 function _buscarMoradores() {
-    const termo = document.getElementById('searchMorador')?.value?.trim() || '';
-    log('Buscando moradores com termo:', termo);
-
-    fetch(`${API_MORADORES}?nome=${encodeURIComponent(termo)}`)
-        .then(r => r.json())
-        .then(data => {
-            log('Resultado busca:', data);
-            if (data.sucesso) _renderMoradores(data.dados || []);
-        })
-        .catch(err => log('Erro na busca:', err));
+    _termoBusca = document.getElementById('searchMorador')?.value?.trim() || '';
+    log('Buscando moradores com termo:', _termoBusca);
+    _carregarMoradores(1); // volta para a página 1 ao buscar
 }
 
 function _excluirMorador(id) {

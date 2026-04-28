@@ -395,3 +395,94 @@
         font-size: 1.4rem;
     }
 }
+
+/* ============================================================
+   PAGINAÇÃO — Navegação no rodapé da lista de moradores
+   ============================================================ */
+.page-moradores .paginacao-moradores {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 4px 4px;
+    border-top: 1px solid #e2e8f0;
+    margin-top: 8px;
+}
+
+/* Contador "1–25 de 80" */
+.page-moradores .pag-info {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Grupo de botões */
+.page-moradores .pag-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+/* Botão individual */
+.page-moradores .pag-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 7px;
+    background: #fff;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    line-height: 1;
+}
+
+.page-moradores .pag-btn:hover:not(.disabled):not(.active) {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+/* Página ativa */
+.page-moradores .pag-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+    font-weight: 700;
+    cursor: default;
+}
+
+/* Botão desabilitado (primeira/última página) */
+.page-moradores .pag-btn.disabled,
+.page-moradores .pag-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Reticências */
+.page-moradores .pag-ellipsis {
+    font-size: 13px;
+    color: #9ca3af;
+    padding: 0 2px;
+    user-select: none;
+}
+
+/* Responsividade: centraliza em telas pequenas */
+@media (max-width: 480px) {
+    .page-moradores .paginacao-moradores {
+        justify-content: center;
+    }
+    .page-moradores .pag-info {
+        width: 100%;
+        text-align: center;
+    }
+}

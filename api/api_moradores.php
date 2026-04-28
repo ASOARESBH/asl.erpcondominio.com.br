@@ -106,75 +106,92 @@ try {
     if ($metodo === 'GET') {
         // Obter filtros de busca
         $filtro_unidade = isset($_GET['unidade']) ? trim($_GET['unidade']) : '';
-        $filtro_nome = isset($_GET['nome']) ? trim($_GET['nome']) : '';
-        $filtro_email = isset($_GET['email']) ? trim($_GET['email']) : '';
-        $filtro_cpf = isset($_GET['cpf']) ? trim($_GET['cpf']) : '';
-        
-        // Construir query com prepared statement
-        $sql = "SELECT id, nome, cpf, unidade, email, telefone, celular, ativo, 
-                DATE_FORMAT(data_cadastro, '%d/%m/%Y %H:%i') as data_cadastro 
-                FROM moradores WHERE 1=1";
-        
+        $filtro_nome    = isset($_GET['nome'])    ? trim($_GET['nome'])    : '';
+        $filtro_email   = isset($_GET['email'])   ? trim($_GET['email'])   : '';
+        $filtro_cpf     = isset($_GET['cpf'])     ? trim($_GET['cpf'])     : '';
+
+        // Paginação — por_pagina=0 retorna todos (retrocompatibilidade para selects)
+        $por_pagina = isset($_GET['por_pagina']) ? max(0, intval($_GET['por_pagina'])) : 25;
+        $pagina     = isset($_GET['pagina'])     ? max(1, intval($_GET['pagina']))     : 1;
+
+        // ── Montar cláusula WHERE ──────────────────────────────────────
+        $where       = "WHERE 1=1";
         $tipos_param = "";
-        $params = array();
-        
-        // Aplicar filtros com prepared statements
+        $params      = array();
+
         if ($filtro_unidade) {
-            $sql .= " AND unidade = ?";
+            $where .= " AND unidade = ?";
             $tipos_param .= "s";
             $params[] = $filtro_unidade;
         }
-        
         if ($filtro_nome) {
-            $sql .= " AND nome LIKE ?";
+            $where .= " AND nome LIKE ?";
             $tipos_param .= "s";
             $params[] = "%" . $filtro_nome . "%";
         }
-        
         if ($filtro_email) {
-            $sql .= " AND email LIKE ?";
+            $where .= " AND email LIKE ?";
             $tipos_param .= "s";
             $params[] = "%" . $filtro_email . "%";
         }
-        
         if ($filtro_cpf) {
-            // Remover pontuação do CPF para busca
             $cpf_limpo = preg_replace('/[^0-9]/', '', $filtro_cpf);
-            $sql .= " AND REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '') LIKE ?";
+            $where .= " AND REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '') LIKE ?";
             $tipos_param .= "s";
             $params[] = "%" . $cpf_limpo . "%";
         }
-        
-        $sql .= " ORDER BY nome ASC";
-        
-        // Preparar e executar statement
+
+        // ── Contar total de registros ──────────────────────────────────
+        $sql_count = "SELECT COUNT(*) AS total FROM moradores $where";
+        $stmt_c = $conexao->prepare($sql_count);
+        if (!$stmt_c) throw new Exception("Erro ao preparar contagem: " . $conexao->error);
+        if (count($params) > 0) $stmt_c->bind_param($tipos_param, ...$params);
+        if (!$stmt_c->execute()) throw new Exception("Erro ao executar contagem: " . $stmt_c->error);
+        $res_c = $stmt_c->get_result();
+        $total = (int)($res_c->fetch_assoc()['total'] ?? 0);
+        $stmt_c->close();
+
+        // ── Montar query principal com LIMIT/OFFSET ────────────────────
+        $sql = "SELECT id, nome, cpf, unidade, email, telefone, celular, ativo,
+                DATE_FORMAT(data_cadastro, '%d/%m/%Y %H:%i') AS data_cadastro
+                FROM moradores $where ORDER BY nome ASC";
+
+        $tipos_pag   = $tipos_param;
+        $params_pag  = $params;
+
+        if ($por_pagina > 0) {
+            $offset      = ($pagina - 1) * $por_pagina;
+            $sql        .= " LIMIT ? OFFSET ?";
+            $tipos_pag  .= "ii";
+            $params_pag[] = $por_pagina;
+            $params_pag[] = $offset;
+            $total_paginas = (int)ceil($total / $por_pagina);
+        } else {
+            // Sem paginação (retrocompatibilidade)
+            $total_paginas = 1;
+            $pagina        = 1;
+        }
+
         $stmt = $conexao->prepare($sql);
-        
-        if (!$stmt) {
-            throw new Exception("Erro ao preparar query: " . $conexao->error);
-        }
-        
-        // Bind parameters se houver
-        if (count($params) > 0) {
-            $stmt->bind_param($tipos_param, ...$params);
-        }
-        
-        if (!$stmt->execute()) {
-            throw new Exception("Erro ao executar query: " . $stmt->error);
-        }
-        
+        if (!$stmt) throw new Exception("Erro ao preparar query: " . $conexao->error);
+        if (count($params_pag) > 0) $stmt->bind_param($tipos_pag, ...$params_pag);
+        if (!$stmt->execute()) throw new Exception("Erro ao executar query: " . $stmt->error);
+
         $resultado = $stmt->get_result();
         $moradores = array();
-        
-        if ($resultado && $resultado->num_rows > 0) {
-            while ($row = $resultado->fetch_assoc()) {
-                $moradores[] = $row;
-            }
+        while ($row = $resultado->fetch_assoc()) {
+            $moradores[] = $row;
         }
-        
         $stmt->close();
-        
-        retornar_json(true, "Moradores listados com sucesso", $moradores);
+
+        // Retorna dados + metadados de paginação
+        retornar_json(true, "Moradores listados com sucesso", array(
+            'itens'         => $moradores,
+            'total'         => $total,
+            'pagina'        => $pagina,
+            'por_pagina'    => $por_pagina,
+            'total_paginas' => $total_paginas,
+        ));
     }
     
     // ========== CRIAR MORADOR ==========
