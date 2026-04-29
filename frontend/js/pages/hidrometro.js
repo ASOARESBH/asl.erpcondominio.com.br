@@ -148,8 +148,8 @@ export function destroy() {
 // ============================================================
 
 function _setupTabs() {
-    // Tabs principais (data-tab)
-    document.querySelectorAll('.page-hidrometro > .page-card > .tabs .tab-button[data-tab]').forEach(btn => {
+    // Tabs principais (data-tab) — seletor amplo para funcionar com layout-base
+    document.querySelectorAll('.page-hidrometro .tabs .tab-button[data-tab]').forEach(btn => {
         btn.addEventListener('click', () => _switchTab(btn.dataset.tab));
     });
 }
@@ -162,11 +162,12 @@ function _setupSubTabs() {
 }
 
 function _switchTab(tabName) {
-    document.querySelectorAll('.page-hidrometro > .page-card > .tabs .tab-button[data-tab]').forEach(btn => {
+    // Atualiza botões das tabs principais
+    document.querySelectorAll('.page-hidrometro .tabs .tab-button[data-tab]').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
+    // Alterna painéis de conteúdo de primeiro nível (não sub-tabs)
     document.querySelectorAll('.page-hidrometro .tab-content[id^="tab-"]').forEach(content => {
-        // Só alterna tabs de primeiro nível (não sub-tabs)
         if (!content.closest('.subtabs-content')) {
             content.classList.toggle('active', content.id === `tab-${tabName}`);
         }
@@ -1561,15 +1562,21 @@ async function _leituraSalvarConfigPeriodo() {
 let _relatorioCache = [];
 
 async function relatorioGerar() {
-    const de      = document.getElementById('rel_data_de')?.value  || '';
-    const ate     = document.getElementById('rel_data_ate')?.value || '';
-    const unidade = document.getElementById('rel_unidade')?.value  || '';
-    const container = document.getElementById('rel_tabela_body');
-    const resumo    = document.getElementById('rel_resumo');
+    // IDs alinhados com o HTML da aba Relatórios
+    const de      = document.getElementById('rel_data_inicial')?.value  || '';
+    const ate     = document.getElementById('rel_data_final')?.value    || '';
+    const unidade = document.getElementById('rel_unidade')?.value       || '';
+    const container  = document.getElementById('listaRelatorio');
+    const kpiGrid    = document.getElementById('kpiRelatorio');
+    const cardWrap   = document.getElementById('relatorioCard');
+    const loading    = document.getElementById('loadingRelatorio');
     if (!container) return;
 
-    container.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Gerando relatório...</td></tr>';
-    if (resumo) resumo.style.display = 'none';
+    // Mostrar loading
+    if (cardWrap)  cardWrap.style.display  = 'block';
+    if (loading)   loading.style.display   = 'flex';
+    if (kpiGrid)   kpiGrid.style.display   = 'none';
+    container.innerHTML = '';
 
     try {
         let url = `${API_LEITURAS}?relatorio=1`;
@@ -1580,36 +1587,65 @@ async function relatorioGerar() {
         const data = await _apiCall(url);
         _relatorioCache = data.dados || data.leituras || [];
 
+        if (loading) loading.style.display = 'none';
+
         if (_relatorioCache.length === 0) {
-            container.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:#94a3b8;"><i class="fas fa-inbox"></i> Nenhum dado encontrado para o período.</td></tr>';
+            container.innerHTML = `<tr class="empty-row"><td colspan="8"><i class="fas fa-inbox"></i><p>Nenhum dado encontrado para o período selecionado.</p></td></tr>`;
             return;
         }
 
-        // Totais
+        // Totais para KPIs
         const totalConsumo = _relatorioCache.reduce((s, l) => s + parseFloat(l.consumo || 0), 0);
         const totalValor   = _relatorioCache.reduce((s, l) => s + parseFloat(l.valor_cobrado || 0), 0);
+        const mediaConsumo = totalConsumo / _relatorioCache.length;
 
-        if (resumo) {
-            resumo.style.display = 'grid';
-            _setEl('rel_total_leituras', _relatorioCache.length);
-            _setEl('rel_total_consumo',  `${totalConsumo.toFixed(2)} m³`);
-            _setEl('rel_total_valor',    totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+        if (kpiGrid) {
+            kpiGrid.style.display = 'grid';
+            _setEl('rel_kpi_total',   _relatorioCache.length);
+            _setEl('rel_kpi_consumo', `${totalConsumo.toFixed(2)} m³`);
+            _setEl('rel_kpi_valor',   totalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+            _setEl('rel_kpi_media',   `${mediaConsumo.toFixed(2)} m³`);
         }
 
-        container.innerHTML = _relatorioCache.map(l => `
+        // Agrupar por hidrômetro para a tabela resumida
+        const porHidro = {};
+        _relatorioCache.forEach(l => {
+            const key = l.numero_hidrometro || l.hidrometro_id;
+            if (!porHidro[key]) {
+                porHidro[key] = {
+                    unidade:          l.unidade,
+                    morador:          l.morador_nome,
+                    numero_hidrometro: l.numero_hidrometro,
+                    leituras:         0,
+                    consumo_total:    0,
+                    valor_total:      0,
+                    ultima_leitura:   '',
+                };
+            }
+            porHidro[key].leituras++;
+            porHidro[key].consumo_total += parseFloat(l.consumo || 0);
+            porHidro[key].valor_total   += parseFloat(l.valor_cobrado || 0);
+            // Guarda a data mais recente
+            const dataL = l.data_leitura_formatada || l.data_leitura || '';
+            if (dataL > porHidro[key].ultima_leitura) porHidro[key].ultima_leitura = dataL;
+        });
+
+        container.innerHTML = Object.values(porHidro).map(h => `
             <tr>
-                <td>${_esc(l.data_leitura_formatada || l.data_leitura)}</td>
-                <td>${_esc(l.unidade)}</td>
-                <td>${_esc(l.morador_nome)}</td>
-                <td>${_esc(l.numero_hidrometro)}</td>
-                <td>${_esc(l.leitura_anterior)} → ${_esc(l.leitura_atual)} m³</td>
-                <td><strong>${_esc(l.consumo)} m³</strong></td>
-                <td><strong style="color:#16a34a;">${parseFloat(l.valor_cobrado || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></td>
+                <td>${_esc(h.unidade)}</td>
+                <td>${_esc(h.morador)}</td>
+                <td>${_esc(h.numero_hidrometro)}</td>
+                <td style="text-align:center;">${h.leituras}</td>
+                <td><strong>${h.consumo_total.toFixed(2)} m³</strong></td>
+                <td><strong style="color:#16a34a;">${h.valor_total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</strong></td>
+                <td>${(h.consumo_total / h.leituras).toFixed(2)} m³</td>
+                <td>${_esc(h.ultima_leitura)}</td>
             </tr>
         `).join('');
 
     } catch (err) {
-        container.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Erro: ${_esc(err.message)}</td></tr>`;
+        if (loading) loading.style.display = 'none';
+        container.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ef4444;"><i class="fas fa-exclamation-circle"></i> Erro: ${_esc(err.message)}</td></tr>`;
     }
 }
 
@@ -1619,16 +1655,16 @@ function relatorioExportarCSV() {
         return;
     }
 
-    const cabecalho = ['Data','Unidade','Morador','Nº Hidrômetro','Leitura Anterior','Leitura Atual','Consumo (m³)','Valor (R$)'];
+    const cabecalho = ['Data','Unidade','Morador','Nº Hidrômetro','Leitura Anterior (m³)','Leitura Atual (m³)','Consumo (m³)','Valor (R$)'];
     const linhas = _relatorioCache.map(l => [
         l.data_leitura_formatada || l.data_leitura,
         l.unidade,
         l.morador_nome,
         l.numero_hidrometro,
-        l.leitura_anterior,
-        l.leitura_atual,
-        l.consumo,
-        parseFloat(l.valor_cobrado || 0).toFixed(2).replace('.', ','),
+        parseFloat(l.leitura_anterior || 0).toFixed(2).replace('.', ','),
+        parseFloat(l.leitura_atual    || 0).toFixed(2).replace('.', ','),
+        parseFloat(l.consumo          || 0).toFixed(2).replace('.', ','),
+        parseFloat(l.valor_cobrado    || 0).toFixed(2).replace('.', ','),
     ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(';'));
 
     const csv  = [cabecalho.join(';'), ...linhas].join('\n');
