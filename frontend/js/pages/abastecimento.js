@@ -33,6 +33,9 @@ let _state = {
     valorMinimoAlerta: 0,
     relatorioData    : [],
     currentTab       : 'veiculos',
+    // Flags anti-duplicidade: impedem duplo clique e retry de rede
+    _enviandoAbast   : false,
+    _enviandoRecarga : false,
 };
 
 // Referências para remoção de listeners no destroy
@@ -82,6 +85,7 @@ export function destroy() {
     _state = {
         veiculos: [], abastecimentos: [], recargas: [], usuarios: [],
         saldoAtual: 0, valorMinimoAlerta: 0, relatorioData: [], currentTab: 'veiculos',
+        _enviandoAbast: false, _enviandoRecarga: false,
     };
 }
 
@@ -310,6 +314,12 @@ function _esconderPreview() {
 }
 
 async function _lancarAbastecimento() {
+    // ═══ PROTEÇÃO CAMADA 1: flag de envio em andamento ═══
+    if (_state._enviandoAbast) {
+        console.warn('[Abastecimento] Envio já em andamento — duplo clique ignorado.');
+        return;
+    }
+
     const veiculoId       = document.getElementById('veiculo_id').value;
     const kmAbastecimento = parseInt(document.getElementById('km_abastecimento').value);
     const valor           = parseFloat(document.getElementById('valor_abastecimento').value);
@@ -348,7 +358,14 @@ async function _lancarAbastecimento() {
         operador_id         : document.getElementById('operador_id').value,
     };
 
-    console.log('[Abastecimento] Lançando abastecimento...');
+    // ═══ PROTEÇÃO CAMADA 2: chave de idempotência (30s de janela) ═══
+    payload._idempotency_key = _gerarIdempotencyKey(payload);
+
+    // ═══ PROTEÇÃO CAMADA 3: desabilitar botão visualmente ═══
+    _state._enviandoAbast = true;
+    _setBtnLoading('formAbastecimento', true);
+
+    console.log('[Abastecimento] Lançando abastecimento... key:', payload._idempotency_key);
 
     try {
         const res = await _post(payload);
@@ -365,6 +382,10 @@ async function _lancarAbastecimento() {
     } catch (err) {
         console.error('[Abastecimento] Erro ao lançar abastecimento:', err);
         _toast('Erro de comunicação com o servidor', 'error');
+    } finally {
+        // Sempre reabilita o botão e libera a flag, mesmo em caso de erro
+        _state._enviandoAbast = false;
+        _setBtnLoading('formAbastecimento', false);
     }
 }
 
@@ -448,15 +469,34 @@ function _setupFormRecarga() {
 }
 
 async function _registrarRecarga() {
+    // ═══ PROTEÇÃO CAMADA 1: flag de envio em andamento ═══
+    if (_state._enviandoRecarga) {
+        console.warn('[Abastecimento] Recarga já em andamento — duplo clique ignorado.');
+        return;
+    }
+
+    const valorRecarga = parseFloat(document.getElementById('valor_recarga').value);
+    if (!valorRecarga || valorRecarga <= 0) {
+        _toast('Informe um valor de recarga válido.', 'warning');
+        return;
+    }
+
     const payload = {
         action        : 'registrar_recarga',
         data_recarga  : document.getElementById('data_recarga').value,
-        valor_recarga : document.getElementById('valor_recarga').value,
+        valor_recarga : valorRecarga,
         valor_minimo  : document.getElementById('valor_minimo').value,
         nf            : (document.getElementById('nf_recarga').value || '').trim(),
     };
 
-    console.log('[Abastecimento] Registrando recarga...');
+    // ═══ PROTEÇÃO CAMADA 2: chave de idempotência (30s de janela) ═══
+    payload._idempotency_key = _gerarIdempotencyKey(payload);
+
+    // ═══ PROTEÇÃO CAMADA 3: desabilitar botão visualmente ═══
+    _state._enviandoRecarga = true;
+    _setBtnLoading('formRecarga', true);
+
+    console.log('[Abastecimento] Registrando recarga... key:', payload._idempotency_key);
 
     try {
         const res = await _post(payload);
@@ -471,6 +511,10 @@ async function _registrarRecarga() {
     } catch (err) {
         console.error('[Abastecimento] Erro ao registrar recarga:', err);
         _toast('Erro de comunicação com o servidor', 'error');
+    } finally {
+        // Sempre reabilita o botão e libera a flag, mesmo em caso de erro
+        _state._enviandoRecarga = false;
+        _setBtnLoading('formRecarga', false);
     }
 }
 
@@ -796,6 +840,44 @@ function _fecharModal(id) {
 }
 
 // ============================================================
+// ANTI-DUPLICIDADE: helpers de idempotência e controle de botão
+// ============================================================
+
+/**
+ * Gera uma chave de idempotência baseada nos dados do payload.
+ * Mesmos dados dentro de 30s = mesma chave = backend rejeita duplicata.
+ */
+function _gerarIdempotencyKey(payload) {
+    // Janela de 30 segundos: arredonda timestamp para o intervalo
+    const janela = Math.floor(Date.now() / 30000);
+    const base   = JSON.stringify(payload) + '|' + janela;
+    // Hash simples (djb2) — suficiente para idempotência de curto prazo
+    let hash = 5381;
+    for (let i = 0; i < base.length; i++) {
+        hash = ((hash << 5) + hash) ^ base.charCodeAt(i);
+    }
+    return 'abast_' + (hash >>> 0).toString(16);
+}
+
+/**
+ * Desabilita o botão de submit e exibe spinner enquanto a requisição está em andamento.
+ */
+function _setBtnLoading(formId, loading) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    const btn = form.querySelector('button[type="submit"]');
+    if (!btn) return;
+    if (loading) {
+        btn.disabled = true;
+        btn._textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguarde...';
+    } else {
+        btn.disabled = false;
+        if (btn._textoOriginal) btn.innerHTML = btn._textoOriginal;
+    }
+}
+
+// ============================================================
 // UTILITÁRIOS HTTP
 // ============================================================
 async function _get(action) {
@@ -807,10 +889,15 @@ async function _get(action) {
 }
 
 async function _post(payload) {
+    // Inclui chave de idempotência no header se presente no payload
+    const headers = { 'Content-Type': 'application/json' };
+    if (payload._idempotency_key) {
+        headers['X-Idempotency-Key'] = payload._idempotency_key;
+    }
     const res = await fetch(API, {
         method     : 'POST',
         credentials: 'include',
-        headers    : { 'Content-Type': 'application/json' },
+        headers,
         body       : JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

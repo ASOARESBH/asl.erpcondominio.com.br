@@ -32,6 +32,45 @@ session_start();
 require_once 'config.php';
 require_once 'auth_helper.php';
 
+// ============================================================
+// ANTI-DUPLICIDADE: verificação de chave de idempotência
+// Armazena as chaves processadas na sessão por 60 segundos.
+// Se a mesma chave chegar duas vezes (duplo clique, retry de rede),
+// a segunda requisição retorna sucesso sem gravar no banco.
+// ============================================================
+function verificarIdempotencia($action) {
+    $key = $_SERVER['HTTP_X_IDEMPOTENCY_KEY'] ?? null;
+    if (!$key) return null; // sem chave = fluxo normal
+
+    // Namespace por usuário para evitar colissões entre sessões
+    $ns = 'idempotency_' . ($_SESSION['usuario_id'] ?? 'anon');
+
+    if (!isset($_SESSION[$ns])) {
+        $_SESSION[$ns] = [];
+    }
+
+    // Limpar chaves expiradas (> 60 segundos)
+    $agora = time();
+    foreach ($_SESSION[$ns] as $k => $ts) {
+        if ($agora - $ts > 60) unset($_SESSION[$ns][$k]);
+    }
+
+    if (isset($_SESSION[$ns][$key])) {
+        // Chave já processada: retornar sucesso sem gravar
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'sucesso'    => true,
+            'mensagem'   => 'Registro já processado (requisição duplicada ignorada)',
+            '_duplicata' => true,
+        ]);
+        exit;
+    }
+
+    // Registrar a chave como processada
+    $_SESSION[$ns][$key] = $agora;
+    return $key;
+}
+
 // Verificar autenticação
 verificarAutenticacao(true, 'operador');
 
@@ -234,6 +273,11 @@ function listarAbastecimentos($conn) {
 }
 
 function lancarAbastecimento($conn, $dados) {
+    // ═══ PROTEÇÃO BACKEND: chave de idempotência ═══
+    // Se a mesma requisição chegar duas vezes (duplo clique, retry),
+    // a função encerra com sucesso sem gravar novamente no banco.
+    verificarIdempotencia('lancar_abastecimento');
+
     try {
         // Obter saldo atual
         $saldo = obterSaldoAtual($conn);
@@ -320,6 +364,9 @@ function listarRecargas($conn) {
 }
 
 function registrarRecarga($conn, $dados) {
+    // ═══ PROTEÇÃO BACKEND: chave de idempotência ═══
+    verificarIdempotencia('registrar_recarga');
+
     try {
         // Obter saldo atual
         $saldoAtual = obterSaldoAtual($conn);
