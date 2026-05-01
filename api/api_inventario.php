@@ -189,7 +189,11 @@ if ($metodo === 'PUT') {
         nf=?, data_compra=?, situacao=?, valor=?, status=?, motivo_baixa=?,
         data_baixa=?, tutela_usuario_id=?, grupo_id=?, observacoes=?
         WHERE id=?");
-    $stmt->bind_param("ssssssssdsssiissi",
+    // TIPOS: s=string, d=double, i=int
+    // Ordem: numero_patrimonio(s), nome_item(s), fabricante(s), modelo(s), numero_serie(s),
+    //        nf(s), data_compra(s), situacao(s), valor(d), status(s), motivo_baixa(s),
+    //        data_baixa(s), tutela_usuario_id(i), grupo_id(i), observacoes(s), id(i) = 16 params
+    $stmt->bind_param("ssssssssdsssiisi",
         $numero_patrimonio, $nome_item, $fabricante, $modelo, $numero_serie,
         $nf, $data_compra, $situacao, $valor, $status, $motivo_baixa,
         $data_baixa, $tutela_usuario_id, $grupo_id, $observacoes, $id

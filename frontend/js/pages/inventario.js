@@ -282,11 +282,13 @@ async function _salvarNovoGrupoInline() {
         const data = await res.json();
 
         if (data.sucesso) {
-            _toast(`Grupo "${_esc(nome)}" criado com sucesso!`, 'success');
+            _toast(`Grupo "${_esc(nome)}" cadastrado com sucesso!`, 'success');
+            console.log('[Inventario] Grupo inline cadastrado:', nome);
             await _carregarGrupos();
             // Selecionar o novo grupo automaticamente
             const sel = document.getElementById('grupoId');
-            if (sel && data.id) sel.value = data.id;
+            const novoId = data.dados?.id || data.id;
+            if (sel && novoId) sel.value = novoId;
             _togglePainelNovoGrupo(false);
         } else {
             _toast(data.mensagem || 'Erro ao criar grupo', 'error');
@@ -374,7 +376,10 @@ async function _salvarGrupoTab() {
         const data = await res.json();
 
         if (data.sucesso) {
-            _toast(data.mensagem || 'Grupo salvo com sucesso!', 'success');
+            const acao = id ? 'atualizado' : 'cadastrado';
+            const msg  = data.mensagem || `Grupo "${_esc(nome)}" ${acao} com sucesso!`;
+            _toast(msg, 'success');
+            console.log(`[Inventario] Grupo ${acao}:`, nome);
             _fecharFormGrupoTab();
             await _carregarGrupos();
             _renderizarTabelaGrupos();
@@ -411,7 +416,7 @@ function _renderizarTabelaGrupos() {
                 </span>
                 <span class="badge-inv badge-primary-inv" style="margin-left:4px;">${qtd} iten${qtd !== 1 ? 's' : ''}</span>
             </td>
-            <td>${g.criado_em_formatado || g.criado_em || '—'}</td>
+            <td>${g.data_cadastro_formatada || g.criado_em_formatado || g.criado_em || '—'}</td>
             <td>
                 <div class="table-actions-inv">
                     <button class="btn-edit-inv" title="Editar" onclick="window._InvPage.editarGrupo(${g.id})">
@@ -815,7 +820,10 @@ async function _salvarItem() {
         const data = await res.json();
 
         if (data.sucesso) {
-            _toast(data.mensagem || 'Item salvo com sucesso!', 'success');
+            const acao = metodo === 'PUT' ? 'atualizado' : 'cadastrado';
+            const msg  = data.mensagem || `Item ${acao} com sucesso!`;
+            _toast(msg, 'success');
+            console.log(`[Inventario] Item ${acao}:`, dados.numero_patrimonio);
             _limparFormulario();
             await _carregarInventario();
             _ativarTab('listagem');
