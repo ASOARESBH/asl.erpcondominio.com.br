@@ -177,15 +177,23 @@ if ($metodo === 'POST' && $acao === 'atualizar') {
             WHERE id=?";
 
     $stmt = $conn->prepare($sql);
-    $types = 'sssssssssssdssssssssssssssss';
+    // 27 campos: 11s + 1d(salario) + 15s = 27 tipos base; +s se foto; +i para WHERE id
+    // Estrutura real do banco (confirmada):
+    // nome(s) cpf(s) rg(s) data_nascimento(s) sexo(s) estado_civil(s)
+    // cargo(s) departamento(s) tipo_contrato(s)
+    // data_admissao(s) data_demissao(s) salario(d)
+    // telefone(s) celular(s) email(s)
+    // cep(s) logradouro(s) numero(s) complemento(s) bairro(s) cidade(s) estado(s)
+    // banco(s) agencia(s) conta(s) pix(s) observacoes(s)
+    $types = 'sssssssssss' . 'd' . 'sssssssssssssss'; // 11s + d + 15s = 27
     $vals  = [$d['nome'],$d['cpf'],$d['rg'],$d['data_nascimento'],$d['sexo'],$d['estado_civil'],
               $d['cargo'],$d['departamento'],$d['tipo_contrato'],
               $d['data_admissao'],$d['data_demissao'],$d['salario'],
               $d['telefone'],$d['celular'],$d['email'],
               $d['cep'],$d['logradouro'],$d['numero'],$d['complemento'],$d['bairro'],$d['cidade'],$d['estado'],
               $d['banco'],$d['agencia'],$d['conta'],$d['pix'],$d['observacoes']];
-    if ($foto_path !== null) { $vals[] = $foto_path; $types .= 's'; }
-    $vals[] = $id; $types .= 'i';
+    if ($foto_path !== null) { $vals[] = $foto_path; $types .= 's'; } // +1s se foto
+    $vals[] = $id; $types .= 'i'; // +i para WHERE id
     $stmt->bind_param($types, ...$vals);
 
     if (!$stmt->execute()) { $erro = $stmt->error ?: $conn->error; $stmt->close(); fechar_conexao($conn); retornar_json(false, 'Erro ao atualizar colaborador: ' . $erro); }
