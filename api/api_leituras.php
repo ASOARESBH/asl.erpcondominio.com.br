@@ -142,7 +142,7 @@ if ($metodo === 'GET' && isset($_GET['hidrometros_ativos'])) {
             FROM hidrometros h
             INNER JOIN moradores m ON h.morador_id = m.id
             WHERE h.ativo = 1
-            ORDER BY h.unidade ASC, m.nome ASC
+            ORDER BY CAST(h.unidade AS UNSIGNED) ASC, h.unidade ASC, m.nome ASC
             LIMIT $por_pagina OFFSET $offset";
     
     $resultado = $conexao->query($sql);

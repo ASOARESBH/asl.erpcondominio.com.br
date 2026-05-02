@@ -1343,19 +1343,25 @@ function leituraLimparIndividual() {
 // LEITURAS — COLETIVA
 // ============================================================
 
-async function leituraCarregarHidrometrosAtivos() {
+async function leituraCarregarHidrometrosAtivos(pagina = 1) {
     const container = document.getElementById('col_lista_hidrometros');
     if (!container) return;
 
     container.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Carregando hidrômetros ativos...</div>';
 
     try {
-        const data = await _apiCall(`${API_HIDROMETROS}?ativos=1`);
-        _state.hidrometrosAtivos = data.dados || data.hidrometros || [];
-        _state.paginaAtual = 1;
-        _state.totalPaginas = Math.ceil(_state.hidrometrosAtivos.length / ITENS_POR_PAG);
+        // Endpoint correto: api_leituras.php?hidrometros_ativos=1&pagina=N
+        // Retorna: { dados: { hidrometros: [], pagina_atual, total_paginas, total_registros } }
+        const data = await _apiCall(`${API_LEITURAS}?hidrometros_ativos=1&pagina=${pagina}`);
+        const payload = data.dados || {};
+        _state.hidrometrosAtivos = payload.hidrometros || [];
+        _state.paginaAtual       = payload.pagina_atual   || pagina;
+        _state.totalPaginas      = payload.total_paginas  || 1;
+
+        console.log(`[Hidrometro] Leitura coletiva carregada: ${_state.hidrometrosAtivos.length} registros (pág ${_state.paginaAtual}/${_state.totalPaginas})`);
         _leituraRenderizarColetiva();
     } catch (err) {
+        console.error('[Hidrometro] Erro ao carregar leitura coletiva:', err);
         container.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Erro ao carregar: ${err.message}</div>`;
     }
 }
@@ -1364,10 +1370,10 @@ function _leituraRenderizarColetiva() {
     const container = document.getElementById('col_lista_hidrometros');
     if (!container) return;
 
-    const inicio = (_state.paginaAtual - 1) * ITENS_POR_PAG;
-    const pagina = _state.hidrometrosAtivos.slice(inicio, inicio + ITENS_POR_PAG);
+    // Os dados já vêm paginados do servidor (LIMIT/OFFSET na API)
+    const lista = _state.hidrometrosAtivos;
 
-    if (pagina.length === 0) {
+    if (lista.length === 0) {
         container.innerHTML = '<div class="empty-state"><i class="fas fa-tint-slash"></i><p>Nenhum hidrômetro ativo encontrado.</p></div>';
         return;
     }
@@ -1380,28 +1386,31 @@ function _leituraRenderizarColetiva() {
                     <th>Unidade</th>
                     <th>Morador</th>
                     <th>Nº Hidrômetro</th>
-                    <th>Última Leitura</th>
-                    <th>Leitura Atual (m³)</th>
+                    <th>Leit. Anterior (m³)</th>
+                    <th>Leit. Atual (m³)</th>
                 </tr>
             </thead>
             <tbody>
-                ${pagina.map(h => `
+                ${lista.map(h => `
                     <tr>
-                        <td><input type="checkbox" class="col-check" data-id="${h.id}" data-ultima="${h.ultima_leitura || 0}"></td>
+                        <td><input type="checkbox" class="col-check" data-id="${h.id}" data-ultima="${h.leitura_anterior != null ? h.leitura_anterior : 0}"></td>
                         <td>${_esc(h.unidade)}</td>
                         <td>${_esc(h.morador_nome)}</td>
                         <td>${_esc(h.numero_hidrometro)}</td>
-                        <td>${h.ultima_leitura != null ? h.ultima_leitura + ' m³' : '<span style="color:#94a3b8">Sem leitura</span>'}</td>
+                        <td>${h.leitura_anterior != null && h.leitura_anterior > 0
+                            ? h.leitura_anterior + ' m³'
+                            : '<span style="color:#94a3b8">Sem leitura</span>'}</td>
                         <td><input type="number" step="0.01" min="0" class="col-leitura-input" data-id="${h.id}" placeholder="0.00" style="width:100px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;"></td>
                     </tr>
                 `).join('')}
             </tbody>
         </table>
+        ${_state.totalPaginas > 1 ? `
         <div class="pagination-bar" style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem;justify-content:flex-end;">
             <span style="font-size:13px;color:#64748b;">Página ${_state.paginaAtual} de ${_state.totalPaginas}</span>
             <button class="btn-secondary" onclick="HidrometroPage.mudarPagina(${_state.paginaAtual - 1})" ${_state.paginaAtual <= 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
             <button class="btn-secondary" onclick="HidrometroPage.mudarPagina(${_state.paginaAtual + 1})" ${_state.paginaAtual >= _state.totalPaginas ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
-        </div>`;
+        </div>` : ''}`;
 }
 
 function leituraSelecionarTodos(checked) {
@@ -1416,8 +1425,8 @@ function leituraLimparSelecao() {
 
 function leituraMudarPagina(pagina) {
     if (pagina < 1 || pagina > _state.totalPaginas) return;
-    _state.paginaAtual = pagina;
-    _leituraRenderizarColetiva();
+    // Paginação server-side: buscar nova página no servidor
+    leituraCarregarHidrometrosAtivos(pagina);
 }
 
 async function leituraLancarSelecionados() {

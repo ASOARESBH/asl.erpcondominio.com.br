@@ -69,7 +69,7 @@ if ($metodo === 'GET') {
                  OR m.nome LIKE '%$busca%') ";
     }
     
-    $sql .= "ORDER BY h.unidade ASC, m.nome ASC";
+    $sql .= "ORDER BY CAST(h.unidade AS UNSIGNED) ASC, h.unidade ASC, m.nome ASC";
     
     $resultado = $conexao->query($sql);
     $hidrometros = array();
