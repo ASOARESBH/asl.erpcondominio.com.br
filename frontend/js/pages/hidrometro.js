@@ -1344,10 +1344,14 @@ function leituraLimparIndividual() {
 // ============================================================
 
 async function leituraCarregarHidrometrosAtivos(pagina = 1) {
-    const container = document.getElementById('col_lista_hidrometros');
-    if (!container) return;
+    // O tbody da tabela estática do HTML usa id="listaColetiva"
+    const tbody = document.getElementById('listaColetiva');
+    if (!tbody) {
+        console.error('[Hidrometro] Container listaColetiva não encontrado');
+        return;
+    }
 
-    container.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Carregando hidrômetros ativos...</div>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Carregando hidrômetros ativos...</td></tr>';
 
     try {
         // Endpoint correto: api_leituras.php?hidrometros_ativos=1&pagina=N
@@ -1362,55 +1366,56 @@ async function leituraCarregarHidrometrosAtivos(pagina = 1) {
         _leituraRenderizarColetiva();
     } catch (err) {
         console.error('[Hidrometro] Erro ao carregar leitura coletiva:', err);
-        container.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> Erro ao carregar: ${err.message}</div>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:#dc2626;"><i class="fas fa-exclamation-circle"></i> Erro ao carregar: ${err.message}</td></tr>`;
     }
 }
 
 function _leituraRenderizarColetiva() {
-    const container = document.getElementById('col_lista_hidrometros');
-    if (!container) return;
+    // Usa os elementos estáticos do HTML: tbody#listaColetiva, div#paginacaoColetiva, span#infoPagina
+    const tbody = document.getElementById('listaColetiva');
+    if (!tbody) return;
 
-    // Os dados já vêm paginados do servidor (LIMIT/OFFSET na API)
     const lista = _state.hidrometrosAtivos;
 
     if (lista.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-tint-slash"></i><p>Nenhum hidrômetro ativo encontrado.</p></div>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="6"><i class="fas fa-tint-slash"></i><p>Nenhum hidrômetro ativo encontrado.</p></td></tr>';
+        // Esconder paginação
+        const pag = document.getElementById('paginacaoColetiva');
+        if (pag) pag.style.display = 'none';
         return;
     }
 
-    container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="col_check_todos" onchange="HidrometroPage.selecionarTodos(this.checked)"></th>
-                    <th>Unidade</th>
-                    <th>Morador</th>
-                    <th>Nº Hidrômetro</th>
-                    <th>Leit. Anterior (m³)</th>
-                    <th>Leit. Atual (m³)</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${lista.map(h => `
-                    <tr>
-                        <td><input type="checkbox" class="col-check" data-id="${h.id}" data-ultima="${h.leitura_anterior != null ? h.leitura_anterior : 0}"></td>
-                        <td>${_esc(h.unidade)}</td>
-                        <td>${_esc(h.morador_nome)}</td>
-                        <td>${_esc(h.numero_hidrometro)}</td>
-                        <td>${h.leitura_anterior != null && h.leitura_anterior > 0
-                            ? h.leitura_anterior + ' m³'
-                            : '<span style="color:#94a3b8">Sem leitura</span>'}</td>
-                        <td><input type="number" step="0.01" min="0" class="col-leitura-input" data-id="${h.id}" placeholder="0.00" style="width:100px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;"></td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        ${_state.totalPaginas > 1 ? `
-        <div class="pagination-bar" style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem;justify-content:flex-end;">
-            <span style="font-size:13px;color:#64748b;">Página ${_state.paginaAtual} de ${_state.totalPaginas}</span>
-            <button class="btn-secondary" onclick="HidrometroPage.mudarPagina(${_state.paginaAtual - 1})" ${_state.paginaAtual <= 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
-            <button class="btn-secondary" onclick="HidrometroPage.mudarPagina(${_state.paginaAtual + 1})" ${_state.paginaAtual >= _state.totalPaginas ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
-        </div>` : ''}`;
+    // Renderizar linhas no tbody existente
+    tbody.innerHTML = lista.map(h => `
+        <tr>
+            <td><input type="checkbox" class="col-check" data-id="${h.id}" data-ultima="${h.leitura_anterior != null ? h.leitura_anterior : 0}"></td>
+            <td>${_esc(h.unidade)}</td>
+            <td>${_esc(h.morador_nome)}</td>
+            <td>${_esc(h.numero_hidrometro)}</td>
+            <td>${h.leitura_anterior != null && parseFloat(h.leitura_anterior) > 0
+                ? parseFloat(h.leitura_anterior).toFixed(2) + ' m³'
+                : '<span style="color:#94a3b8">Sem leitura</span>'}</td>
+            <td><input type="number" step="0.01" min="0" class="col-leitura-input" data-id="${h.id}" placeholder="0.00" style="width:100px;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;"></td>
+        </tr>
+    `).join('');
+
+    // Atualizar paginação (elementos estáticos do HTML)
+    const pag       = document.getElementById('paginacaoColetiva');
+    const infoPag   = document.getElementById('infoPagina');
+    const btnAnt    = document.getElementById('btnAnterior');
+    const btnProx   = document.getElementById('btnProximo');
+    const selectAll = document.getElementById('selectAll');
+
+    if (selectAll) selectAll.checked = false;
+
+    if (pag) {
+        pag.style.display = _state.totalPaginas > 1 ? 'flex' : 'none';
+    }
+    if (infoPag) {
+        infoPag.textContent = `Página ${_state.paginaAtual} de ${_state.totalPaginas}`;
+    }
+    if (btnAnt) btnAnt.disabled = _state.paginaAtual <= 1;
+    if (btnProx) btnProx.disabled = _state.paginaAtual >= _state.totalPaginas;
 }
 
 function leituraSelecionarTodos(checked) {
@@ -1419,14 +1424,17 @@ function leituraSelecionarTodos(checked) {
 
 function leituraLimparSelecao() {
     document.querySelectorAll('.col-check').forEach(cb => { cb.checked = false; });
-    const checkTodos = document.getElementById('col_check_todos');
+    // HTML usa id="selectAll" (não col_check_todos)
+    const checkTodos = document.getElementById('selectAll') || document.getElementById('col_check_todos');
     if (checkTodos) checkTodos.checked = false;
 }
 
-function leituraMudarPagina(pagina) {
-    if (pagina < 1 || pagina > _state.totalPaginas) return;
+function leituraMudarPagina(delta) {
+    // O HTML passa delta relativo: -1 (anterior) ou +1 (próximo)
+    const novaPagina = (_state.paginaAtual || 1) + delta;
+    if (novaPagina < 1 || novaPagina > _state.totalPaginas) return;
     // Paginação server-side: buscar nova página no servidor
-    leituraCarregarHidrometrosAtivos(pagina);
+    leituraCarregarHidrometrosAtivos(novaPagina);
 }
 
 async function leituraLancarSelecionados() {
