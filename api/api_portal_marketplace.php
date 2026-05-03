@@ -2,8 +2,11 @@
 // =====================================================
 // API MARKETPLACE - PORTAL DO MORADOR
 // =====================================================
-// Endpoints: vitrine, detalhes, contratar, meus_pedidos, cancelar, avaliar
+// Endpoints: vitrine, ramos, detalhe, contratar, meus_pedidos, cancelar,
+//            confirmar_conclusao, avaliar, historico
 // Autenticação: token Bearer via sessoes_portal
+// Status ENUM banco: enviado, em_analise, aceito, recusado, em_execucao,
+//                    finalizado_morador, finalizado_fornecedor, concluido, cancelado
 
 require_once 'config.php';
 require_once 'auth_helper.php';
@@ -51,12 +54,6 @@ function pm_auth($conexao) {
     $stmt->close();
     if (!$r) pm_json(false, 'Sessão expirada. Faça login novamente.', null, 401);
     return (int)$r['morador_id'];
-}
-
-function pm_stars($nota) {
-    if (!$nota) return null;
-    $n = round((float)$nota, 1);
-    return $n;
 }
 
 // ========== INICIALIZAÇÃO ==========
@@ -248,24 +245,27 @@ try {
         if ($valor_proposto <= 0) $valor_proposto = (float)($prod['valor'] ?? 0);
 
         // Inserir pedido
+        // CORREÇÃO: bind_param era 'iiids' (errado), correto é 'iiisd'
+        // Ordem: morador_id(i), fornecedor_id(i), produto_id(i), descricao(s), valor_proposto(d)
         $st = $conexao->prepare("
             INSERT INTO pedidos (morador_id, fornecedor_id, produto_servico_id, descricao_pedido, valor_proposto, status, data_pedido)
-            VALUES (?, ?, ?, ?, ?, 'aguardando', NOW())
+            VALUES (?, ?, ?, ?, ?, 'enviado', NOW())
         ");
-        $st->bind_param('iiids', $morador_id, $fornecedor_id, $produto_id, $descricao, $valor_proposto);
+        $st->bind_param('iiisd', $morador_id, $fornecedor_id, $produto_id, $descricao, $valor_proposto);
         if (!$st->execute()) pm_json(false, 'Erro ao criar pedido: ' . $st->error, null, 500);
         $pedido_id = $st->insert_id;
         $st->close();
 
         // Registrar histórico
+        // CORREÇÃO: status 'aguardando' não existe no ENUM — usar 'enviado'
         $st = $conexao->prepare("
             INSERT INTO historico_status_pedido (pedido_id, status_anterior, status_novo, usuario_tipo, usuario_id, observacao)
-            VALUES (?, NULL, 'aguardando', 'morador', ?, 'Pedido criado pelo morador')
+            VALUES (?, NULL, 'enviado', 'morador', ?, 'Pedido criado pelo morador')
         ");
         $st->bind_param('ii', $pedido_id, $morador_id);
         $st->execute(); $st->close();
 
-        pm_json(true, 'Pedido enviado com sucesso! O fornecedor será notificado.', ['pedido_id' => $pedido_id, 'status' => 'aguardando'], 201);
+        pm_json(true, 'Pedido enviado com sucesso! O fornecedor será notificado.', ['pedido_id' => $pedido_id, 'status' => 'enviado'], 201);
     }
 
     // ============================================================
@@ -284,6 +284,7 @@ try {
             $params[] = $status_filtro; $types .= 's';
         }
 
+        // CORREÇÃO: LEFT JOIN em produtos_servicos pois produto_servico_id pode ser NULL
         $st = $conexao->prepare("
             SELECT p.id, p.status, p.descricao_pedido, p.valor_proposto, p.motivo_recusa,
                    p.data_pedido, p.data_aceite, p.data_inicio_execucao, p.data_finalizacao,
@@ -298,7 +299,7 @@ try {
                    r.icone AS ramo_icone,
                    (SELECT COUNT(*) FROM avaliacoes av WHERE av.pedido_id = p.id AND av.avaliador_tipo = 'morador') AS ja_avaliou
             FROM pedidos p
-            JOIN produtos_servicos ps ON p.produto_servico_id = ps.id
+            LEFT JOIN produtos_servicos ps ON p.produto_servico_id = ps.id
             JOIN fornecedores f       ON p.fornecedor_id = f.id
             JOIN ramos_atividade r    ON f.ramo_atividade_id = r.id
             WHERE {$where}
@@ -315,7 +316,7 @@ try {
     }
 
     // ============================================================
-    // CANCELAR — morador cancela pedido aguardando
+    // CANCELAR — morador cancela pedido enviado ou em análise
     // POST ?acao=cancelar
     // Body: pedido_id, motivo (opcional)
     // ============================================================
@@ -333,9 +334,13 @@ try {
         $st->close();
 
         if (!$ped) pm_json(false, 'Pedido não encontrado', null, 404);
-        if (!in_array($ped['status'], ['aguardando'])) {
-            pm_json(false, 'Somente pedidos aguardando podem ser cancelados pelo morador', null, 400);
+
+        // CORREÇÃO: status canceláveis são 'enviado' e 'em_analise' (não 'aguardando')
+        if (!in_array($ped['status'], ['enviado', 'em_analise'])) {
+            pm_json(false, 'Somente pedidos enviados ou em análise podem ser cancelados pelo morador', null, 400);
         }
+
+        $status_anterior = $ped['status'];
 
         $st = $conexao->prepare("UPDATE pedidos SET status = 'cancelado', motivo_recusa = ? WHERE id = ?");
         $st->bind_param('si', $motivo, $pedido_id);
@@ -343,9 +348,9 @@ try {
 
         $st = $conexao->prepare("
             INSERT INTO historico_status_pedido (pedido_id, status_anterior, status_novo, usuario_tipo, usuario_id, observacao)
-            VALUES (?, 'aguardando', 'cancelado', 'morador', ?, ?)
+            VALUES (?, ?, 'cancelado', 'morador', ?, ?)
         ");
-        $st->bind_param('iis', $pedido_id, $morador_id, $motivo);
+        $st->bind_param('isis', $pedido_id, $status_anterior, $morador_id, $motivo);
         $st->execute(); $st->close();
 
         pm_json(true, 'Pedido cancelado com sucesso');
@@ -369,19 +374,23 @@ try {
         $st->close();
 
         if (!$ped) pm_json(false, 'Pedido não encontrado', null, 404);
-        if ($ped['status'] !== 'executando') {
+
+        // CORREÇÃO: status correto do ENUM é 'em_execucao' (não 'executando')
+        if ($ped['status'] !== 'em_execucao') {
             pm_json(false, 'Somente pedidos em execução podem ser confirmados', null, 400);
         }
 
-        $st = $conexao->prepare("UPDATE pedidos SET status = 'finalizado', data_finalizacao = NOW() WHERE id = ?");
+        // CORREÇÃO: status correto do ENUM é 'finalizado_morador' (não 'finalizado')
+        $st = $conexao->prepare("UPDATE pedidos SET status = 'finalizado_morador', data_finalizacao = NOW() WHERE id = ?");
         $st->bind_param('i', $pedido_id);
         $st->execute(); $st->close();
 
+        $obs = 'Conclusão confirmada pelo morador';
         $st = $conexao->prepare("
             INSERT INTO historico_status_pedido (pedido_id, status_anterior, status_novo, usuario_tipo, usuario_id, observacao)
-            VALUES (?, 'executando', 'finalizado', 'morador', ?, 'Conclusão confirmada pelo morador')
+            VALUES (?, 'em_execucao', 'finalizado_morador', 'morador', ?, ?)
         ");
-        $st->bind_param('iis', $pedido_id, $morador_id, $obs = 'Conclusão confirmada pelo morador');
+        $st->bind_param('iis', $pedido_id, $morador_id, $obs);
         $st->execute(); $st->close();
 
         pm_json(true, 'Serviço confirmado! Agora você pode avaliar o fornecedor.');
@@ -409,7 +418,12 @@ try {
         $st->close();
 
         if (!$ped) pm_json(false, 'Pedido não encontrado', null, 404);
-        if ($ped['status'] !== 'finalizado') pm_json(false, 'Somente pedidos finalizados podem ser avaliados', null, 400);
+
+        // CORREÇÃO: status correto do ENUM é 'finalizado_morador' (não 'finalizado')
+        // Aceitar também 'finalizado_fornecedor' e 'concluido' para flexibilidade
+        if (!in_array($ped['status'], ['finalizado_morador', 'finalizado_fornecedor', 'concluido'])) {
+            pm_json(false, 'Somente pedidos finalizados podem ser avaliados', null, 400);
+        }
 
         $fornecedor_id = (int)$ped['fornecedor_id'];
 
@@ -432,15 +446,17 @@ try {
         $st->close();
 
         // Atualizar status para concluido
+        $status_anterior = $ped['status'];
         $st = $conexao->prepare("UPDATE pedidos SET status = 'concluido', data_conclusao = NOW() WHERE id = ?");
         $st->bind_param('i', $pedido_id);
         $st->execute(); $st->close();
 
+        $obs = 'Avaliação registrada pelo morador';
         $st = $conexao->prepare("
             INSERT INTO historico_status_pedido (pedido_id, status_anterior, status_novo, usuario_tipo, usuario_id, observacao)
-            VALUES (?, 'finalizado', 'concluido', 'morador', ?, 'Avaliação registrada pelo morador')
+            VALUES (?, ?, 'concluido', 'morador', ?, ?)
         ");
-        $st->bind_param('iis', $pedido_id, $morador_id, $obs = 'Avaliação registrada pelo morador');
+        $st->bind_param('isis', $pedido_id, $status_anterior, $morador_id, $obs);
         $st->execute(); $st->close();
 
         pm_json(true, 'Avaliação registrada! Obrigado pelo feedback.');

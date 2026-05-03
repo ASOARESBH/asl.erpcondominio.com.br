@@ -789,13 +789,17 @@
         .mkt-btn-avaliar   { background:#fef3c7; color:#92400e; }
         .mkt-btn-historico { background:#f1f5f9; color:var(--text-secondary); }
 
-        /* Status badges */
+        /* Status badges — alinhados com ENUM do banco */
         .mkt-status { display:inline-flex; align-items:center; gap:.3rem; padding:3px 10px; border-radius:999px; font-size:.75rem; font-weight:700; }
-        .mkt-status.aguardando  { background:#fef3c7; color:#92400e; }
-        .mkt-status.executando  { background:#dbeafe; color:#1e40af; }
-        .mkt-status.finalizado  { background:#dcfce7; color:#166534; }
-        .mkt-status.concluido   { background:#d1fae5; color:#065f46; }
-        .mkt-status.cancelado   { background:#fee2e2; color:#991b1b; }
+        .mkt-status.enviado              { background:#fef3c7; color:#92400e; }
+        .mkt-status.em_analise           { background:#fde68a; color:#78350f; }
+        .mkt-status.aceito               { background:#bfdbfe; color:#1e40af; }
+        .mkt-status.recusado             { background:#fecaca; color:#991b1b; }
+        .mkt-status.em_execucao          { background:#dbeafe; color:#1e40af; }
+        .mkt-status.finalizado_morador   { background:#dcfce7; color:#166534; }
+        .mkt-status.finalizado_fornecedor{ background:#d1fae5; color:#065f46; }
+        .mkt-status.concluido            { background:#a7f3d0; color:#065f46; }
+        .mkt-status.cancelado            { background:#fee2e2; color:#991b1b; }
 
         /* Status filter buttons */
         .mkt-status-btn { padding:.4rem .85rem; border:1px solid var(--border); border-radius:999px; background:#fff; font-size:.82rem; font-weight:600; cursor:pointer; transition:all .2s; color:var(--text-secondary); }
@@ -1502,9 +1506,10 @@
                 <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;">
                     <span style="font-weight:600;color:var(--text-secondary);font-size:.9rem;">Filtrar:</span>
                     <button class="mkt-status-btn active" data-status="" onclick="mktFiltrarPedidos('', this)">Todos</button>
-                    <button class="mkt-status-btn" data-status="aguardando" onclick="mktFiltrarPedidos('aguardando', this)">Aguardando</button>
-                    <button class="mkt-status-btn" data-status="executando" onclick="mktFiltrarPedidos('executando', this)">Em Execução</button>
-                    <button class="mkt-status-btn" data-status="finalizado" onclick="mktFiltrarPedidos('finalizado', this)">Finalizado</button>
+                    <button class="mkt-status-btn" data-status="enviado" onclick="mktFiltrarPedidos('enviado', this)">Enviado</button>
+                    <button class="mkt-status-btn" data-status="em_analise" onclick="mktFiltrarPedidos('em_analise', this)">Em Análise</button>
+                    <button class="mkt-status-btn" data-status="em_execucao" onclick="mktFiltrarPedidos('em_execucao', this)">Em Execução</button>
+                    <button class="mkt-status-btn" data-status="finalizado_morador" onclick="mktFiltrarPedidos('finalizado_morador', this)">Finalizado</button>
                     <button class="mkt-status-btn" data-status="concluido" onclick="mktFiltrarPedidos('concluido', this)">Concluído</button>
                     <button class="mkt-status-btn" data-status="cancelado" onclick="mktFiltrarPedidos('cancelado', this)">Cancelado</button>
                 </div>
@@ -2929,7 +2934,7 @@ function mktCarregarPedidos(status) {
         const pedidos = data.dados;
 
         // Badge
-        const pendentes = pedidos.filter(p => ['aguardando','executando','finalizado'].includes(p.status)).length;
+        const pendentes = pedidos.filter(p => ['enviado','em_analise','aceito','em_execucao','finalizado_morador','finalizado_fornecedor'].includes(p.status)).length;
         const badge = document.getElementById('mktBadgePedidos');
         if (pendentes > 0) { badge.textContent = pendentes; badge.style.display = ''; }
         else badge.style.display = 'none';
@@ -2939,8 +2944,18 @@ function mktCarregarPedidos(status) {
             return;
         }
 
-        const statusLabel = { aguardando:'Aguardando', executando:'Em Execução', finalizado:'Finalizado', concluido:'Concluído', cancelado:'Cancelado' };
-        const statusIcon  = { aguardando:'clock', executando:'cog fa-spin', finalizado:'check-circle', concluido:'trophy', cancelado:'times-circle' };
+        const statusLabel = {
+            enviado:'Enviado', em_analise:'Em Análise', aceito:'Aceito',
+            recusado:'Recusado', em_execucao:'Em Execução',
+            finalizado_morador:'Finalizado', finalizado_fornecedor:'Finalizado',
+            concluido:'Concluído', cancelado:'Cancelado'
+        };
+        const statusIcon  = {
+            enviado:'paper-plane', em_analise:'search', aceito:'thumbs-up',
+            recusado:'thumbs-down', em_execucao:'cog fa-spin',
+            finalizado_morador:'check-circle', finalizado_fornecedor:'check-circle',
+            concluido:'trophy', cancelado:'times-circle'
+        };
 
         let html = '';
         pedidos.forEach(p => {
@@ -2950,13 +2965,13 @@ function mktCarregarPedidos(status) {
                 : 'A combinar';
 
             let acoes = '';
-            if (p.status === 'aguardando') {
+            if (['enviado','em_analise'].includes(p.status)) {
                 acoes += `<button class="mkt-btn-cancelar" onclick="mktCancelarPedido(${p.id})"><i class="fas fa-times"></i> Cancelar</button>`;
             }
-            if (p.status === 'executando') {
+            if (p.status === 'em_execucao') {
                 acoes += `<button class="mkt-btn-confirmar" onclick="mktConfirmarConclusao(${p.id})"><i class="fas fa-check"></i> Confirmar Conclusão</button>`;
             }
-            if (p.status === 'finalizado' && !p.ja_avaliou) {
+            if (['finalizado_morador','finalizado_fornecedor'].includes(p.status) && !p.ja_avaliou) {
                 acoes += `<button class="mkt-btn-avaliar" onclick="mktAbrirModalAvaliar(${p.id}, '${escHtml(p.fornecedor_nome)}')"><i class="fas fa-star"></i> Avaliar</button>`;
             }
             if (p.motivo_recusa) {
@@ -2967,7 +2982,7 @@ function mktCarregarPedidos(status) {
             <div class="mkt-pedido-card">
                 <div class="mkt-pedido-header">
                     <div>
-                        <div class="mkt-pedido-titulo">${escHtml(p.produto_nome)}</div>
+                        <div class="mkt-pedido-titulo">${escHtml(p.produto_nome || 'Serviço Avulso')}</div>
                         <div class="mkt-pedido-fornecedor"><i class="fas fa-store"></i> ${escHtml(p.fornecedor_nome)}</div>
                     </div>
                     <div style="text-align:right;">
