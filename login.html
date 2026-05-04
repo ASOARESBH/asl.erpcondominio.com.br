@@ -19,7 +19,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--color-primary-600, #2563eb) 0%, var(--color-primary-700, #1d4ed8) 100%);
+            background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,9 +28,9 @@
         }
 
         .login-container {
-            background: var(--color-background-primary, #ffffff);
+            background: var(--color-background-primary);
             border-radius: 16px;
-            box-shadow: var(--shadow-lg, 0 20px 60px rgba(0,0,0,0.2));
+            box-shadow: var(--shadow-lg);
             width: 100%;
             max-width: 420px;
             padding: 3rem 2.5rem;
@@ -38,71 +38,50 @@
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        /* =====================================================
-           LOGO - QUADRADO PROFISSIONAL (SEM CÍRCULO)
-           ===================================================== */
         .login-header {
             text-align: center;
             margin-bottom: 2rem;
         }
 
-        .logo-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 auto 1.25rem;
-        }
-
+        /* ============================================
+           LOGO QUADRADA - FORMATO PROFISSIONAL
+           Sem círculo, quadrado com cantos suaves
+           ============================================ */
         .logo-box {
-            width: 140px;
-            height: 100px;
+            width: 120px;
+            height: 120px;
+            background: #ffffff;
             border-radius: 12px;
-            overflow: hidden;
-            background: #f8fafc;
             border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.10);
-            transition: box-shadow 0.3s;
-        }
-
-        .logo-box:hover {
-            box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+            margin: 0 auto 1.2rem;
+            overflow: hidden;
+            position: relative;
         }
 
         .logo-box img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            padding: 10px;
+            padding: 8px;
             display: block;
         }
 
-        /* Fallback quando imagem não carrega */
-        .logo-box .logo-fallback {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--color-primary-600, #2563eb);
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-align: center;
-            padding: 8px;
-            gap: 4px;
-        }
-
-        .logo-box .logo-fallback i {
-            font-size: 2rem;
-            margin-bottom: 4px;
-        }
-
-        /* Estado de carregamento da logo */
+        /* Shimmer de loading enquanto a logo carrega */
         .logo-box.loading {
             background: linear-gradient(90deg, #f0f4f8 25%, #e2e8f0 50%, #f0f4f8 75%);
             background-size: 200% 100%;
@@ -114,28 +93,30 @@
             100% { background-position: -200% 0; }
         }
 
+        /* Ícone fallback quando não há logo */
+        .logo-box .logo-fallback-icon {
+            font-size: 3rem;
+            color: var(--color-primary-600);
+        }
+
         .login-header h1 {
-            color: var(--color-text-primary, #1e293b);
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.3rem;
+            color: var(--color-text-primary);
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
         }
 
         .login-header p {
-            color: var(--color-text-secondary, #64748b);
-            font-size: 0.9rem;
+            color: var(--color-text-secondary);
+            font-size: 0.95rem;
         }
 
-        /* =====================================================
-           FORMULÁRIO
-           ===================================================== */
         .form-group {
             margin-bottom: 1.5rem;
         }
 
         .form-group label {
             display: block;
-            color: var(--color-text-primary, #1e293b);
+            color: var(--color-text-primary);
             font-weight: 600;
             margin-bottom: 0.5rem;
             font-size: 0.95rem;
@@ -150,33 +131,32 @@
             left: 1rem;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--color-text-tertiary, #94a3b8);
+            color: var(--color-text-tertiary);
             font-size: 1.1rem;
         }
 
         .form-group input {
             width: 100%;
             padding: 0.9rem 1rem 0.9rem 3rem;
-            border: 2px solid var(--border-color, #e2e8f0);
+            border: 2px solid var(--border-color);
             border-radius: 10px;
             font-size: 1rem;
             transition: all 0.3s;
-            background: var(--color-background-tertiary, #f8fafc);
-            color: var(--color-text-primary, #1e293b);
+            background: var(--color-background-tertiary);
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--color-primary-600, #2563eb);
-            background: var(--color-background-primary, #ffffff);
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            border-color: var(--color-primary-600);
+            background: var(--color-background-primary);
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
         }
 
         .btn-login {
             width: 100%;
             padding: 1rem;
-            background: linear-gradient(135deg, var(--color-primary-600, #2563eb) 0%, var(--color-primary-700, #1d4ed8) 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
+            color: var(--color-background-primary);
             border: none;
             border-radius: 10px;
             font-size: 1.1rem;
@@ -188,7 +168,7 @@
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
 
         .btn-login:active {
@@ -196,14 +176,11 @@
         }
 
         .btn-login:disabled {
-            background: var(--color-text-tertiary, #94a3b8);
+            background: var(--color-text-tertiary);
             cursor: not-allowed;
             transform: none;
         }
 
-        /* =====================================================
-           ALERTAS
-           ===================================================== */
         .alert {
             padding: 1rem;
             border-radius: 8px;
@@ -218,9 +195,9 @@
         }
 
         .alert-error {
-            background: var(--color-error-100, #fee2e2);
-            color: var(--color-error-900, #7f1d1d);
-            border-left: 4px solid var(--color-error-700, #b91c1c);
+            background: var(--color-error-100);
+            color: var(--color-error-900);
+            border-left: 4px solid var(--color-error-700);
         }
 
         .alert-success {
@@ -233,24 +210,21 @@
             margin-right: 0.5rem;
         }
 
-        /* =====================================================
-           RODAPÉ
-           ===================================================== */
         .footer {
             text-align: center;
             margin-top: 2rem;
-            color: var(--color-text-secondary, #64748b);
-            font-size: 0.82rem;
+            color: var(--color-text-secondary);
+            font-size: 0.85rem;
         }
 
-        /* Loading spinner */
+        /* Loading spinner do botão */
         .spinner {
             display: inline-block;
             width: 16px;
             height: 16px;
             border: 3px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top-color: #ffffff;
+            border-top-color: var(--color-background-primary);
             animation: spin 0.8s linear infinite;
             margin-right: 0.5rem;
         }
@@ -259,21 +233,19 @@
             to { transform: rotate(360deg); }
         }
 
-        /* =====================================================
-           RESPONSIVO
-           ===================================================== */
+        /* Responsive */
         @media (max-width: 480px) {
             .login-container {
                 padding: 2rem 1.5rem;
             }
 
             .login-header h1 {
-                font-size: 1.3rem;
+                font-size: 1.5rem;
             }
 
             .logo-box {
-                width: 120px;
-                height: 85px;
+                width: 100px;
+                height: 100px;
             }
         }
     </style>
@@ -283,42 +255,32 @@
     <div class="login-container">
         <div class="login-header">
 
-            <!-- LOGO DA EMPRESA - QUADRADO PROFISSIONAL -->
-            <div class="logo-wrapper">
-                <div class="logo-box loading" id="logoBox">
-                    <img
-                        id="logoEmpresa"
-                        src=""
-                        alt="Logo da Empresa"
-                        style="display:none;"
-                        onerror="logoImageError()"
-                    >
-                    <div class="logo-fallback" id="logoFallback">
-                        <i class="fas fa-building"></i>
-                        <span>ERP<br>Condomínios</span>
-                    </div>
-                </div>
+            <!-- Logo quadrada profissional -->
+            <div class="logo-box loading" id="logoBox">
+                <img id="loginLogo"
+                     alt="Logo da Empresa"
+                     style="display:none;"
+                     onload="LogoManager.onLoad()"
+                     onerror="LogoManager.onError()">
             </div>
 
-            <h1 id="nomeEmpresa">Serra da Liberdade</h1>
             <p>Sistema de Controle de Acesso</p>
         </div>
 
         <div id="alertBox" class="alert"></div>
 
-        <form id="loginForm" method="POST" action="api/validar_login.php">
+        <form id="loginForm">
             <div class="form-group">
                 <label for="email">E-mail</label>
                 <div class="input-wrapper">
                     <i class="fas fa-envelope"></i>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="Digite seu e-mail"
-                        required
-                        autocomplete="email"
-                    >
+                    <input type="email" id="email" name="email"
+                           placeholder="Digite seu e-mail"
+                           required autocomplete="email"
+                           autocapitalize="none"
+                           autocorrect="off"
+                           spellcheck="false"
+                           inputmode="email">
                 </div>
             </div>
 
@@ -326,14 +288,9 @@
                 <label for="senha">Senha</label>
                 <div class="input-wrapper">
                     <i class="fas fa-lock"></i>
-                    <input
-                        type="password"
-                        id="senha"
-                        name="senha"
-                        placeholder="Digite sua senha"
-                        required
-                        autocomplete="current-password"
-                    >
+                    <input type="password" id="senha" name="senha"
+                           placeholder="Digite sua senha"
+                           required autocomplete="current-password">
                 </div>
             </div>
 
@@ -348,196 +305,265 @@
     </div>
 
     <script>
-        // =====================================================
-        // MÓDULO: LOGO DA EMPRESA
-        // Busca a logo via API pública e exibe no login
-        // =====================================================
-        (function LogoManager() {
+        /**
+         * LogoManager
+         * Gerencia o carregamento dinâmico da logo da empresa.
+         * Busca via endpoint público /api/get_logo_empresa.php
+         * Fallback: uploads/logo/logoerp.png (ERP Condomínios)
+         *
+         * Arquitetura: este arquivo está em /frontend/login.html
+         * Portanto, '../' aponta para a raiz do projeto.
+         */
+        const LogoManager = (function () {
+            // ✅ URLs absolutas: eliminam qualquer ambiguidade de path relativo
+            const API_LOGO = window.location.origin + '/api/get_logo_empresa.php';
+            const FALLBACK = window.location.origin + '/uploads/logo/logoerp.png';
 
-            const logoBox      = document.getElementById('logoBox');
-            const logoImg      = document.getElementById('logoEmpresa');
-            const logoFallback = document.getElementById('logoFallback');
+            const logoBox = document.getElementById('logoBox');
+            const logoImg = document.getElementById('loginLogo');
 
-            /**
-             * Retorna a URL absoluta da API.
-             * Usa window.location.origin para garantir que nunca haja duplicação de path,
-             * independente de onde o arquivo está sendo servido.
-             */
-            function getApiBase() {
-                return window.location.origin + '/api/';
-            }
+            let fallbackAttempted = false;
 
-            /**
-             * Exibe a logo carregada com sucesso
-             */
-            function exibirLogo(url, nomeEmpresa) {
-                logoImg.src = url;
-                logoImg.style.display = 'block';
-                logoFallback.style.display = 'none';
-                logoBox.classList.remove('loading');
-
-                // Atualizar nome da empresa se disponível
-                if (nomeEmpresa) {
-                    const h1 = document.getElementById('nomeEmpresa');
-                    if (h1 && nomeEmpresa.trim() !== '') {
-                        h1.textContent = nomeEmpresa;
-                    }
-                }
-
-                console.log('[Login] Logo carregada com sucesso:', url);
-            }
-
-            /**
-             * Exibe o fallback (ícone) quando não há logo
-             */
-            function exibirFallback() {
-                logoImg.style.display = 'none';
-                logoFallback.style.display = 'flex';
-                logoBox.classList.remove('loading');
-                console.log('[Login] Usando logo fallback (sem imagem cadastrada)');
-            }
-
-            /**
-             * Carrega a logo via endpoint público da API
-             */
-            function carregarLogo() {
-                const apiBase = getApiBase();
-                const endpoint = apiBase + 'get_logo_empresa.php';
-
-                fetch(endpoint, {
+            function init() {
+                fetch(API_LOGO, {
                     method: 'GET',
-                    credentials: 'same-origin',
+                    credentials: 'include',
                     headers: { 'Accept': 'application/json' }
                 })
-                .then(function(response) {
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
-                    return response.json();
+                .then(function (res) {
+                    if (!res.ok) throw new Error('API indisponível');
+                    return res.json();
                 })
-                .then(function(data) {
-                    if (data.sucesso && data.logo_url) {
-                        // Monta URL absoluta baseada na raiz do site
-                        const baseUrl = window.location.origin + '/';
-                        const logoUrl = baseUrl + data.logo_url;
-
-                        // Pré-carrega a imagem para verificar se existe
-                        const testImg = new Image();
-                        testImg.onload = function() {
-                            exibirLogo(logoUrl, data.nome_empresa);
-                        };
-                        testImg.onerror = function() {
-                            console.warn('[Login] Imagem não encontrada:', logoUrl);
-                            // Tenta URL relativa
-                            const testImg2 = new Image();
-                            testImg2.onload = function() {
-                                exibirLogo(data.logo_url, data.nome_empresa);
-                            };
-                            testImg2.onerror = function() {
-                                exibirFallback();
-                            };
-                            testImg2.src = data.logo_url;
-                        };
-                        testImg.src = logoUrl;
+                .then(function (data) {
+                    if (data && data.sucesso && data.logo_url) {
+                        // Normalizar URL: se for relativa, usa origin como base
+                        let url = data.logo_url;
+                        if (!url.startsWith('http') && !url.startsWith('/')) {
+                            url = window.location.origin + '/' + url;
+                        } else if (url.startsWith('/')) {
+                            url = window.location.origin + url;
+                        }
+                        logoImg.src = url;
+                        logoImg.style.display = 'block';
                     } else {
-                        exibirFallback();
+                        _useFallback();
                     }
                 })
-                .catch(function(err) {
-                    console.warn('[Login] Erro ao buscar logo:', err.message);
-                    exibirFallback();
+                .catch(function () {
+                    _useFallback();
                 });
             }
 
-            // Iniciar carregamento da logo ao carregar DOM
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', carregarLogo);
-            } else {
-                carregarLogo();
+            function _useFallback() {
+                logoImg.src = FALLBACK;
+                logoImg.style.display = 'block';
             }
 
+            function onLoad() {
+                // Remove shimmer ao carregar com sucesso
+                logoBox.classList.remove('loading');
+            }
+
+            function onError() {
+                logoBox.classList.remove('loading');
+                if (!fallbackAttempted) {
+                    fallbackAttempted = true;
+                    logoImg.src = FALLBACK;
+                } else {
+                    // Último recurso: ícone FontAwesome
+                    logoImg.style.display = 'none';
+                    logoBox.innerHTML = '<i class="fas fa-building logo-fallback-icon"></i>';
+                }
+            }
+
+            return { init: init, onLoad: onLoad, onError: onError };
         })();
 
-        // =====================================================
-        // MÓDULO: ERRO DE IMAGEM
-        // Callback global para onerror da tag <img>
-        // =====================================================
-        function logoImageError() {
-            const logoImg      = document.getElementById('logoEmpresa');
-            const logoFallback = document.getElementById('logoFallback');
-            const logoBox      = document.getElementById('logoBox');
-
-            logoImg.style.display = 'none';
-            logoFallback.style.display = 'flex';
-            logoBox.classList.remove('loading');
-            console.warn('[Login] Erro ao carregar imagem da logo');
-        }
-
-        // =====================================================
-        // MÓDULO: FORMULÁRIO DE LOGIN
-        // Mantém todas as funcionalidades originais
-        // =====================================================
+        // ============================================
+        // LOGIN FORM
+        // ============================================
         const loginForm = document.getElementById('loginForm');
         const btnLogin  = document.getElementById('btnLogin');
         const alertBox  = document.getElementById('alertBox');
 
-        /**
-         * Exibe alertas de feedback ao usuário
-         */
         function mostrarAlerta(mensagem, tipo) {
-            const icone = tipo === 'error' ? 'exclamation-circle' : 'check-circle';
-            alertBox.innerHTML = '<i class="fas fa-' + icone + '"></i> ' + mensagem;
-            alertBox.className = 'alert alert-' + tipo;
+            const icon = tipo === 'error' ? 'exclamation-circle' : 'check-circle';
+            alertBox.innerHTML = `<i class="fas fa-${icon}"></i> ${mensagem}`;
+            alertBox.className = `alert alert-${tipo}`;
             alertBox.style.display = 'block';
-
-            // Auto-esconder após 5 segundos
-            setTimeout(function() {
+            setTimeout(function () {
                 alertBox.style.display = 'none';
             }, 5000);
         }
 
-        /**
-         * Manipula envio do formulário de login
-         */
-        loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+        // ============================================================
+        // POPUP DE SELEÇÃO ERP / PORTAL DO MORADOR
+        // ============================================================
+        var _popupEl     = null;
+        var _pendEmail   = '';
+        var _pendSenha   = '';
 
-            // Desabilitar botão e mostrar loading
+        function _criarPopup(nomeErp, nomeMorador) {
+            var el = document.getElementById('__popupSelecao');
+            if (el) el.remove();
+
+            var popup = document.createElement('div');
+            popup.id = '__popupSelecao';
+            popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+
+            popup.innerHTML =
+                '<div style="background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.25);">' +
+                  '<div style="text-align:center;margin-bottom:1.5rem;">' +
+                    '<div style="width:56px;height:56px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">' +
+                      '<i class="fas fa-question-circle" style="font-size:1.6rem;color:#2563eb;"></i>' +
+                    '</div>' +
+                    '<h2 style="font-size:1.15rem;color:#1e293b;margin-bottom:.4rem;">Qual tipo de acesso?</h2>' +
+                    '<p style="font-size:.87rem;color:#64748b;">Este e-mail está vinculado a dois perfis.<br>Selecione como deseja entrar:</p>' +
+                  '</div>' +
+                  '<div style="display:grid;gap:.75rem;">' +
+                    '<button id="__btnErp" onclick="_escolher(\'erp\')" style="border:2px solid #e2e8f0;border-radius:12px;padding:1rem 1.25rem;background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:.9rem;width:100%;font-family:inherit;">' +
+                      '<div style="width:42px;height:42px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+                        '<i class="fas fa-desktop" style="color:#2563eb;font-size:1.1rem;"></i>' +
+                      '</div>' +
+                      '<div>' +
+                        '<div style="font-weight:700;color:#1e293b;font-size:.95rem;">Acessar o ERP</div>' +
+                        '<div style="font-size:.8rem;color:#64748b;margin-top:.15rem;">Sistema de gestão · ' + (nomeErp || 'Usuário') + '</div>' +
+                      '</div>' +
+                    '</button>' +
+                    '<button id="__btnPortal" onclick="_escolher(\'portal\')" style="border:2px solid #e2e8f0;border-radius:12px;padding:1rem 1.25rem;background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;gap:.9rem;width:100%;font-family:inherit;">' +
+                      '<div style="width:42px;height:42px;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+                        '<i class="fas fa-home" style="color:#16a34a;font-size:1.1rem;"></i>' +
+                      '</div>' +
+                      '<div>' +
+                        '<div style="font-weight:700;color:#1e293b;font-size:.95rem;">Acessar o Portal do Morador</div>' +
+                        '<div style="font-size:.8rem;color:#64748b;margin-top:.15rem;">Área do morador · ' + (nomeMorador || 'Morador') + '</div>' +
+                      '</div>' +
+                    '</button>' +
+                  '</div>' +
+                  '<button onclick="_fecharPopup()" style="width:100%;margin-top:1rem;padding:.65rem;border:none;background:transparent;color:#94a3b8;font-size:.85rem;cursor:pointer;font-family:inherit;">' +
+                    '<i class="fas fa-times"></i> Cancelar' +
+                  '</button>' +
+                '</div>';
+
+            // Hover nos botões de escolha
+            popup.addEventListener('mouseover', function(ev) {
+                var btn = ev.target.closest('#__btnErp, #__btnPortal');
+                if (btn) { btn.style.borderColor = '#2563eb'; btn.style.background = '#eff6ff'; }
+            });
+            popup.addEventListener('mouseout', function(ev) {
+                var btn = ev.target.closest('#__btnErp, #__btnPortal');
+                if (btn) { btn.style.borderColor = '#e2e8f0'; btn.style.background = '#fff'; }
+            });
+
+            document.body.appendChild(popup);
+            _popupEl = popup;
+        }
+
+        function _fecharPopup() {
+            if (_popupEl) { _popupEl.remove(); _popupEl = null; }
+            btnLogin.disabled = false;
+            btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+        }
+
+        function _escolher(tipo) {
+            if (_popupEl) { _popupEl.remove(); _popupEl = null; }
             btnLogin.disabled = true;
             btnLogin.innerHTML = '<span class="spinner"></span> Autenticando...';
 
-            const formData = new FormData(loginForm);
-
-            fetch(window.location.origin + '/api/validar_login.php', {
+            fetch(window.location.origin + '/api/api_verificar_tipo_login.php', {
                 method: 'POST',
-                body: formData,
-                credentials: 'include'
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: _pendEmail, senha: _pendSenha, tipo_escolhido: tipo })
             })
-            .then(function(response) {
+            .then(function(r) { return r.json(); })
+            .then(function(data) { _processarResposta(data); })
+            .catch(function(err) {
+                console.error('[Login] Erro:', err);
+                mostrarAlerta('Erro ao processar login. Tente novamente.', 'error');
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+            });
+        }
+
+        function _processarResposta(data) {
+            if (!data.sucesso) {
+                mostrarAlerta(data.mensagem, 'error');
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+                return;
+            }
+
+            var tipo = data.tipo; // 'erp', 'morador', 'ambos'
+
+            if (tipo === 'ambos') {
+                // Exibir popup de seleção sem desabilitar botão
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+                _criarPopup(
+                    data.dados && data.dados.nome_erp     ? data.dados.nome_erp     : '',
+                    data.dados && data.dados.nome_morador ? data.dados.nome_morador : ''
+                );
+                return;
+            }
+
+            if (tipo === 'erp') {
+                mostrarAlerta('Login realizado! Redirecionando...', 'success');
+                if (data.dados) {
+                    if (data.dados.nome)      localStorage.setItem('usuario_nome', data.dados.nome);
+                    if (data.dados.permissao) localStorage.setItem('usuario_permissao', data.dados.permissao);
+                }
+                setTimeout(function() {
+                    window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
+                }, 500);
+                return;
+            }
+
+            if (tipo === 'morador') {
+                mostrarAlerta('Login realizado! Acessando portal...', 'success');
+                if (data.dados) {
+                    localStorage.setItem('portal_token',    data.dados.token      || '');
+                    localStorage.setItem('morador_id',      data.dados.morador_id || '');
+                    localStorage.setItem('morador_nome',    data.dados.nome       || '');
+                    localStorage.setItem('morador_unidade', data.dados.unidade    || '');
+                    localStorage.setItem('morador_email',   data.dados.email      || '');
+                }
+                setTimeout(function() {
+                    window.location.href = window.location.origin + '/frontend/portal_morador.html';
+                }, 500);
+                return;
+            }
+
+            // Fallback genérico
+            mostrarAlerta(data.mensagem || 'Login realizado!', 'success');
+        }
+
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            btnLogin.disabled = true;
+            btnLogin.innerHTML = '<span class="spinner"></span> Autenticando...';
+
+            // trim() no email para remover espaços do autocomplete mobile
+            // NÃO aplicar trim() na senha — espaços fazem parte da senha
+            _pendEmail = document.getElementById('email').value.trim().toLowerCase();
+            _pendSenha = document.getElementById('senha').value;
+
+            // ✅ Usa a API unificada que verifica ERP + Morador
+            fetch(window.location.origin + '/api/api_verificar_tipo_login.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: _pendEmail, senha: _pendSenha })
+            })
+            .then(function (response) {
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 return response.json();
             })
-            .then(function(data) {
-                if (data.sucesso) {
-                    mostrarAlerta(data.mensagem, 'success');
-
-                    // Armazenar dados do usuário no localStorage
-                    if (data.dados && data.dados.nome) {
-                        localStorage.setItem('usuario_nome', data.dados.nome);
-                    }
-                    if (data.dados && data.dados.permissao) {
-                        localStorage.setItem('usuario_permissao', data.dados.permissao);
-                    }
-
-                    // ✅ REDIRECIONAMENTO CORRETO - URL absoluta elimina /frontend/frontend/
-                    setTimeout(function() {
-                        window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
-                    }, 500);
-                } else {
-                    mostrarAlerta(data.mensagem, 'error');
-                    btnLogin.disabled = false;
-                    btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
-                }
+            .then(function (data) {
+                _processarResposta(data);
             })
-            .catch(function(error) {
+            .catch(function (error) {
                 console.error('[Login] Erro:', error);
                 mostrarAlerta('Erro ao processar login. Tente novamente.', 'error');
                 btnLogin.disabled = false;
@@ -545,51 +571,48 @@
             });
         });
 
-        // =====================================================
-        // MÓDULO: PARÂMETROS DE URL
-        // Exibe mensagens de erro vindas via query string
-        // =====================================================
-        (function verificarErrosUrl() {
+        // ============================================
+        // MENSAGENS DE ERRO VIA URL PARAMS
+        // ============================================
+        (function () {
             const urlParams = new URLSearchParams(window.location.search);
             const erro = urlParams.get('erro');
-
-            const mensagens = {
+            const msgs = {
                 '1': 'E-mail ou senha incorretos!',
                 '2': 'Usuário inativo. Entre em contato com o administrador.',
                 '3': 'Preencha todos os campos!',
                 '4': 'Sessão expirada. Faça login novamente.'
             };
-
-            if (erro && mensagens[erro]) {
-                mostrarAlerta(mensagens[erro], 'error');
-            }
+            if (msgs[erro]) mostrarAlerta(msgs[erro], 'error');
         })();
 
-        // =====================================================
-        // MÓDULO: VERIFICAÇÃO DE SESSÃO ATIVA
-        // Redireciona se usuário já estiver logado
-        // =====================================================
-        document.addEventListener('DOMContentLoaded', function() {
+        // ============================================
+        // VERIFICAR SESSÃO ATIVA AO CARREGAR
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            // Inicializar logo
+            LogoManager.init();
+
+            // Verificar se já está autenticado - URL absoluta
             fetch(window.location.origin + '/api/verificar_sessao.php', {
                 method: 'GET',
                 credentials: 'include'
             })
-            .then(function(response) {
+            .then(function (response) {
                 if (!response.ok) return Promise.reject('Não autenticado');
                 return response.json();
             })
-            .then(function(data) {
+            .then(function (data) {
                 if (data && data.sucesso) {
                     // ✅ REDIRECIONAMENTO CORRETO - URL absoluta elimina /frontend/frontend/
                     window.location.href = window.location.origin + '/frontend/layout-base.html?page=dashboard';
                 }
             })
-            .catch(function() {
-                // Não está logado, mantém na página de login
+            .catch(function () {
+                // Não autenticado — mantém na página de login
             });
         });
     </script>
-    <script src="js/visual-identity.js"></script>
 </body>
 
 </html>
