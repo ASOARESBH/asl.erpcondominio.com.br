@@ -93,13 +93,15 @@ async function _carregarUnidades() {
 
 async function _carregarMoradores() {
     try {
-        const data = await _apiCall(API_MORADORES);
+        const data = await _apiCall(API_MORADORES + '?por_pagina=0');
         if (!data.sucesso) return;
 
         const sel = document.getElementById('filtro_morador');
         if (!sel) return;
         sel.innerHTML = '<option value="">Todos os moradores</option>';
-        (data.dados || []).forEach(m => sel.add(new Option(m.nome, m.id)));
+        // api_moradores retorna dados paginados: { itens: [...], total, ... }
+        const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+        moradores.forEach(m => sel.add(new Option(m.nome, m.id)));
     } catch (err) {
         console.error('[RelatorioHidrometro] Erro ao carregar moradores:', err);
     }

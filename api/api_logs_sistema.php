@@ -178,11 +178,13 @@ if ($metodo === 'GET') {
         $stmt_count->bind_param($types, ...$params);
         $stmt_count->execute();
         $resultado_count = $stmt_count->get_result();
-        $total_registros = $resultado_count->fetch_assoc()['total'];
+        $row_count = $resultado_count ? $resultado_count->fetch_assoc() : null;
+        $total_registros = $row_count['total'] ?? 0;
         $stmt_count->close();
     } else {
         $resultado_count = $conexao->query($sql_count);
-        $total_registros = $resultado_count->fetch_assoc()['total'];
+        $row_count = $resultado_count ? $resultado_count->fetch_assoc() : null;
+        $total_registros = $row_count['total'] ?? 0;
     }
     
     // Ordenar por data mais recente

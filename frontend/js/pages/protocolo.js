@@ -142,15 +142,17 @@ function carregarMoradores() {
     const unidadeSelecionada = unidades.find(u => u.id == unidadeId);
     const nomeUnidade = unidadeSelecionada ? unidadeSelecionada.nome : '';
 
-    fetch(`../api/api_moradores.php?unidade=${encodeURIComponent(nomeUnidade)}`)
+    fetch(`../api/api_moradores.php?unidade=${encodeURIComponent(nomeUnidade)}&por_pagina=0`)
         .then(r => r.json())
         .then(data => {
-            if (data.sucesso && data.dados.length > 0) {
+            // api_moradores retorna dados paginados: { itens: [...], total, ... }
+            const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+            if (data.sucesso && moradores.length > 0) {
                 moradorSelect.innerHTML = '<option value="">Selecione...</option>';
-                data.dados.forEach(m => {
+                moradores.forEach(m => {
                     moradorSelect.innerHTML += `<option value="${m.id}">${m.nome}</option>`;
                 });
-                console.log('[Protocolo] ✅ Moradores carregados:', data.dados.length);
+                console.log('[Protocolo] ✅ Moradores carregados:', moradores.length);
             } else {
                 moradorSelect.innerHTML = '<option value="">Nenhum morador nesta unidade</option>';
             }

@@ -222,12 +222,14 @@ async function _carregarMoradoresPorUnidade() {
     }
 
     try {
-        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}`);
+        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&por_pagina=0`);
         if (!selMorador) return;
         selMorador.innerHTML = '<option value="">Selecione um morador...</option>';
 
-        if (data.sucesso && data.dados?.length > 0) {
-            data.dados.forEach(m => selMorador.add(new Option(m.nome, m.id)));
+        // api_moradores retorna dados paginados: { itens: [...], total, ... }
+        const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+        if (data.sucesso && moradores.length > 0) {
+            moradores.forEach(m => selMorador.add(new Option(m.nome, m.id)));
             selMorador.disabled = false;
         } else {
             selMorador.innerHTML = '<option value="">Nenhum morador nesta unidade</option>';

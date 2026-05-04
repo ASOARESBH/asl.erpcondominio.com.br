@@ -292,16 +292,18 @@ function _carregarMoradores() {
     const unidade = _state.unidades.find(u => u.id == unidadeId);
     const nomeUnidade = unidade ? unidade.nome : '';
 
-    fetch(`${API_BASE}/api_moradores.php?unidade=${encodeURIComponent(nomeUnidade)}`, { credentials: 'include' })
+    fetch(`${API_BASE}/api_moradores.php?unidade=${encodeURIComponent(nomeUnidade)}&por_pagina=0`, { credentials: 'include' })
         .then(r => r.json())
         .then(data => {
             moradorSel.disabled = false;
-            if (data.sucesso && data.dados.length > 0) {
+            // api_moradores retorna dados paginados: { itens: [...], total, ... }
+            const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+            if (data.sucesso && moradores.length > 0) {
                 moradorSel.innerHTML = '<option value="">Selecione o morador...</option>';
-                data.dados.forEach(m => {
+                moradores.forEach(m => {
                     moradorSel.innerHTML += `<option value="${m.id}">${_esc(m.nome)}</option>`;
                 });
-                console.log(`[Protocolos] ${data.dados.length} moradores carregados.`);
+                console.log(`[Protocolos] ${moradores.length} moradores carregados.`);
             } else {
                 moradorSel.innerHTML = '<option value="">Nenhum morador nesta unidade</option>';
             }

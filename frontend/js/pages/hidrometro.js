@@ -370,11 +370,13 @@ async function _carregarMoradoresPorUnidade(prefixo) {
     }
 
     try {
-        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}`);
+        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&por_pagina=0`);
         selMorador.innerHTML = '<option value="">Selecione um morador...</option>';
 
-        if (data.sucesso && data.dados?.length > 0) {
-            data.dados.forEach(m => {
+        // api_moradores retorna dados paginados: { itens: [...], total, ... }
+        const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+        if (data.sucesso && moradores.length > 0) {
+            moradores.forEach(m => {
                 const opt = new Option(m.nome, m.id);
                 selMorador.add(opt);
             });
@@ -648,19 +650,22 @@ function _atualizarKPIs(lista) {
 // ============================================================
 
 async function _salvarHidrometro() {
+    // Proteção contra duplo submit
+    const btnSalvar = document.querySelector('#formCadastro button[type="submit"]');
+    if (btnSalvar?.disabled) return;
+    if (btnSalvar) btnSalvar.disabled = true;
+
     const moradorId = document.getElementById('cad_morador')?.value;
     const unidade   = document.getElementById('cad_unidade')?.value;
     const numero    = document.getElementById('cad_numero')?.value?.trim();
     const lacre     = document.getElementById('cad_lacre')?.value?.trim();
     const data      = document.getElementById('cad_data')?.value;
-
     if (!moradorId || !unidade || !numero || !data) {
         _toast('Preencha todos os campos obrigatórios.', 'warning');
+        if (btnSalvar) btnSalvar.disabled = false;
         return;
     }
-
     const inventarioId = document.getElementById('cad_inventario_id')?.value;
-
     const payload = {
         morador_id          : parseInt(moradorId),
         unidade             : unidade,
@@ -669,18 +674,14 @@ async function _salvarHidrometro() {
         data_instalacao     : data,
         inventario_id       : inventarioId ? parseInt(inventarioId) : null,
     };
-
     console.log('[Hidrometro] Salvando:', payload);
-
     try {
         const data_resp = await _apiCall(API_HIDROMETROS, {
             method  : 'POST',
             headers : { 'Content-Type': 'application/json' },
             body    : JSON.stringify(payload),
         });
-
         if (!data_resp.sucesso) throw new Error(data_resp.mensagem);
-
         _toast('Hidrômetro cadastrado com sucesso!', 'success');
         limparCadastro();
         _carregarHidrometros();
@@ -688,6 +689,7 @@ async function _salvarHidrometro() {
     } catch (err) {
         console.error('[Hidrometro] Erro ao salvar:', err);
         _toast('Erro ao cadastrar: ' + err.message, 'error');
+        if (btnSalvar) btnSalvar.disabled = false;
     }
 }
 
@@ -1195,8 +1197,9 @@ async function _leituraCarregarMoradores() {
     }
 
     try {
-        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1`);
-        const moradores = data.dados || data.moradores || [];
+        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1&por_pagina=0`);
+        // api_moradores retorna dados paginados: { itens: [...], total, ... }
+        const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
         selMorador.innerHTML = '<option value="">Selecione o morador...</option>';
         moradores.forEach(m => selMorador.add(new Option(m.nome, m.id)));
     } catch (err) {
@@ -1239,7 +1242,7 @@ async function _leituraCarregarUltimaLeitura() {
     if (!hidroId) return;
 
     try {
-        const data = await _apiCall(`${API_LEITURAS}?hidrometro_id=${hidroId}&ultima=1`);
+        const data = await _apiCall(`${API_LEITURAS}?ultima_leitura=${hidroId}`);
         const ultima = data.dados || data.leitura || null;
         const elUltima = document.getElementById('ind_ultima_leitura');
         if (elUltima) {

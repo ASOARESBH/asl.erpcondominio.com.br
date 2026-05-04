@@ -596,9 +596,10 @@ function _limparFormCat() {
 
 async function _carregarMoradores() {
     try {
-        const data = await _fetch(_API_MOR + '?action=listar');
+        const data = await _fetch(_API_MOR + '?por_pagina=0');
         if (!data.sucesso) return;
-        _state.moradores = data.dados || [];
+        // api_moradores retorna dados paginados: { itens: [...], total, ... }
+        _state.moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
         _popularSelectMoradores();
         console.log('[Estoque] ' + _state.moradores.length + ' moradores carregados.');
     } catch (e) { console.error('[Estoque] Erro moradores:', e); }

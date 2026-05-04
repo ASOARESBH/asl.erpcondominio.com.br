@@ -105,16 +105,18 @@ async function carregarMoradores() {
     if (!select) return;
 
     try {
-        const response = await fetch(API_MORADORES);
+        const response = await fetch(API_MORADORES + '?por_pagina=0');
         const data = await response.json();
 
         select.innerHTML = '<option value="">Selecione um morador</option>';
 
-        if (!data.sucesso || !Array.isArray(data.dados)) {
+        // api_moradores retorna dados paginados: { itens: [...], total, ... }
+        const listaMoradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+        if (!data.sucesso || listaMoradores.length === 0) {
             return;
         }
 
-        data.dados.forEach((morador) => {
+        listaMoradores.forEach((morador) => {
             const id = morador.id || morador.id_morador;
             const nome = morador.nome || morador.nome_completo;
             const unidade = morador.unidade || '';
