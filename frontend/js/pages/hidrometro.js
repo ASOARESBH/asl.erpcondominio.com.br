@@ -370,9 +370,8 @@ async function _carregarMoradoresPorUnidade(prefixo) {
     }
 
     try {
-        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&por_pagina=0`);
+        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1&por_pagina=0`);
         selMorador.innerHTML = '<option value="">Selecione um morador...</option>';
-
         // api_moradores retorna dados paginados: { itens: [...], total, ... }
         const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
         if (data.sucesso && moradores.length > 0) {

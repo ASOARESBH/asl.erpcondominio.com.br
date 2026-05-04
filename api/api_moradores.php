@@ -109,6 +109,8 @@ try {
         $filtro_nome    = isset($_GET['nome'])    ? trim($_GET['nome'])    : '';
         $filtro_email   = isset($_GET['email'])   ? trim($_GET['email'])   : '';
         $filtro_cpf     = isset($_GET['cpf'])     ? trim($_GET['cpf'])     : '';
+        // Filtro ativo: 1=somente ativos, 0=somente inativos, vazio=todos
+        $filtro_ativo   = isset($_GET['ativo']) && $_GET['ativo'] !== '' ? trim($_GET['ativo']) : '';
 
         // Paginação — por_pagina=0 retorna todos (retrocompatibilidade para selects)
         $por_pagina = isset($_GET['por_pagina']) ? max(0, intval($_GET['por_pagina'])) : 25;
@@ -123,6 +125,11 @@ try {
             $where .= " AND unidade = ?";
             $tipos_param .= "s";
             $params[] = $filtro_unidade;
+        }
+        if ($filtro_ativo !== '') {
+            $where .= " AND ativo = ?";
+            $tipos_param .= "i";
+            $params[] = intval($filtro_ativo);
         }
         if ($filtro_nome) {
             $where .= " AND nome LIKE ?";
