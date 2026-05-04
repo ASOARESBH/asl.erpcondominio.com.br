@@ -8,8 +8,16 @@
 // Status ENUM banco: enviado, em_analise, aceito, recusado, em_execucao,
 //                    finalizado_morador, finalizado_fornecedor, concluido, cancelado
 
+// ob_start ANTES de qualquer include para capturar output acidental
+// (whitespace, BOM, erros de include) que causaria HTTP 500
+session_start();
+ob_start();
+
 require_once 'config.php';
 require_once 'auth_helper.php';
+
+// Limpar qualquer output acidental dos includes
+ob_end_clean();
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
