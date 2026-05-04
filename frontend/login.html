@@ -278,7 +278,11 @@
                     <i class="fas fa-envelope"></i>
                     <input type="email" id="email" name="email"
                            placeholder="Digite seu e-mail"
-                           required autocomplete="email">
+                           required autocomplete="email"
+                           autocapitalize="none"
+                           autocorrect="off"
+                           spellcheck="false"
+                           inputmode="email">
                 </div>
             </div>
 
@@ -542,7 +546,9 @@
             btnLogin.disabled = true;
             btnLogin.innerHTML = '<span class="spinner"></span> Autenticando...';
 
-            _pendEmail = document.getElementById('email').value.trim();
+            // trim() no email para remover espaços do autocomplete mobile
+            // NÃO aplicar trim() na senha — espaços fazem parte da senha
+            _pendEmail = document.getElementById('email').value.trim().toLowerCase();
             _pendSenha = document.getElementById('senha').value;
 
             // ✅ Usa a API unificada que verifica ERP + Morador

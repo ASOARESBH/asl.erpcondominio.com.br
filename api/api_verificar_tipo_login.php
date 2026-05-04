@@ -67,15 +67,19 @@ if (!$dados) {
     $dados = $_POST;
 }
 
-$email = isset($dados['email']) ? trim($dados['email']) : '';
-$senha = isset($dados['senha']) ? trim($dados['senha']) : '';
+// NOTA: trim() apenas no email (remover espaços acidentais do autocomplete mobile)
+// NÃO aplicar trim() na senha — espaços fazem parte da senha
+$email = isset($dados['email']) ? strtolower(trim($dados['email'])) : '';
+$senha = isset($dados['senha']) ? $dados['senha'] : '';
 
 // Validações básicas
 if (empty($email) || empty($senha)) {
+    registrar_log('LOGIN_FALHA', "Campo vazio: email='" . (empty($email)?'VAZIO':'ok') . "' senha='" . (empty($senha)?'VAZIA':'ok') . "' ua='" . ($_SERVER['HTTP_USER_AGENT']??'') . "'");
     retornar_json(false, 'E-mail e senha são obrigatórios');
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    registrar_log('LOGIN_FALHA', "Email inválido: '{$email}' ua='" . ($_SERVER['HTTP_USER_AGENT']??'') . "'");
     retornar_json(false, 'E-mail inválido');
 }
 
@@ -175,7 +179,11 @@ try {
 
     // ─── 3. Determinar resultado ───────────────────────────────────────
     if (!$encontrou_erp && !$encontrou_morador) {
-        registrar_log('LOGIN_FALHA', "Tentativa de login inválida: {$email}");
+        // Log detalhado para debug mobile vs desktop
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'desconhecido';
+        $is_mobile = preg_match('/Mobile|Android|iPhone|iPad/i', $ua) ? 'SIM' : 'NAO';
+        $prefixo_hash_morador = isset($morador['senha']) ? substr($morador['senha'] ?? '', 0, 7) : 'N/A';
+        registrar_log('LOGIN_FALHA', "Login invalido: {$email} | mobile={$is_mobile} | erp={$encontrou_erp} | morador={$encontrou_morador} | hash_prefix={$prefixo_hash_morador} | ua={$ua}");
         retornar_json(false, 'E-mail ou senha incorretos!');
     }
 
