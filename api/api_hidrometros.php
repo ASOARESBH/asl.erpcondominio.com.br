@@ -46,40 +46,76 @@ if ($metodo === 'GET' && isset($_GET['historico'])) {
     retornar_json(true, "Histórico carregado", $historico);
 }
 
+// ========== BUSCAR HIDRÔMETRO POR ID ESPECÍFICO ==========
+if ($metodo === 'GET' && isset($_GET['id']) && !isset($_GET['historico'])) {
+    $id = intval($_GET['id']);
+    if ($id <= 0) retornar_json(false, "ID inválido");
+
+    $stmt = $conexao->prepare(
+        "SELECT h.*, m.nome as morador_nome, m.cpf as morador_cpf,
+         DATE_FORMAT(h.data_instalacao, '%d/%m/%Y %H:%i') as data_instalacao_formatada,
+         DATE_FORMAT(h.data_cadastro, '%d/%m/%Y %H:%i') as data_cadastro_formatada,
+         (SELECT leitura_atual FROM leituras WHERE hidrometro_id = h.id ORDER BY data_leitura DESC LIMIT 1) as ultima_leitura
+         FROM hidrometros h
+         LEFT JOIN moradores m ON h.morador_id = m.id
+         WHERE h.id = ?"
+    );
+    if (!$stmt) retornar_json(false, "Erro ao preparar query: " . $conexao->error);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if ($row) {
+        retornar_json(true, "Hidrômetro encontrado", $row);
+    } else {
+        retornar_json(false, "Hidrômetro não encontrado");
+    }
+}
+
 // ========== LISTAR HIDRÔMETROS ==========
 if ($metodo === 'GET') {
-    $busca = isset($_GET['busca']) ? sanitizar($conexao, $_GET['busca']) : '';
-    $apenas_ativos = isset($_GET['ativos']) ? true : false;
-    
+    $busca       = isset($_GET['busca'])      ? sanitizar($conexao, $_GET['busca']) : '';
+    $apenas_ativos = isset($_GET['ativos'])   ? true : false;
+    $morador_id  = isset($_GET['morador_id']) ? intval($_GET['morador_id'])         : 0;
+    $unidade_fil = isset($_GET['unidade'])    ? sanitizar($conexao, $_GET['unidade']) : '';
+
     $sql = "SELECT h.*, m.nome as morador_nome, m.cpf as morador_cpf,
             DATE_FORMAT(h.data_instalacao, '%d/%m/%Y %H:%i') as data_instalacao_formatada,
             DATE_FORMAT(h.data_cadastro, '%d/%m/%Y %H:%i') as data_cadastro_formatada,
             (SELECT leitura_atual FROM leituras WHERE hidrometro_id = h.id ORDER BY data_leitura DESC LIMIT 1) as ultima_leitura
             FROM hidrometros h
-            INNER JOIN moradores m ON h.morador_id = m.id
+            LEFT JOIN moradores m ON h.morador_id = m.id
             WHERE 1=1 ";
-    
+
     if ($apenas_ativos) {
         $sql .= "AND h.ativo = 1 ";
     }
-    
+
+    if ($morador_id > 0) {
+        $sql .= "AND h.morador_id = " . $morador_id . " ";
+    }
+
+    if (!empty($unidade_fil)) {
+        $sql .= "AND h.unidade = '" . $conexao->real_escape_string($unidade_fil) . "' ";
+    }
+
     if (!empty($busca)) {
-        $sql .= "AND (h.numero_hidrometro LIKE '%$busca%' 
-                 OR h.unidade LIKE '%$busca%' 
+        $sql .= "AND (h.numero_hidrometro LIKE '%$busca%'
+                 OR h.unidade LIKE '%$busca%'
                  OR m.nome LIKE '%$busca%') ";
     }
-    
+
     $sql .= "ORDER BY CAST(h.unidade AS UNSIGNED) ASC, h.unidade ASC, m.nome ASC";
-    
+
     $resultado = $conexao->query($sql);
     $hidrometros = array();
-    
+
     if ($resultado && $resultado->num_rows > 0) {
         while ($row = $resultado->fetch_assoc()) {
             $hidrometros[] = $row;
         }
     }
-    
+
     retornar_json(true, "Hidrômetros listados com sucesso", $hidrometros);
 }
 

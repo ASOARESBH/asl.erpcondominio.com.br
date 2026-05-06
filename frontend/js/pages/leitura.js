@@ -222,12 +222,13 @@ async function _carregarMoradoresPorUnidade() {
     }
 
     try {
-        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&por_pagina=0`);
+        const data = await _apiCall(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1&por_pagina=0`);
         if (!selMorador) return;
         selMorador.innerHTML = '<option value="">Selecione um morador...</option>';
 
         // api_moradores retorna dados paginados: { itens: [...], total, ... }
         const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+        console.log(`[Leitura] Moradores carregados para unidade "${unidade}":`, moradores.length, moradores);
         if (data.sucesso && moradores.length > 0) {
             moradores.forEach(m => selMorador.add(new Option(m.nome, m.id)));
             selMorador.disabled = false;
@@ -257,14 +258,21 @@ async function _carregarHidrometrosPorMorador() {
     }
 
     try {
-        const data = await _apiCall(`${API_HIDROMETROS}?ativos=1`);
+        // Filtra diretamente por morador_id na API para evitar carregar todos
+        const data = await _apiCall(`${API_HIDROMETROS}?morador_id=${encodeURIComponent(moradorId)}&ativos=1`);
         if (!selHidro) return;
         selHidro.innerHTML = '<option value="">Selecione um hidrômetro...</option>';
 
+        console.log('[Leitura] Hidrômetros do morador:', moradorId, data);
+
         if (data.sucesso) {
-            const lista = (data.dados || []).filter(h => h.morador_id == moradorId);
-            if (lista.length > 0) {
-                lista.forEach(h => {
+            // A API pode retornar array direto ou objeto paginado
+            const lista = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
+            // Filtro de segurança no JS caso a API não filtre por morador_id
+            const filtrada = lista.filter(h => String(h.morador_id) === String(moradorId));
+            const exibir = filtrada.length > 0 ? filtrada : lista;
+            if (exibir.length > 0) {
+                exibir.forEach(h => {
                     const label = `${h.numero_hidrometro} (Lacre: ${h.numero_lacre || 'N/A'})`;
                     selHidro.add(new Option(label, h.id));
                 });
@@ -291,25 +299,32 @@ async function _carregarUltimaLeitura() {
 
     try {
         // Buscar última leitura e dados do hidrômetro em paralelo
+        // Busca o hidrômetro por ID específico para evitar carregar todos
         const [dataLeitura, dataHidro] = await Promise.all([
             _apiCall(`${API_LEITURAS}?ultima_leitura=${hidrometroId}`),
-            _apiCall(API_HIDROMETROS),
+            _apiCall(`${API_HIDROMETROS}?id=${hidrometroId}`),
         ]);
 
         const leituraAnterior = dataLeitura.sucesso ? (dataLeitura.dados?.leitura_atual || 0) : 0;
         const dataAnterior    = dataLeitura.sucesso ? (dataLeitura.dados?.data_leitura_formatada || 'Primeira leitura') : 'Primeira leitura';
 
+        console.log('[Leitura] Última leitura:', dataLeitura.dados, '| Hidrômetro:', dataHidro.dados);
+
         _setEl('ind_leitura_anterior', leituraAnterior, 'value');
 
-        if (dataHidro.sucesso) {
-            const hidro = (dataHidro.dados || []).find(h => h.id == hidrometroId);
-            if (hidro) {
-                _setEl('info_numero',           hidro.numero_hidrometro);
-                _setEl('info_lacre',            hidro.numero_lacre || 'N/A');
-                _setEl('info_leitura_anterior', leituraAnterior + ' m³');
-                _setEl('info_data_anterior',    dataAnterior);
-                _mostrarInfoHidrometro();
-            }
+        // Suporta tanto objeto único (GET por id) quanto array
+        const hidro = dataHidro.sucesso
+            ? (Array.isArray(dataHidro.dados)
+                ? dataHidro.dados.find(h => h.id == hidrometroId)
+                : dataHidro.dados)
+            : null;
+
+        if (hidro) {
+            _setEl('info_numero',           hidro.numero_hidrometro);
+            _setEl('info_lacre',            hidro.numero_lacre || 'N/A');
+            _setEl('info_leitura_anterior', leituraAnterior + ' m³');
+            _setEl('info_data_anterior',    dataAnterior);
+            _mostrarInfoHidrometro();
         }
 
         // Recalcular preview se já houver leitura atual
