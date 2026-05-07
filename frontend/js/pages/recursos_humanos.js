@@ -685,6 +685,21 @@ async function _editarEscala(id) {
             _setDiasAlternados('escala-alt-semana-b', semB);
         }
 
+        // Preenche campos v2 (regime 12x36, descanso, carga mensal)
+        const chk12x36 = document.getElementById('escala-regime-12x36');
+        if (chk12x36) {
+            chk12x36.checked = e.regime_12x36 == 1;
+            chk12x36.dispatchEvent(new Event('change'));
+        }
+        const inpDescanso = document.getElementById('escala-descanso-h');
+        if (inpDescanso && e.descanso_interjornada_min) {
+            inpDescanso.value = Math.round((e.descanso_interjornada_min / 60) * 2) / 2;
+        }
+        const inpMensal = document.getElementById('escala-carga-mensal-h');
+        if (inpMensal && e.carga_horaria_mensal_min) {
+            inpMensal.value = Math.round((e.carga_horaria_mensal_min / 60) * 2) / 2;
+        }
+
         document.getElementById('escala-form-titulo').innerHTML = '<i class="fas fa-edit"></i> Editar Escala';
         document.getElementById('escala-form-card').style.display = '';
         document.getElementById('escala-form-card').scrollIntoView({ behavior: 'smooth' });
@@ -712,18 +727,27 @@ async function _salvarEscala(e) {
     const tipo    = document.getElementById('escala-tipo').value;
     const isAlt   = tipo === 'alternada';
 
+    // Novos campos de jornada
+    const descanso_h  = parseFloat(document.getElementById('escala-descanso-h')?.value || 0);
+    const mensal_h    = parseFloat(document.getElementById('escala-carga-mensal-h')?.value || 0);
+    const is12x36     = document.getElementById('escala-regime-12x36')?.checked ?? false;
+
     const payload = {
-        colaborador_id           : parseInt(document.getElementById('escala-colaborador-id').value),
-        nome_escala              : document.getElementById('escala-nome').value,
+        colaborador_id             : parseInt(document.getElementById('escala-colaborador-id').value),
+        nome_escala                : document.getElementById('escala-nome').value,
         tipo,
-        carga_horaria_diaria_min : Math.round(carga_h * 60),
-        dias_trabalho            : _state.escalaDias,
-        hora_entrada             : document.getElementById('escala-entrada').value + ':00',
-        hora_almoco_saida        : document.getElementById('escala-almoco-saida').value + ':00',
-        hora_almoco_retorno      : document.getElementById('escala-almoco-retorno').value + ':00',
-        hora_saida               : document.getElementById('escala-saida').value + ':00',
-        tolerancia_minutos       : parseInt(document.getElementById('escala-tolerancia').value),
-        intervalo_almoco_min     : parseInt(document.getElementById('escala-intervalo').value),
+        carga_horaria_diaria_min   : Math.round(carga_h * 60),
+        dias_trabalho              : _state.escalaDias,
+        hora_entrada               : document.getElementById('escala-entrada').value + ':00',
+        hora_almoco_saida          : document.getElementById('escala-almoco-saida').value + ':00',
+        hora_almoco_retorno        : document.getElementById('escala-almoco-retorno').value + ':00',
+        hora_saida                 : document.getElementById('escala-saida').value + ':00',
+        tolerancia_minutos         : parseInt(document.getElementById('escala-tolerancia').value),
+        intervalo_almoco_min       : parseInt(document.getElementById('escala-intervalo').value),
+        // Campos v2 — regras de jornada
+        regime_12x36               : is12x36 ? 1 : 0,
+        descanso_interjornada_min  : Math.round(descanso_h * 60),
+        carga_horaria_mensal_min   : Math.round(mensal_h * 60),
     };
 
     // Campos de escala alternada
@@ -1000,23 +1024,92 @@ function _tipoDia(t) {
  * selecionado no formulário de escala.
  */
 function _setupEscalaAlternada() {
-    const sel   = document.getElementById('escala-tipo');
-    const bloco = document.getElementById('escala-alternada-bloco');
-    if (!sel || !bloco) return;
+    const sel        = document.getElementById('escala-tipo');
+    const blocoAlt   = document.getElementById('escala-alternada-bloco');
+    const blocoJorn  = document.getElementById('escala-jornada-bloco');
+    const wrap12x36  = document.getElementById('escala-12x36-wrap');
+    const wrapMensal = document.getElementById('escala-carga-mensal-wrap');
+    const chk12x36   = document.getElementById('escala-regime-12x36');
+    const inpCargaH  = document.getElementById('escala-carga-h');
+    const inpDescanso= document.getElementById('escala-descanso-h');
+    const inpMensal  = document.getElementById('escala-carga-mensal-h');
+    const info12x36  = document.getElementById('escala-12x36-info');
+    if (!sel) return;
 
+    // ── Atualiza visibilidade dos blocos conforme o tipo selecionado ──────────
     const toggle = () => {
-        const isAlt = sel.value === 'alternada';
-        bloco.style.display = isAlt ? '' : 'none';
-    };
-    sel.addEventListener('change', toggle);
-    toggle(); // aplica no carregamento
+        const tipo    = sel.value;
+        const isAlt   = tipo === 'alternada';
+        const isCtrl  = tipo === 'controle_jornada';
+        const isLivre = tipo === 'livre';
 
-    // Clique nos dias da Semana A e B
+        // Bloco de escala alternada (Semana A / B)
+        if (blocoAlt) blocoAlt.style.display = isAlt ? '' : 'none';
+
+        // Bloco de jornada (descanso, 12x36, carga mensal)
+        if (blocoJorn) blocoJorn.style.display = (isAlt || isCtrl) ? '' : 'none';
+
+        // Checkbox 12x36 só aparece para escala alternada
+        if (wrap12x36) wrap12x36.style.display = isAlt ? '' : 'none';
+
+        // Carga mensal só aparece para alternada
+        if (wrapMensal) wrapMensal.style.display = isAlt ? '' : 'none';
+
+        // Regras automáticas por tipo
+        if (isAlt) {
+            // Escala alternada: carga diária padrão 12h, descanso 36h
+            if (inpCargaH && (inpCargaH.value == 8 || !inpCargaH.value)) inpCargaH.value = 12;
+            if (inpDescanso && !inpDescanso.value) inpDescanso.value = 36;
+        } else if (isCtrl) {
+            // Controle de jornada: descanso mínimo CLT 11h
+            if (inpDescanso && !inpDescanso.value) inpDescanso.value = 11;
+        } else if (isLivre) {
+            // Livre: sem restrições
+            if (inpDescanso) inpDescanso.value = '';
+        }
+
+        // Atualiza carga mensal automaticamente
+        _atualizarCargaMensal();
+    };
+
+    sel.addEventListener('change', toggle);
+    toggle();
+
+    // ── Checkbox 12x36 ────────────────────────────────────────────────────────
+    chk12x36?.addEventListener('change', () => {
+        const is12x36 = chk12x36.checked;
+        if (is12x36) {
+            if (inpCargaH)  inpCargaH.value  = 12;
+            if (inpDescanso) inpDescanso.value = 36;
+        } else {
+            if (inpDescanso) inpDescanso.value = 11;
+        }
+        if (info12x36) info12x36.style.display = is12x36 ? '' : 'none';
+        _atualizarCargaMensal();
+    });
+
+    // ── Atualiza carga mensal ao mudar carga diária ───────────────────────────
+    inpCargaH?.addEventListener('input', _atualizarCargaMensal);
+
+    // ── Clique nos dias da Semana A e B ───────────────────────────────────────
     ['escala-alt-semana-a', 'escala-alt-semana-b'].forEach(gridId => {
         document.getElementById(gridId)?.querySelectorAll('.dia-tag').forEach(tag => {
             tag.addEventListener('click', () => tag.classList.toggle('ativo'));
         });
     });
+}
+
+/**
+ * Atualiza automaticamente a carga mensal estimada para escala alternada.
+ * Regra: ~15 dias/mês × carga diária (para 12x36 = 15 × 12h = 180h)
+ */
+function _atualizarCargaMensal() {
+    const tipo      = document.getElementById('escala-tipo')?.value;
+    const inpCargaH = document.getElementById('escala-carga-h');
+    const inpMensal = document.getElementById('escala-carga-mensal-h');
+    if (tipo !== 'alternada' || !inpCargaH || !inpMensal) return;
+    const cargaDiaria = parseFloat(inpCargaH.value) || 12;
+    inpMensal.value = Math.round(cargaDiaria * 15 * 2) / 2; // arredonda para 0.5
 }
 
 /**

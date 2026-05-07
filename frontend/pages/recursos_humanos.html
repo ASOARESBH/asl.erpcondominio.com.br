@@ -420,9 +420,9 @@
             <label>Tipo de carga</label>
             <select id="escala-tipo">
               <option value="livre">Livre (sem controle)</option>
-          <option value="controle_jornada">Controle de Jornada</option>
-          <option value="alternada">Escala Alternada (12x alternado)</option>
-        </select>
+              <option value="controle_jornada">Controle de Jornada</option>
+              <option value="alternada">Escala Alternada (12x alternado)</option>
+            </select>
           </div>
           <div>
             <label>Carga diária (horas)</label>
@@ -465,6 +465,29 @@
           <div>
             <label>Intervalo almoço (min)</label>
             <input type="number" id="escala-intervalo" value="60" min="0" max="180">
+          </div>
+        </div>
+
+        <!-- ── BLOCO REGIME 12x36 / DESCANSO (visível para alternada e controle_jornada) ── -->
+        <div id="escala-jornada-bloco" style="display:none;margin-top:12px;">
+          <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">
+            <div id="escala-12x36-wrap" style="display:none;">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="escala-regime-12x36" style="width:16px;height:16px;">
+                <span>Regime 12x36</span>
+              </label>
+              <small style="color:#64748b;font-size:11px;">Ativa regras de 36h de descanso entre jornadas e carga mensal automática (~15 dias/mês)</small>
+            </div>
+            <div id="escala-carga-mensal-wrap" style="display:none;">
+              <label>Carga mensal (horas)</label>
+              <input type="number" id="escala-carga-mensal-h" min="1" max="744" step="0.5" placeholder="Ex: 180">
+              <small style="color:#64748b;font-size:11px;">Total de horas esperadas no mês (calculado automaticamente para 12x36)</small>
+            </div>
+            <div>
+              <label>Descanso entre jornadas (horas)</label>
+              <input type="number" id="escala-descanso-h" min="0" max="72" step="0.5" placeholder="Ex: 11">
+              <small style="color:#64748b;font-size:11px;">Mínimo: 11h (CLT) | 12x36: 36h obrigatório</small>
+            </div>
           </div>
         </div>
 
@@ -518,9 +541,13 @@
             </div>
           </div>
 
-          <div style="margin-top:10px;padding:10px;background:#e0f2fe;border-radius:8px;font-size:12px;color:#0369a1;">
+          <div id="escala-alt-info" style="margin-top:10px;padding:10px;background:#e0f2fe;border-radius:8px;font-size:12px;color:#0369a1;">
             <i class="fas fa-info-circle"></i>
             <strong>Como funciona:</strong> O sistema identifica a semana de cada dia do mês e alterna automaticamente entre Semana A e Semana B. Dias fora do padrão da semana ativa são marcados com o tipo de folga configurado. Você pode alterar o tipo de qualquer dia diretamente no Registro de Ponto.
+          </div>
+          <div id="escala-12x36-info" style="display:none;margin-top:10px;padding:10px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Regime 12x36 ativo:</strong> O funcionário trabalha 12 horas seguidas e descansa 36 horas. A carga mensal é calculada automaticamente (~15 dias × 12h = 180h/mês). O sistema validará o descanso mínimo de 36h entre jornadas no Registro de Ponto.
           </div>
         </div>
 
