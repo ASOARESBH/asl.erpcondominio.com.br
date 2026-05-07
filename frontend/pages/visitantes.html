@@ -62,15 +62,9 @@
                 </div>
             </div>
 
-            <!-- BLOCO 3: Veículo -->
-            <div class="form-section-title">Veículo</div>
+            <!-- Observação -->
             <div class="form-grid form-grid-3">
-                <div class="form-group">
-                    <label for="placaVeiculo">Placa do Veículo</label>
-                    <input type="text" id="placaVeiculo" placeholder="ABC-1D23"
-                           maxlength="8" autocomplete="off" style="text-transform:uppercase">
-                </div>
-                <div class="form-group">
+                <div class="form-group" style="grid-column: 1 / -1;">
                     <label for="observacaoVisitante">Observação</label>
                     <input type="text" id="observacaoVisitante" placeholder="Informações adicionais">
                 </div>
@@ -127,37 +121,6 @@
                 </div>
             </div>
 
-            <!-- BLOCO 5: Acesso (datas, unidade) -->
-            <div class="form-section-title">Registro de Acesso</div>
-            <div class="form-grid form-grid-3">
-                <div class="form-group">
-                    <label for="dataEntrada">Data de Entrada *</label>
-                    <input type="datetime-local" id="dataEntrada" required>
-                </div>
-                <div class="form-group">
-                    <label for="dataSaida">Data de Saída *</label>
-                    <input type="datetime-local" id="dataSaida" required>
-                </div>
-                <div class="form-group">
-                    <label for="unidadeVisitada">Unidade Visitada *</label>
-                    <select id="unidadeVisitada" required>
-                        <option value="">Selecione a unidade...</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-grid form-grid-2">
-                <div class="form-group">
-                    <label for="moradorVisitado">Morador Visitado *</label>
-                    <select id="moradorVisitado" required disabled>
-                        <option value="">Selecione a unidade primeiro</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="placaAcessoVisitante">Placa do Veículo (acesso)</label>
-                    <input type="text" id="placaAcessoVisitante" placeholder="ABC-1D23"
-                           maxlength="8" style="text-transform:uppercase">
-                </div>
-            </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn-primary-modern" id="btnSalvarVisitante">
@@ -170,12 +133,12 @@
         </form>
     </div>
 
-    <!-- ===== LISTA DE ACESSOS ===== -->
+    <!-- ===== LISTA DE VISITANTES CADASTRADOS ===== -->
     <div class="page-card">
-        <h2><i class="fas fa-list"></i> Histórico de Acessos</h2>
+        <h2><i class="fas fa-list"></i> Visitantes Cadastrados</h2>
 
         <div class="search-box">
-            <input type="text" id="searchVisitante" placeholder="Pesquisar por nome, documento, unidade ou placa...">
+            <input type="text" id="searchVisitante" placeholder="Pesquisar por nome, documento ou telefone...">
             <button class="btn-primary-modern" type="button" id="btnBuscarVisitante">
                 <i class="fas fa-search"></i> Buscar
             </button>
@@ -193,12 +156,11 @@
                         <th>ID</th>
                         <th>Foto</th>
                         <th>Nome</th>
+                        <th>Tipo Doc.</th>
                         <th>Documento</th>
                         <th>Telefone</th>
-                        <th>Placa</th>
-                        <th>Unidade</th>
-                        <th>Entrada</th>
-                        <th>Saída</th>
+                        <th>Doc. Digitalizado</th>
+                        <th>Ativo</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
