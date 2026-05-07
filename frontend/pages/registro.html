@@ -4,7 +4,7 @@
 <div class="page-wrapper page-registro">
     <div class="page-header">
         <h1>Registro Manual</h1>
-        <p>Lancamento manual de entradas e saidas de acesso</p>
+        <p>Lançamento manual de entradas e saídas de acesso</p>
     </div>
 
     <div id="alertBox"></div>
@@ -14,23 +14,31 @@
 
         <div class="info-box">
             <i class="fas fa-info-circle"></i>
-            <strong>Registro Manual:</strong> use para visitantes, prestadores ou morador sem leitura automatica.
+            <strong>Registro Manual:</strong> use para visitantes, prestadores ou morador sem leitura automática.
+            Para <strong>Visitante</strong> ou <strong>Prestador</strong>, informe o RG ou CPF para buscar o cadastro automaticamente.
         </div>
 
+        <!-- Box de veículo encontrado (morador) -->
         <div id="veiculoEncontrado" class="veiculo-encontrado" style="display:none;"></div>
+
+        <!-- Box de visitante/prestador encontrado -->
+        <div id="visitanteEncontrado" class="visitante-encontrado" style="display:none;"></div>
 
         <form id="registroForm">
             <input type="hidden" id="moradorId">
             <input type="hidden" id="veiculoId">
+            <input type="hidden" id="visitanteIdRegistro">
 
-            <div class="form-grid">
+            <!-- LINHA 1: Data/Hora, Placa, Tipo -->
+            <div class="form-grid reg-grid-3">
                 <div>
                     <label>Data e Hora *</label>
                     <input type="datetime-local" id="dataHoraRegistro" required>
                 </div>
                 <div>
                     <label>Placa *</label>
-                    <input type="text" id="placaRegistro" maxlength="8" required placeholder="ABC1D23">
+                    <input type="text" id="placaRegistro" maxlength="8" required placeholder="ABC-1D23"
+                           autocomplete="off" style="text-transform:uppercase">
                 </div>
                 <div>
                     <label>Tipo *</label>
@@ -43,7 +51,8 @@
                 </div>
             </div>
 
-            <div class="form-grid">
+            <!-- LINHA 2: Modelo, Cor, Observação -->
+            <div class="form-grid reg-grid-3">
                 <div>
                     <label>Modelo</label>
                     <input type="text" id="modeloRegistro" placeholder="Ex: Corolla">
@@ -53,23 +62,63 @@
                     <input type="text" id="corRegistro" placeholder="Ex: Prata">
                 </div>
                 <div>
-                    <label>Observacao</label>
-                    <input type="text" id="observacaoRegistro" placeholder="Observacoes adicionais">
+                    <label>Observação</label>
+                    <input type="text" id="observacaoRegistro" placeholder="Observações adicionais">
                 </div>
             </div>
 
-            <div id="extraCampos" class="form-grid" style="display:none;">
-                <div>
-                    <label>Nome do Visitante/Prestador</label>
-                    <input type="text" id="nomeVisitanteRegistro" placeholder="Nome completo">
+            <!-- BLOCO VISITANTE / PRESTADOR (exibido ao selecionar esses tipos) -->
+            <div id="extraCampos" style="display:none;">
+
+                <!-- Busca por documento -->
+                <div class="form-section-title-reg">
+                    <i class="fas fa-id-card"></i> Identificação do Visitante / Prestador
                 </div>
-                <div>
-                    <label>Unidade de Destino</label>
-                    <input type="text" id="unidadeDestinoRegistro" placeholder="Ex: Gleba 93">
+                <div class="form-grid reg-grid-3">
+                    <div>
+                        <label>Tipo de Documento *</label>
+                        <select id="tipoDocRegistro">
+                            <option value="CPF">CPF</option>
+                            <option value="RG">RG</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Número do Documento *</label>
+                        <div style="display:flex; gap:6px; align-items:flex-end;">
+                            <input type="text" id="documentoRegistro" placeholder="000.000.000-00"
+                                   inputmode="numeric" autocomplete="off" style="flex:1">
+                            <button type="button" class="btn-buscar-doc" id="btnBuscarDocRegistro" title="Buscar cadastro">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Nome *</label>
+                        <input type="text" id="nomeVisitanteRegistro" placeholder="Nome completo" required>
+                    </div>
                 </div>
-                <div>
-                    <label>Dias de Permanencia</label>
-                    <input type="number" id="diasPermanenciaRegistro" min="1" placeholder="Ex: 1">
+
+                <!-- Unidade e Morador (obrigatórios para visitante/prestador) -->
+                <div class="form-section-title-reg">
+                    <i class="fas fa-home"></i> Destino
+                </div>
+                <div class="form-grid reg-grid-3">
+                    <div>
+                        <label>Unidade *</label>
+                        <select id="unidadeDestinoRegistro" required>
+                            <option value="">Selecione a unidade...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Morador *</label>
+                        <select id="moradorDestinoRegistro" required disabled>
+                            <option value="">Selecione a unidade primeiro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Dias de Permanência</label>
+                        <input type="number" id="diasPermanenciaRegistro" min="1" placeholder="Ex: 1">
+                    </div>
                 </div>
             </div>
 
@@ -111,7 +160,7 @@
                         <th>Nome</th>
                         <th>Unidade</th>
                         <th>Status</th>
-                        <th>Acoes</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -119,3 +168,40 @@
         </div>
     </div>
 </div>
+
+<style>
+.reg-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 768px) { .reg-grid-3 { grid-template-columns: 1fr; } }
+.form-section-title-reg {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #4a90d9;
+    border-bottom: 2px solid #e8f0fe;
+    padding-bottom: 5px;
+    margin: 16px 0 10px;
+}
+.btn-buscar-doc {
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.btn-buscar-doc:hover { background: #357abd; }
+.visitante-encontrado {
+    background: #e8f5e9;
+    border: 1px solid #81c784;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: #2e7d32;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+</style>

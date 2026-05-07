@@ -1,63 +1,178 @@
 <!-- Page Metadata -->
 <div id="page-metadata" data-title="Visitantes" data-icon="fa-user-friends" style="display:none;"></div>
 
-<!-- Modern Page Wrapper -->
 <div class="page-wrapper page-visitantes">
 
     <!-- Page Header -->
     <div class="page-header">
         <h1>Visitantes</h1>
-        <p>Registro e historico de visitas do condominio</p>
+        <p>Cadastro e histórico de visitas do condomínio</p>
     </div>
 
+    <!-- ===== FORMULÁRIO DE CADASTRO ===== -->
     <div class="page-card">
-        <h2>Cadastro de Acesso de Visitante</h2>
-        <form id="visitanteForm">
-            <input type="hidden" id="acessoId" value="">
+        <h2 id="tituloFormVisitante"><i class="fas fa-user-plus"></i> Cadastro de Visitante</h2>
 
-            <div class="form-grid">
-                <div>
-                    <label>Nome Completo *</label>
-                    <input type="text" id="nomeVisitante" required placeholder="Ex: Maria Souza">
+        <div id="alertBoxVisitante"></div>
+
+        <form id="visitanteForm" novalidate>
+            <input type="hidden" id="visitanteId" value="">
+
+            <!-- BLOCO 1: Identificação -->
+            <div class="form-section-title">Identificação</div>
+            <div class="form-grid form-grid-3">
+                <div class="form-group">
+                    <label for="nomeVisitante">Nome Completo *</label>
+                    <input type="text" id="nomeVisitante" required placeholder="Ex: Maria da Silva"
+                           autocomplete="off" autocapitalize="words">
                 </div>
-                <div>
-                    <label>Documento *</label>
-                    <input type="text" id="documento" required placeholder="RG ou CPF">
+
+                <div class="form-group">
+                    <label for="tipoDocumento">Tipo de Documento *</label>
+                    <select id="tipoDocumento" required>
+                        <option value="CPF">CPF</option>
+                        <option value="RG">RG</option>
+                    </select>
                 </div>
-                <div>
-                    <label>Unidade Visitada *</label>
-                    <input type="text" id="unidadeVisitada" required placeholder="Ex: Bloco B - 304">
+
+                <div class="form-group">
+                    <label for="documento">Número do Documento *</label>
+                    <input type="text" id="documento" required placeholder="000.000.000-00"
+                           autocomplete="off" inputmode="numeric">
                 </div>
             </div>
 
-            <div class="form-grid">
-                <div>
-                    <label>Data Entrada *</label>
-                    <input type="date" id="dataEntrada" required>
+            <!-- BLOCO 2: Contato -->
+            <div class="form-section-title">Contato</div>
+            <div class="form-grid form-grid-3">
+                <div class="form-group">
+                    <label for="telefoneContato">Telefone de Contato *</label>
+                    <input type="tel" id="telefoneContato" required placeholder="(00) 00000-0000"
+                           inputmode="numeric" maxlength="15">
                 </div>
-                <div>
-                    <label>Data Saida *</label>
-                    <input type="date" id="dataSaida" required>
+                <div class="form-group">
+                    <label for="celularVisitante">Celular</label>
+                    <input type="tel" id="celularVisitante" placeholder="(00) 00000-0000"
+                           inputmode="numeric" maxlength="15">
                 </div>
-                <div>
-                    <label>Placa do Veiculo</label>
-                    <input type="text" id="veiculoVisitante" placeholder="Ex: ABC1D23">
+                <div class="form-group">
+                    <label for="emailVisitante">E-mail</label>
+                    <input type="email" id="emailVisitante" placeholder="email@exemplo.com"
+                           autocapitalize="none" autocorrect="off">
+                </div>
+            </div>
+
+            <!-- BLOCO 3: Veículo -->
+            <div class="form-section-title">Veículo</div>
+            <div class="form-grid form-grid-3">
+                <div class="form-group">
+                    <label for="placaVeiculo">Placa do Veículo</label>
+                    <input type="text" id="placaVeiculo" placeholder="ABC-1D23"
+                           maxlength="8" autocomplete="off" style="text-transform:uppercase">
+                </div>
+                <div class="form-group">
+                    <label for="observacaoVisitante">Observação</label>
+                    <input type="text" id="observacaoVisitante" placeholder="Informações adicionais">
+                </div>
+            </div>
+
+            <!-- BLOCO 4: Foto e Documento -->
+            <div class="form-section-title">Foto e Documento</div>
+            <div class="form-grid form-grid-2">
+                <!-- Foto do visitante -->
+                <div class="form-group upload-group">
+                    <label>Foto do Visitante</label>
+                    <div class="upload-preview-box" id="fotoPreviewBox">
+                        <img id="fotoPreview" src="" alt="Foto do visitante" style="display:none; max-width:120px; max-height:120px; border-radius:8px; object-fit:cover;">
+                        <div id="fotoPlaceholder" class="upload-placeholder">
+                            <i class="fas fa-camera fa-2x"></i>
+                            <span>Clique para adicionar foto</span>
+                        </div>
+                    </div>
+                    <input type="file" id="fotoInput" accept="image/jpeg,image/png,image/webp" style="display:none">
+                    <div class="upload-actions">
+                        <button type="button" class="btn-upload" id="btnSelecionarFoto">
+                            <i class="fas fa-camera"></i> Selecionar Foto
+                        </button>
+                        <button type="button" class="btn-upload-remove" id="btnRemoverFoto" style="display:none">
+                            <i class="fas fa-times"></i> Remover
+                        </button>
+                    </div>
+                    <small class="upload-hint">JPG, PNG ou WEBP — máx. 5MB</small>
+                </div>
+
+                <!-- Documento digitalizado -->
+                <div class="form-group upload-group">
+                    <label>Documento Digitalizado</label>
+                    <div class="upload-preview-box" id="docPreviewBox">
+                        <div id="docPreview" style="display:none; padding:10px; text-align:center;">
+                            <i class="fas fa-file-alt fa-3x" style="color:#4a90d9;"></i>
+                            <p id="docNomeArquivo" style="font-size:12px; margin-top:5px; word-break:break-all;"></p>
+                        </div>
+                        <div id="docPlaceholder" class="upload-placeholder">
+                            <i class="fas fa-file-upload fa-2x"></i>
+                            <span>Clique para importar documento</span>
+                        </div>
+                    </div>
+                    <input type="file" id="docInput" accept="image/jpeg,image/png,image/webp,application/pdf" style="display:none">
+                    <div class="upload-actions">
+                        <button type="button" class="btn-upload" id="btnSelecionarDoc">
+                            <i class="fas fa-file-upload"></i> Importar Documento
+                        </button>
+                        <button type="button" class="btn-upload-remove" id="btnRemoverDoc" style="display:none">
+                            <i class="fas fa-times"></i> Remover
+                        </button>
+                    </div>
+                    <small class="upload-hint">JPG, PNG, WEBP ou PDF — máx. 5MB</small>
+                </div>
+            </div>
+
+            <!-- BLOCO 5: Acesso (datas, unidade) -->
+            <div class="form-section-title">Registro de Acesso</div>
+            <div class="form-grid form-grid-3">
+                <div class="form-group">
+                    <label for="dataEntrada">Data de Entrada *</label>
+                    <input type="datetime-local" id="dataEntrada" required>
+                </div>
+                <div class="form-group">
+                    <label for="dataSaida">Data de Saída *</label>
+                    <input type="datetime-local" id="dataSaida" required>
+                </div>
+                <div class="form-group">
+                    <label for="unidadeVisitada">Unidade Visitada *</label>
+                    <select id="unidadeVisitada" required>
+                        <option value="">Selecione a unidade...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-grid form-grid-2">
+                <div class="form-group">
+                    <label for="moradorVisitado">Morador Visitado *</label>
+                    <select id="moradorVisitado" required disabled>
+                        <option value="">Selecione a unidade primeiro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="placaAcessoVisitante">Placa do Veículo (acesso)</label>
+                    <input type="text" id="placaAcessoVisitante" placeholder="ABC-1D23"
+                           maxlength="8" style="text-transform:uppercase">
                 </div>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn-primary-modern" id="btnSalvarVisitante">
-                    <i class="fas fa-save"></i> Salvar Acesso
+                    <i class="fas fa-save"></i> Salvar Visitante
                 </button>
-                <button type="button" class="btn-secondary-modern" id="btnCancelarEdicao" style="display:none;">
-                    <i class="fas fa-times"></i> Cancelar Edicao
+                <button type="button" class="btn-secondary-modern" id="btnCancelarEdicaoVisitante" style="display:none;">
+                    <i class="fas fa-times"></i> Cancelar Edição
                 </button>
             </div>
         </form>
     </div>
 
+    <!-- ===== LISTA DE ACESSOS ===== -->
     <div class="page-card">
-        <h2>Lista de Acessos de Visitantes</h2>
+        <h2><i class="fas fa-list"></i> Histórico de Acessos</h2>
 
         <div class="search-box">
             <input type="text" id="searchVisitante" placeholder="Pesquisar por nome, documento, unidade ou placa...">
@@ -76,12 +191,15 @@
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Foto</th>
                         <th>Nome</th>
                         <th>Documento</th>
+                        <th>Telefone</th>
+                        <th>Placa</th>
                         <th>Unidade</th>
                         <th>Entrada</th>
-                        <th>Saida</th>
-                        <th>Acoes</th>
+                        <th>Saída</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -90,3 +208,76 @@
     </div>
 
 </div>
+
+<style>
+/* ===== ESTILOS DO MÓDULO VISITANTES v2 ===== */
+.form-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #4a90d9;
+    border-bottom: 2px solid #e8f0fe;
+    padding-bottom: 6px;
+    margin: 18px 0 12px;
+}
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+@media (max-width: 768px) {
+    .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+}
+.upload-group { display: flex; flex-direction: column; gap: 8px; }
+.upload-preview-box {
+    border: 2px dashed #c5d5e8;
+    border-radius: 10px;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8faff;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    padding: 10px;
+}
+.upload-preview-box:hover { border-color: #4a90d9; }
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: #8aa3c0;
+    font-size: 13px;
+}
+.upload-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-upload {
+    background: #4a90d9;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.btn-upload:hover { background: #357abd; }
+.btn-upload-remove {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.upload-hint { font-size: 11px; color: #8aa3c0; }
+.foto-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e0e8f5;
+}
+.doc-link { color: #4a90d9; font-size: 12px; }
+</style>

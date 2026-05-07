@@ -84,10 +84,12 @@ if ($metodo === 'POST') {
         retornar_json(false, "Tipo inválido");
     }
     
-    $morador_id = null;
-    $tag = null;
-    $liberado = 0;
-    $status = '';
+    $morador_id      = isset($dados['morador_id']) && $dados['morador_id'] ? intval($dados['morador_id']) : null;
+    $visitante_id    = isset($dados['visitante_id']) && $dados['visitante_id'] ? intval($dados['visitante_id']) : null;
+    $documento       = sanitizar($conexao, $dados['documento'] ?? '');
+    $tag             = null;
+    $liberado        = 0;
+    $status          = '';
     
     // Se for morador, buscar no banco
     if ($tipo === 'Morador') {
@@ -114,18 +116,22 @@ if ($metodo === 'POST') {
     } else {
         // Visitante ou Prestador
         $status = "🟨 Registro manual - $tipo";
-        $liberado = 1; // Pode ser liberado manualmente
+        $liberado = 1;
+        // Se morador_id foi passado (morador visitado), usar como referência
+        // morador_id já foi definido acima a partir de $dados['morador_id']
     }
     
     // Inserir registro
     $stmt = $conexao->prepare("INSERT INTO registros_acesso 
                               (data_hora, placa, modelo, cor, tag, tipo, morador_id, 
-                               nome_visitante, unidade_destino, dias_permanencia, status, liberado, observacao) 
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                               nome_visitante, unidade_destino, dias_permanencia, status, liberado, observacao,
+                               visitante_id, documento_visitante) 
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
-    $stmt->bind_param("ssssssississs", 
+    $stmt->bind_param("ssssssississsis", 
         $data_hora, $placa, $modelo, $cor, $tag, $tipo, $morador_id,
-        $nome_visitante, $unidade_destino, $dias_permanencia, $status, $liberado, $observacao
+        $nome_visitante, $unidade_destino, $dias_permanencia, $status, $liberado, $observacao,
+        $visitante_id, $documento
     );
     
     if ($stmt->execute()) {
