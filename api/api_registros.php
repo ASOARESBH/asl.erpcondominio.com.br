@@ -151,10 +151,11 @@ if ($metodo === 'POST') {
     // Colunas base (sempre presentes)
     $cols   = 'data_hora, placa, modelo, cor, tag, tipo, morador_id, nome_visitante, unidade_destino, dias_permanencia, status, liberado, observacao';
     $marks  = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
-    $types  = 'ssssssissisisi';
+    $types  = 'ssssssissisis';
     //          s=data_hora, s=placa, s=modelo, s=cor, s=tag, s=tipo,
     //          i=morador_id, s=nome_visitante, s=unidade_destino,
     //          i=dias_permanencia, s=status, i=liberado, s=observacao
+    // Total: 13 tipos para 13 parâmetros
     $params = [
         &$data_hora, &$placa, &$modelo, &$cor, &$tag, &$tipo,
         &$morador_id, &$nome_visitante, &$unidade_destino,
