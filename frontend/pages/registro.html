@@ -25,9 +25,9 @@
         <div id="visitanteEncontrado" class="visitante-encontrado" style="display:none;"></div>
 
         <form id="registroForm">
-            <input type="hidden" id="moradorId">
-            <input type="hidden" id="veiculoId">
-            <input type="hidden" id="visitanteIdRegistro">
+            <input type="hidden" id="moradorId" name="moradorId">
+            <input type="hidden" id="veiculoId" name="veiculoId">
+            <input type="hidden" id="visitanteIdRegistro" name="visitanteIdRegistro">
 
             <!-- LINHA 1: Data/Hora, Placa, Tipo -->
             <div class="form-grid reg-grid-3">
@@ -94,7 +94,7 @@
                     </div>
                     <div>
                         <label>Nome *</label>
-                        <input type="text" id="nomeVisitanteRegistro" placeholder="Nome completo" required>
+                        <input type="text" id="nomeVisitanteRegistro" name="nomeVisitante" placeholder="Nome completo">
                     </div>
                 </div>
 
@@ -105,13 +105,13 @@
                 <div class="form-grid reg-grid-3">
                     <div>
                         <label>Unidade *</label>
-                        <select id="unidadeDestinoRegistro" required>
+                        <select id="unidadeDestinoRegistro" name="unidadeDestino">
                             <option value="">Selecione a unidade...</option>
                         </select>
                     </div>
                     <div>
                         <label>Morador *</label>
-                        <select id="moradorDestinoRegistro" required disabled>
+                        <select id="moradorDestinoRegistro" name="moradorDestino" disabled>
                             <option value="">Selecione a unidade primeiro</option>
                         </select>
                     </div>
