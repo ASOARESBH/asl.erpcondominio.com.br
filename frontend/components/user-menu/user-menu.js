@@ -1,7 +1,12 @@
 /**
  * Componente <app-user-menu>
- * UI 100% Passiva: Reage exclusivamente ao SessionManagerCore.
- * Nenhuma requisição de API; Nenhum id global atrelado; Sem polling.
+ * UI 100% Passiva: Reage exclusivamente ao SessionManagerCore v3.0.
+ *
+ * ATUALIZADO v3.0 (2026-05-10):
+ *   • Exibe nome do usuário logado e unidade (portal do morador)
+ *   • Countdown em tempo real (via evento countdownTick do SessionManager)
+ *   • Aviso visual (vermelho) quando restam ≤ 5 minutos
+ *   • Fallback: lê dados do localStorage se SessionManager não estiver pronto
  */
 
 class AppUserMenu extends HTMLElement {
@@ -9,16 +14,10 @@ class AppUserMenu extends HTMLElement {
         super();
         this.unsubscribeFunctions = [];
         this.sessionManager = null;
-
-        // Elementos internos da UI
         this.ui = {
-            avatar: null,
-            name: null,
-            countdown: null,
-            dropdown: null,
-            toggleBtn: null,
-            perfilBtn: null,
-            logoutBtn: null
+            avatar: null, name: null, subinfo: null,
+            countdown: null, dropdown: null,
+            toggleBtn: null, perfilBtn: null, logoutBtn: null,
         };
     }
 
@@ -26,36 +25,28 @@ class AppUserMenu extends HTMLElement {
         this.renderTemplate();
         this.bindUiElements();
         this.setupEventListeners();
-
-        // Inicializar com estado estritamente via sessionManager
         this.initSessionIntegration();
     }
 
     disconnectedCallback() {
-        // Limpar listeners do SessionManager
         this.unsubscribeFunctions.forEach(unsub => unsub());
         this.unsubscribeFunctions = [];
     }
 
     renderTemplate() {
-        // Utiliza classes isoladas, sem IDs prementes duplicados.
         this.innerHTML = `
             <div class="app-user-menu-container">
-                <div class="user-avatar" title="Perfil">U</div>
-                
+                <div class="user-avatar" title="Perfil">?</div>
                 <div class="user-info">
                     <span class="user-name">Carregando...</span>
-                    <!-- Opcional tooltip/title com session info -->
+                    <span class="user-subinfo"></span>
                     <span class="session-countdown" title="Tempo restante na sessão"></span>
                 </div>
-
                 <div class="user-dropdown">
                     <button class="menu-toggle" aria-label="Abrir menu do usuário" title="Opções">
                         <i class="fas fa-chevron-down"></i>
                     </button>
-
                     <div class="dropdown-menu">
-                        <!-- Botões com data-action, listeners controlados no JS -->
                         <button data-action="perfil">
                             <i class="fas fa-user-circle"></i> Meu Perfil
                         </button>
@@ -70,39 +61,31 @@ class AppUserMenu extends HTMLElement {
     }
 
     bindUiElements() {
-        this.ui.avatar = this.querySelector('.user-avatar');
-        this.ui.name = this.querySelector('.user-name');
+        this.ui.avatar    = this.querySelector('.user-avatar');
+        this.ui.name      = this.querySelector('.user-name');
+        this.ui.subinfo   = this.querySelector('.user-subinfo');
         this.ui.countdown = this.querySelector('.session-countdown');
-        this.ui.dropdown = this.querySelector('.dropdown-menu');
+        this.ui.dropdown  = this.querySelector('.dropdown-menu');
         this.ui.toggleBtn = this.querySelector('.menu-toggle');
         this.ui.perfilBtn = this.querySelector('[data-action="perfil"]');
         this.ui.logoutBtn = this.querySelector('[data-action="logout"]');
     }
 
     setupEventListeners() {
-        // Dropdown toggle
         if (this.ui.toggleBtn) {
             this.ui.toggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.toggleDropdown();
             });
         }
-
-        // Fechar dropdown ao clicar fora
         document.addEventListener('click', (e) => {
             if (this.ui.dropdown && this.ui.dropdown.classList.contains('active')) {
-                if (!this.contains(e.target)) {
-                    this.closeDropdown();
-                }
+                if (!this.contains(e.target)) this.closeDropdown();
             }
         });
-
-        // Ações dos botões
         if (this.ui.perfilBtn) {
             this.ui.perfilBtn.addEventListener('click', () => {
-                // Navegar para configurações / perfil (usando o AppRouter global ou loc.href base)
                 if (window.AppRouter && typeof window.AppRouter.loadPage === 'function') {
-                    // Layout base SPA
                     window.AppRouter.loadPage('configuracao');
                 } else {
                     window.location.href = 'layout-base.html?page=configuracao';
@@ -110,12 +93,9 @@ class AppUserMenu extends HTMLElement {
                 this.closeDropdown();
             });
         }
-
         if (this.ui.logoutBtn) {
             this.ui.logoutBtn.addEventListener('click', () => {
-                if (this.sessionManager) {
-                    this.sessionManager.logout(); // Delega a ação para o centralizador
-                }
+                if (this.sessionManager) this.sessionManager.logout();
                 this.closeDropdown();
             });
         }
@@ -124,7 +104,7 @@ class AppUserMenu extends HTMLElement {
     toggleDropdown() {
         if (this.ui.dropdown) {
             this.ui.dropdown.classList.toggle('active');
-            const icon = this.ui.toggleBtn.querySelector('i');
+            const icon = this.ui.toggleBtn ? this.ui.toggleBtn.querySelector('i') : null;
             if (icon) {
                 if (this.ui.dropdown.classList.contains('active')) {
                     icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
@@ -138,119 +118,130 @@ class AppUserMenu extends HTMLElement {
     closeDropdown() {
         if (this.ui.dropdown) {
             this.ui.dropdown.classList.remove('active');
-            const icon = this.ui.toggleBtn.querySelector('i');
-            if (icon) {
-                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-            }
+            const icon = this.ui.toggleBtn ? this.ui.toggleBtn.querySelector('i') : null;
+            if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
         }
     }
 
-    /**
-     * INTEGRAÇÃO PASSIVA (SessionManagerCore)
-     */
     async initSessionIntegration() {
         if (typeof window.SessionManagerCore === 'undefined') {
-            console.warn('[AppUserMenu] ⚠️ SessionManagerCore não encontrado no escopo global.');
+            console.warn('[AppUserMenu] ⚠️ SessionManagerCore não encontrado.');
+            this._carregarDadosLocalStorage();
             return;
         }
 
         this.sessionManager = SessionManagerCore.getInstance();
 
         try {
-            // Aguardar manager terminar bootstrap incial sem fazer novo fetch()
             if (this.sessionManager.initializationPromise) {
                 await this.sessionManager.initializationPromise;
             }
 
-            // Povoar UI inicialmente (GETS síncronos da memória local mantida pelo Manager)
             if (this.sessionManager.isLoggedIn()) {
-                const currentUser = this.sessionManager.getUser();
-                const expireTime = this.sessionManager.getSessionExpireTime();
-                this.updateUI(currentUser, expireTime);
+                this.updateUI(this.sessionManager.getUser(), this.sessionManager.getSessionExpireTime());
+            } else {
+                this._carregarDadosLocalStorage();
             }
 
-            // Registrar os observers passivos
+            // Ouvir mudanças completas (verificação com API)
             const unsubData = this.sessionManager.on('userDataChanged', (dados) => {
-                const user = dados.user || dados.usuario;
+                const user   = dados.user || dados.usuario;
                 const expire = dados.expireTime || dados.tempo_restante;
                 this.updateUI(user, expire);
             });
 
+            // Ouvir tick do countdown (a cada segundo — sem fetch)
+            const unsubTick = this.sessionManager.on('countdownTick', (dados) => {
+                this.updateCountdown(dados.segundos, dados.aviso);
+            });
+
+            // Ouvir renovação
             const unsubRenew = this.sessionManager.on('sessionRenewed', (dados) => {
-                const user = dados.user || dados.usuario || this.sessionManager.getUser();
+                const user   = dados.user || dados.usuario || this.sessionManager.getUser();
                 const expire = dados.expireTime || dados.tempo_restante;
                 this.updateUI(user, expire);
             });
 
-            // Adicionar os unsubs na lista para eventuais desconexões do componente
-            if (unsubData) this.unsubscribeFunctions.push(unsubData);
+            if (unsubData)  this.unsubscribeFunctions.push(unsubData);
+            if (unsubTick)  this.unsubscribeFunctions.push(unsubTick);
             if (unsubRenew) this.unsubscribeFunctions.push(unsubRenew);
 
         } catch (err) {
             console.error('[AppUserMenu] ❌ Erro ao integrar com SessionManager:', err);
+            this._carregarDadosLocalStorage();
         }
     }
 
-    /**
-     * Renderiza e reage aos dados recebidos em memória.
-     * Calcula as iniciais e converte o tempo cru.
-     */
+    _carregarDadosLocalStorage() {
+        try {
+            const nome    = localStorage.getItem('morador_nome')    || localStorage.getItem('usuario_nome') || '';
+            const unidade = localStorage.getItem('morador_unidade') || '';
+            if (nome) this.updateUI({ nome, unidade }, null);
+        } catch (e) {}
+    }
+
     updateUI(userData, expireTimeSeconds) {
         if (!userData) return;
 
         const nomeCompleto = userData.nome || 'Usuário';
+        const unidade      = userData.unidade || userData.departamento || userData.funcao || '';
 
-        // 1. Atualizar visuais do nome da UI restrita
+        // Nome
         if (this.ui.name) {
             this.ui.name.textContent = nomeCompleto;
-            this.ui.name.title = nomeCompleto;
+            this.ui.name.title       = nomeCompleto;
         }
 
-        // 2. Extrair iniciais do Avatar
-        const partesNome = nomeCompleto.trim().split(' ');
-        const primeiroNome = partesNome[0] || '';
-        const sobrenome = partesNome.length > 1 ? partesNome[partesNome.length - 1] : '';
-        const iniciais = (primeiroNome.charAt(0) + (sobrenome.charAt(0) || '')).toUpperCase();
-
-        if (this.ui.avatar) {
-            this.ui.avatar.textContent = iniciais || 'U';
-        }
-
-        // 3. Atualizar o Display Temporal (Passivo: não usa SetInterval)
-        // Como a instrução era "eliminar qualquer setInterval do frontend local e reagir ao estado",
-        // exibimos o último tempo_restante exato que o backend/Session informou na notificação do event listener.
-        if (this.ui.countdown && expireTimeSeconds !== undefined && expireTimeSeconds !== null) {
-            const minutos = Math.floor(expireTimeSeconds / 60);
-            const segundos = expireTimeSeconds % 60;
-            const formato = `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
-
-            this.ui.countdown.textContent = `Sessão ~ ${formato}`;
-
-            // Aviso de tempo crítico (menos de 5 min)
-            if (expireTimeSeconds <= 300) {
-                this.ui.countdown.classList.add('warning');
+        // Subinfo (unidade ou cargo)
+        if (this.ui.subinfo) {
+            if (unidade) {
+                this.ui.subinfo.textContent  = 'Unidade ' + unidade;
+                this.ui.subinfo.style.display = 'block';
             } else {
-                this.ui.countdown.classList.remove('warning');
+                this.ui.subinfo.textContent  = '';
+                this.ui.subinfo.style.display = 'none';
             }
         }
 
-        // 4. CAMADA DE COMPATIBILIDADE (Legado - preenche DOM antigo se existir na tela paralela)
-        // "Para evitar quebra de scripts antigos que procurem por #topUserName"
-        const legacyName = document.querySelector("#topUserName");
-        if (legacyName) {
-            legacyName.textContent = nomeCompleto;
+        // Avatar com iniciais
+        const partes    = nomeCompleto.trim().split(' ');
+        const primeiro  = partes[0] || '';
+        const sobrenome = partes.length > 1 ? partes[partes.length - 1] : '';
+        const iniciais  = (primeiro.charAt(0) + (sobrenome.charAt(0) || '')).toUpperCase();
+        if (this.ui.avatar) this.ui.avatar.textContent = iniciais || 'U';
+
+        // Countdown
+        if (expireTimeSeconds !== undefined && expireTimeSeconds !== null) {
+            this.updateCountdown(expireTimeSeconds, expireTimeSeconds <= 300);
         }
 
-        // Embora sessionManager deva lidar com timeouts em background, 
-        // caso existam scripts legacy esperando a div "sessionCountdown" e lendo `.innerText`...
-        const legacyCountdown = document.querySelector("#sessionCountdown");
+        // Compatibilidade legada
+        const legacyName = document.querySelector('#topUserName');
+        if (legacyName) legacyName.textContent = nomeCompleto;
+
+        const legacyCountdown = document.querySelector('#sessionCountdown');
         if (legacyCountdown && expireTimeSeconds) {
-            // Nota: este DOM ficará travado no último state emitido pelo userDataChanged, 
-            // cumprindo a ordem de UI puramente passiva.
-            legacyCountdown.textContent = `(${Math.floor(expireTimeSeconds / 60)}m rest)`;
+            legacyCountdown.textContent = '(' + Math.floor(expireTimeSeconds / 60) + 'm rest)';
+        }
+    }
+
+    updateCountdown(segundos, isAviso) {
+        if (!this.ui.countdown) return;
+        if (segundos === null || segundos === undefined) {
+            this.ui.countdown.textContent = '';
+            return;
+        }
+        const mm     = Math.floor(segundos / 60);
+        const ss     = segundos % 60;
+        const fmt    = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+        this.ui.countdown.textContent = '⏱ ' + fmt;
+        this.ui.countdown.title       = 'Sessão expira em ' + fmt;
+        if (isAviso || segundos <= 300) {
+            this.ui.countdown.classList.add('warning');
+        } else {
+            this.ui.countdown.classList.remove('warning');
         }
     }
 }
 
-// Registro global do Custom Element
 customElements.define('app-user-menu', AppUserMenu);

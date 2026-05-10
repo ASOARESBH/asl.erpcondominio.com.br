@@ -1,212 +1,272 @@
 <?php
 // =====================================================
-// VERIFICAÇÃO DE SESSÃO COMPLETA E CENTRALIZADA
+// VERIFICAÇÃO DE SESSÃO COMPLETA E CENTRALIZADA v3.0
 // =====================================================
-//
-// CORREÇÕES v2:
-// - CORS dinâmico (Access-Control-Allow-Origin: * é inválido com credentials:include)
-// - Retorna data.sessao.tempo_restante (formato esperado pelo SessionManagerCore)
-// - Mantém retrocompatibilidade com tempo_restante_segundos e tempo_restante_formatado
-
-// Configurações de sessão
+// CORREÇÕES v3.0 (2026-05-10):
+// - Usa token Bearer da tabela sessoes_portal (portal do morador)
+//   em vez de $_SESSION (que nunca era preenchido pelo login do portal)
+// - Timeout padrão: 30min total, 10min inatividade (configurável)
+// - Suporte a timeout personalizado por usuário (admin configura)
+// - Controle de inatividade: atualiza ultimo_ativo a cada verificação
+// - Retorna dados do morador (nome, unidade, etc.) para o menu superior
+// - Log de debug em logs/sessao.txt
+// =====================================================
+ob_start();
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.gc_maxlifetime', 7200); // 2 horas
+ini_set('session.gc_maxlifetime', 7200);
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+ob_end_clean();
 
-// Iniciar sessão se não estiver iniciada
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Headers para API
-// CORS dinâmico — Access-Control-Allow-Origin: * é INVÁLIDO com credentials:include
 header('Content-Type: application/json; charset=utf-8');
 $allowed_origins = [
-    'https://asl.erpcondominios.com.br',
-    'http://asl.erpcondominios.com.br',
-    'https://erpcondominios.com.br',
-    'http://erpcondominios.com.br',
-    'http://localhost',
-    'http://127.0.0.1',
+    'https://asl.erpcondominios.com.br','http://asl.erpcondominios.com.br',
+    'https://erpcondominios.com.br','http://erpcondominios.com.br',
+    'http://localhost','http://127.0.0.1',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if (in_array($origin, $allowed_origins)) {
-    header('Access-Control-Allow-Origin: ' . $origin);
-} else {
-    header('Access-Control-Allow-Origin: https://asl.erpcondominios.com.br');
-}
+header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed_origins) ? $origin : 'https://asl.erpcondominios.com.br'));
 header('Access-Control-Allow-Credentials: true');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
-// Tratar requisições OPTIONS (CORS preflight)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
+require_once 'config.php';
+
+define('SESSAO_TIMEOUT_TOTAL_MIN',       30);
+define('SESSAO_TIMEOUT_INATIVIDADE_MIN', 10);
+define('SESSAO_AVISO_EXPIRACAO_MIN',      5);
+
+function log_sessao($msg, $nivel = 'INFO') {
+    $dir = __DIR__ . '/../logs';
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    file_put_contents($dir . '/sessao.txt',
+        '[' . date('Y-m-d H:i:s') . '] [' . $nivel . '] ' . $msg . PHP_EOL,
+        FILE_APPEND | LOCK_EX);
 }
 
-/**
- * Verificar se usuário está logado
- */
-function verificar_sessao_ativa() {
-    // Verificar se variáveis de sessão existem
-    if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) {
-        return false;
+function obter_token_bearer() {
+    $auth = '';
+    if (function_exists('getallheaders')) {
+        $h = getallheaders();
+        $auth = $h['Authorization'] ?? $h['authorization'] ?? '';
     }
-    
-    // Verificar se ID do usuário existe
-    if (!isset($_SESSION['usuario_id']) || empty($_SESSION['usuario_id'])) {
-        return false;
-    }
-    
-    // Verificar timeout da sessão (2 horas)
-    if (isset($_SESSION['login_timestamp'])) {
-        $tempo_decorrido = time() - $_SESSION['login_timestamp'];
-        
-        // Se passou mais de 2 horas, sessão expirou
-        if ($tempo_decorrido > 7200) {
-            return false;
-        }
-        
-        // Atualizar timestamp se passou mais de 5 minutos
-        if ($tempo_decorrido > 300) {
-            $_SESSION['login_timestamp'] = time();
-        }
-    }
-    
-    return true;
+    if (empty($auth)) $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (!empty($auth) && preg_match('/Bearer\s+(.+)$/i', $auth, $m)) return trim($m[1]);
+    if (!empty($_COOKIE['portal_token'])) return trim($_COOKIE['portal_token']);
+    return trim($_POST['token'] ?? $_GET['token'] ?? '');
 }
 
-/**
- * Obter dados do usuário da sessão
- */
-function obter_dados_usuario_sessao() {
+function obter_config_timeout($conexao) {
+    $cfg = ['total' => SESSAO_TIMEOUT_TOTAL_MIN, 'inatividade' => SESSAO_TIMEOUT_INATIVIDADE_MIN, 'aviso' => SESSAO_AVISO_EXPIRACAO_MIN];
+    try {
+        $stmt = $conexao->prepare("SELECT chave, valor FROM config_sessao WHERE chave IN ('timeout_total_min','timeout_inatividade_min','aviso_expiracao_min')");
+        if ($stmt) {
+            $stmt->execute();
+            $res = $stmt->get_result();
+            while ($row = $res->fetch_assoc()) {
+                if ($row['chave'] === 'timeout_total_min')       $cfg['total']       = (int)$row['valor'];
+                if ($row['chave'] === 'timeout_inatividade_min') $cfg['inatividade'] = (int)$row['valor'];
+                if ($row['chave'] === 'aviso_expiracao_min')     $cfg['aviso']       = (int)$row['valor'];
+            }
+            $stmt->close();
+        }
+    } catch (Exception $e) { log_sessao('Erro config_sessao: ' . $e->getMessage(), 'WARN'); }
+    return $cfg;
+}
+
+function verificar_sessao_portal($conexao, $token, $cfg) {
+    if (empty($token)) { log_sessao('Token vazio', 'WARN'); return null; }
+    $stmt = $conexao->prepare("
+        SELECT sp.id AS sessao_id, sp.morador_id, sp.data_login, sp.ativo,
+               sp.ultimo_ativo, sp.timeout_total_min, sp.timeout_inatividade_min,
+               m.nome AS morador_nome, m.email AS morador_email,
+               m.unidade AS morador_unidade, m.cpf AS morador_cpf,
+               m.telefone AS morador_telefone, m.celular AS morador_celular,
+               COALESCE(m.sessao_personalizada, 0) AS sessao_personalizada,
+               m.timeout_total_min AS m_timeout_total,
+               m.timeout_inatividade_min AS m_timeout_inatividade
+        FROM sessoes_portal sp
+        INNER JOIN moradores m ON m.id = sp.morador_id
+        WHERE sp.token = ? AND sp.ativo = 1 LIMIT 1");
+    $stmt->bind_param('s', $token);
+    $stmt->execute();
+    $sess = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$sess) { log_sessao('Token nao encontrado: ' . substr($token,0,8), 'WARN'); return null; }
+
+    $usa_custom = (int)($sess['sessao_personalizada'] ?? 0);
+    if ($usa_custom && !empty($sess['m_timeout_total'])) {
+        $t_total = (int)$sess['m_timeout_total'];
+        $t_inativ = (int)($sess['m_timeout_inatividade'] ?? $cfg['inatividade']);
+    } else {
+        $t_total  = (int)($sess['timeout_total_min']       ?: $cfg['total']);
+        $t_inativ = (int)($sess['timeout_inatividade_min'] ?: $cfg['inatividade']);
+    }
+
+    $agora   = time();
+    $login   = strtotime($sess['data_login']);
+    $ativo   = $sess['ultimo_ativo'] ? strtotime($sess['ultimo_ativo']) : $login;
+    $seg_login = $agora - $login;
+    $seg_inativ = $agora - $ativo;
+    $lim_total  = $t_total  * 60;
+    $lim_inativ = $t_inativ * 60;
+
+    if ($seg_login >= $lim_total) {
+        log_sessao("Expirou timeout total ({$t_total}min) — {$sess['morador_nome']}", 'INFO');
+        $conexao->query("UPDATE sessoes_portal SET ativo=0 WHERE id={$sess['sessao_id']}");
+        return ['expirou' => true, 'motivo' => 'timeout_total'];
+    }
+    if ($seg_inativ >= $lim_inativ) {
+        log_sessao("Expirou inatividade ({$t_inativ}min) — {$sess['morador_nome']}", 'INFO');
+        $conexao->query("UPDATE sessoes_portal SET ativo=0 WHERE id={$sess['sessao_id']}");
+        return ['expirou' => true, 'motivo' => 'inatividade'];
+    }
+
+    $conexao->query("UPDATE sessoes_portal SET ultimo_ativo=NOW() WHERE id={$sess['sessao_id']}");
+    $rest_total  = max(0, $lim_total  - $seg_login);
+    $rest_inativ = max(0, $lim_inativ - $seg_inativ);
+    $tempo_rest  = min($rest_total, $rest_inativ);
+    log_sessao("Sessao valida — {$sess['morador_nome']} | restante:{$tempo_rest}s", 'INFO');
+
     return [
-        'id' => $_SESSION['usuario_id'] ?? null,
-        'nome' => $_SESSION['usuario_nome'] ?? null,
-        'email' => $_SESSION['usuario_email'] ?? null,
-        'funcao' => $_SESSION['usuario_funcao'] ?? null,
-        'departamento' => $_SESSION['usuario_departamento'] ?? null,
-        'permissao' => $_SESSION['usuario_permissao'] ?? null,
-        'tipo' => $_SESSION['usuario_tipo'] ?? 'comum', // ✅ NOVO: Tipo de usuário
-        'login_timestamp' => $_SESSION['login_timestamp'] ?? null
+        'expirou' => false, 'sessao_id' => (int)$sess['sessao_id'],
+        'morador_id' => (int)$sess['morador_id'],
+        'nome' => $sess['morador_nome'], 'email' => $sess['morador_email'],
+        'unidade' => $sess['morador_unidade'], 'cpf' => $sess['morador_cpf'],
+        'telefone' => $sess['morador_telefone'], 'celular' => $sess['morador_celular'],
+        'data_login' => $sess['data_login'],
+        'timeout_total_min' => $t_total, 'timeout_inatividade_min' => $t_inativ,
+        'tempo_restante_seg' => $tempo_rest,
+        'restante_total_seg' => $rest_total, 'restante_inatividade_seg' => $rest_inativ,
     ];
 }
 
-/**
- * Destruir sessão
- */
-function destruir_sessao() {
-    $_SESSION = array();
-    
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
+function verificar_sessao_erp() {
+    if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) return false;
+    if (!isset($_SESSION['usuario_id'])     || empty($_SESSION['usuario_id']))        return false;
+    if (isset($_SESSION['login_timestamp'])) {
+        $d = time() - $_SESSION['login_timestamp'];
+        if ($d > SESSAO_TIMEOUT_TOTAL_MIN * 60) return false;
+        if ($d > 300) $_SESSION['login_timestamp'] = time();
     }
-    
-    session_destroy();
+    return true;
 }
 
-/**
- * Retornar resposta JSON com erro
- */
-function retornar_erro($mensagem, $codigo_http = 400) {
-    http_response_code($codigo_http);
-    echo json_encode([
-        'sucesso' => false,
-        'mensagem' => $mensagem,
-        'timestamp' => date('Y-m-d H:i:s')
-    ], JSON_UNESCAPED_UNICODE);
+function retornar_erro_sessao($msg, $code = 401) {
+    http_response_code($code);
+    echo json_encode(['sucesso'=>false,'sessao_ativa'=>false,'mensagem'=>$msg,'timestamp'=>date('Y-m-d H:i:s')], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+function retornar_sucesso_sessao($dados) {
+    echo json_encode(array_merge(['sucesso'=>true,'timestamp'=>date('Y-m-d H:i:s')], $dados), JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-/**
- * Retornar resposta JSON com sucesso
- */
-function retornar_sucesso($dados = []) {
-    echo json_encode(array_merge([
-        'sucesso' => true,
-        'timestamp' => date('Y-m-d H:i:s')
-    ], $dados), JSON_UNESCAPED_UNICODE);
-    exit;
-}
+$conexao = conectar_banco();
+$config  = obter_config_timeout($conexao);
 
-// Se for requisição GET, retornar status da sessão
+// ── GET ──────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $sessao_ativa = verificar_sessao_ativa();
-    
-    if ($sessao_ativa) {
-        $dados_usuario = obter_dados_usuario_sessao();
-        
-        // Calcular tempo restante
-        $tempo_decorrido = time() - ($dados_usuario['login_timestamp'] ?? time());
-        $tempo_restante = 7200 - $tempo_decorrido;
-        
-        $tempo_restante_val = max(0, $tempo_restante);
-        retornar_sucesso([
-            'sessao_ativa'             => true,
-            'usuario'                  => $dados_usuario,
-            // Retrocompatibilidade
-            'tempo_restante_segundos'  => $tempo_restante_val,
-            'tempo_restante_formatado' => gmdate('H:i:s', $tempo_restante_val),
-            'session_id'               => session_id(),
-            // Formato esperado pelo SessionManagerCore (data.sessao?.tempo_restante)
-            'sessao' => [
-                'tempo_restante' => $tempo_restante_val,
-                'tempo_formatado'=> gmdate('H:i:s', $tempo_restante_val),
-                'session_id'     => session_id(),
+    $token = obter_token_bearer();
+
+    if (!empty($token)) {
+        $sessao = verificar_sessao_portal($conexao, $token, $config);
+        if (!$sessao) retornar_erro_sessao('Token inválido ou sessão não encontrada');
+        if ($sessao['expirou']) {
+            $msg = $sessao['motivo'] === 'inatividade'
+                ? 'Sessão encerrada por inatividade' : 'Sessão encerrada por tempo máximo atingido';
+            retornar_erro_sessao($msg);
+        }
+        $tr = $sessao['tempo_restante_seg'];
+        $mm = floor($tr/60); $ss = $tr % 60;
+        retornar_sucesso_sessao([
+            'sessao_ativa' => true, 'tipo' => 'portal_morador',
+            'usuario' => [
+                'id' => $sessao['morador_id'], 'nome' => $sessao['nome'],
+                'email' => $sessao['email'], 'unidade' => $sessao['unidade'],
+                'cpf' => $sessao['cpf'], 'tipo' => 'morador',
             ],
+            'sessao' => [
+                'tempo_restante' => $tr,
+                'tempo_formatado' => sprintf('%02d:%02d', $mm, $ss),
+                'restante_total_seg' => $sessao['restante_total_seg'],
+                'restante_inatividade_seg' => $sessao['restante_inatividade_seg'],
+                'timeout_total_min' => $sessao['timeout_total_min'],
+                'timeout_inatividade_min' => $sessao['timeout_inatividade_min'],
+                'aviso_expiracao_min' => $config['aviso'],
+                'session_id' => $sessao['sessao_id'],
+            ],
+            'tempo_restante_segundos'  => $tr,
+            'tempo_restante_formatado' => sprintf('%02d:%02d', $mm, $ss),
+            'session_id' => $sessao['sessao_id'],
         ]);
-    } else {
-        retornar_erro('Sessão expirada ou inválida', 401);
     }
+
+    if (verificar_sessao_erp()) {
+        $d = time() - ($_SESSION['login_timestamp'] ?? time());
+        $tr = max(0, SESSAO_TIMEOUT_TOTAL_MIN*60 - $d);
+        $mm = floor($tr/60); $ss = $tr % 60;
+        retornar_sucesso_sessao([
+            'sessao_ativa' => true, 'tipo' => 'erp_interno',
+            'usuario' => [
+                'id' => $_SESSION['usuario_id'] ?? null, 'nome' => $_SESSION['usuario_nome'] ?? null,
+                'email' => $_SESSION['usuario_email'] ?? null, 'funcao' => $_SESSION['usuario_funcao'] ?? null,
+                'departamento' => $_SESSION['usuario_departamento'] ?? null,
+                'permissao' => $_SESSION['usuario_permissao'] ?? null, 'tipo' => 'erp',
+            ],
+            'sessao' => [
+                'tempo_restante' => $tr, 'tempo_formatado' => sprintf('%02d:%02d', $mm, $ss),
+                'timeout_total_min' => SESSAO_TIMEOUT_TOTAL_MIN,
+                'timeout_inatividade_min' => SESSAO_TIMEOUT_INATIVIDADE_MIN,
+                'aviso_expiracao_min' => SESSAO_AVISO_EXPIRACAO_MIN,
+                'session_id' => session_id(),
+            ],
+            'tempo_restante_segundos' => $tr, 'tempo_restante_formatado' => sprintf('%02d:%02d', $mm, $ss),
+            'session_id' => session_id(),
+        ]);
+    }
+
+    retornar_erro_sessao('Nenhuma sessão ativa encontrada');
 }
 
-// Se for requisição POST
+// ── POST ─────────────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $acao = isset($_POST['acao']) ? trim($_POST['acao']) : '';
-    
-    // Validar ação
-    if (empty($acao)) {
-        retornar_erro('Ação não especificada', 400);
-    }
-    
-    // Ação: logout
-    if ($acao === 'logout') {
-        destruir_sessao();
-        
-        retornar_sucesso([
-            'mensagem' => 'Logout realizado com sucesso'
-        ]);
-    }
-    
-    // Ação: renovar sessão
-    if ($acao === 'renovar') {
-        if (verificar_sessao_ativa()) {
+    $acao  = trim($_POST['acao'] ?? '');
+    $token = obter_token_bearer();
+    if (empty($acao)) retornar_erro_sessao('Ação não especificada', 400);
+
+    if ($acao === 'renovar' || $acao === 'ping') {
+        if (!empty($token)) {
+            $stmt = $conexao->prepare("UPDATE sessoes_portal SET ultimo_ativo=NOW() WHERE token=? AND ativo=1");
+            $stmt->bind_param('s', $token);
+            $stmt->execute();
+            $af = $stmt->affected_rows; $stmt->close();
+            if ($acao === 'renovar' && $af === 0) retornar_erro_sessao('Sessão não encontrada para renovação');
+            log_sessao("Sessao renovada/ping — token: " . substr($token,0,8), 'INFO');
+            retornar_sucesso_sessao(['mensagem'=>'Sessão renovada','novo_ultimo_ativo'=>date('Y-m-d H:i:s'),'tempo_restante_segundos'=>$config['inatividade']*60]);
+        } elseif (verificar_sessao_erp()) {
             $_SESSION['login_timestamp'] = time();
-            
-            retornar_sucesso([
-                'mensagem' => 'Sessão renovada com sucesso',
-                'novo_timestamp' => $_SESSION['login_timestamp']
-            ]);
+            retornar_sucesso_sessao(['mensagem'=>'Sessão ERP renovada','novo_timestamp'=>$_SESSION['login_timestamp']]);
         } else {
-            retornar_erro('Sessão inválida', 401);
+            retornar_erro_sessao('Nenhuma sessão para renovar');
         }
     }
-    
-    // Ação desconhecida
-    retornar_erro('Ação não reconhecida: ' . htmlspecialchars($acao), 400);
+
+    if ($acao === 'logout') {
+        if (!empty($token)) {
+            $stmt = $conexao->prepare("UPDATE sessoes_portal SET ativo=0 WHERE token=?");
+            $stmt->bind_param('s', $token); $stmt->execute(); $stmt->close();
+            log_sessao("Logout — token: " . substr($token,0,8), 'INFO');
+        }
+        if (session_status() === PHP_SESSION_ACTIVE) { $_SESSION=[]; session_destroy(); }
+        retornar_sucesso_sessao(['mensagem'=>'Logout realizado com sucesso']);
+    }
+
+    retornar_erro_sessao('Ação não reconhecida: ' . htmlspecialchars($acao), 400);
 }
 
-// Método não suportado
 http_response_code(405);
-echo json_encode([
-    'sucesso' => false,
-    'mensagem' => 'Método não permitido. Use GET ou POST.',
-    'timestamp' => date('Y-m-d H:i:s')
-], JSON_UNESCAPED_UNICODE);
+echo json_encode(['sucesso'=>false,'mensagem'=>'Método não permitido.'], JSON_UNESCAPED_UNICODE);
 ?>

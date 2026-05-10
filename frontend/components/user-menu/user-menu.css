@@ -44,6 +44,17 @@
     max-width: 150px;
 }
 
+.user-subinfo {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+    display: none;
+}
+
 .session-countdown {
     font-size: 0.75rem;
     color: #64748b;
