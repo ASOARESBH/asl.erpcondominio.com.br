@@ -21,7 +21,9 @@ export function init() {
         gerar: aplicarFiltros,
         limpar: limparFiltros,
         exportarCSV,
-        imprimir
+        gerarPDF,
+        rankingPDF,
+        rankingCSV
     };
 }
 
@@ -38,8 +40,10 @@ function setupActions() {
     bindClick('btnAplicarFiltros', aplicarFiltros);
     bindClick('btnLimparFiltros', limparFiltros);
     bindClick('btnExportarCsv', exportarCSV);
-    bindClick('btnImprimirRelatorio', imprimir);
+    bindClick('btnGerarPDF', gerarPDF);
     bindClick('btnAtualizarRelatorio', carregarTodosRegistros);
+    bindClick('btnRankingPDF', rankingPDF);
+    bindClick('btnRankingCSV', rankingCSV);
 
     const buscaLocal = document.getElementById('buscaLocalRelatorio');
     if (buscaLocal) {
@@ -298,8 +302,115 @@ function exportarCSV() {
     tocarSom('success');
 }
 
-function imprimir() {
-    window.print();
+function gerarPDF() {
+    // Coleta os filtros ativos e abre o relatorio de acessos em nova aba
+    const dataInicial = getValue('dataInicial');
+    const dataFinal   = getValue('dataFinal');
+    const horaInicial = getValue('horaInicial');
+    const horaFinal   = getValue('horaFinal');
+    const placa       = getValue('filtroPlaca');
+    const modelo      = getValue('filtroModelo');
+    const unidade     = getValue('filtroUnidade');
+    const nome        = getValue('filtroNome');
+    const tipo        = getValue('tipoRelatorio');
+
+    const params = new URLSearchParams();
+    if (dataInicial) params.set('data_inicio', dataInicial);
+    if (dataFinal)   params.set('data_fim',    dataFinal);
+    if (horaInicial) params.set('hora_inicio', horaInicial);
+    if (horaFinal)   params.set('hora_fim',    horaFinal);
+    if (placa)       params.set('placa',       placa);
+    if (modelo)      params.set('modelo',      modelo);
+    if (unidade)     params.set('unidade',     unidade);
+    if (nome)        params.set('nome',        nome);
+    if (tipo && tipo !== 'todos') params.set('tipo', tipo);
+
+    const base = window.location.origin + '/api/api_relatorio_acessos_pdf.php';
+    window.open(base + '?' + params.toString(), '_blank');
+}
+
+function rankingPDF() {
+    const dias   = getValue('rankingDias')  || '30';
+    const tipo   = getValue('rankingTipo')  || '';
+    const placa  = getValue('rankingPlaca') || '';
+    const top    = getValue('rankingTop')   || '20';
+
+    const params = new URLSearchParams({ dias, top });
+    if (tipo)  params.set('tipo',  tipo);
+    if (placa) params.set('placa', placa);
+
+    const base = window.location.origin + '/api/api_relatorio_acessos_veiculos_pdf.php';
+    window.open(base + '?' + params.toString(), '_blank');
+}
+
+function rankingCSV() {
+    // Busca o ranking via API e gera CSV client-side
+    const dias   = getValue('rankingDias')  || '30';
+    const tipo   = getValue('rankingTipo')  || '';
+    const placa  = getValue('rankingPlaca') || '';
+    const top    = getValue('rankingTop')   || '20';
+
+    // Filtra os registros ja carregados em memoria
+    const hoje       = new Date();
+    const dataCorte  = new Date();
+    dataCorte.setDate(hoje.getDate() - parseInt(dias));
+
+    const filtrados = todosRegistros.filter(r => {
+        const dt = new Date(r.data_hora || r.data_hora_formatada);
+        if (dt < dataCorte) return false;
+        if (tipo  && r.tipo  !== tipo)  return false;
+        if (placa && !(r.placa || '').toUpperCase().includes(placa.toUpperCase())) return false;
+        return true;
+    });
+
+    // Agrupar por placa + tipo
+    const grupos = {};
+    filtrados.forEach(r => {
+        const chave = (r.placa || '') + '|' + (r.tipo || '');
+        if (!grupos[chave]) {
+            grupos[chave] = {
+                placa:   r.placa || '',
+                modelo:  r.modelo || '',
+                cor:     r.cor || '',
+                tipo:    r.tipo || '',
+                nome:    r.morador_nome || r.nome_visitante || '',
+                unidade: r.morador_unidade || r.unidade_destino || '',
+                total:   0,
+                liberados: 0,
+                ultimo: ''
+            };
+        }
+        grupos[chave].total++;
+        if (r.liberado == 1) grupos[chave].liberados++;
+        if (!grupos[chave].ultimo || r.data_hora > grupos[chave].ultimo)
+            grupos[chave].ultimo = r.data_hora_formatada || r.data_hora || '';
+    });
+
+    const ranking = Object.values(grupos)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, parseInt(top));
+
+    if (!ranking.length) {
+        mostrarAlerta('error', 'Nenhum registro encontrado para o periodo selecionado.');
+        return;
+    }
+
+    const cabecalho = ['Posicao','Placa','Modelo','Cor','Tipo','Nome/Responsavel','Unidade','Total Acessos','Acessos Liberados','Ultimo Acesso'];
+    const linhas = ranking.map((v, i) => [
+        i + 1, v.placa, v.modelo, v.cor, v.tipo, v.nome, v.unidade, v.total, v.liberados, v.ultimo
+    ].map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"'));
+
+    const csv  = [cabecalho.join(','), ...linhas.map(l => l.join(','))].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'ranking_veiculos_' + dias + 'dias_' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    mostrarAlerta('success', 'CSV do ranking exportado com sucesso.');
 }
 
 function limparFiltros() {

@@ -75,8 +75,8 @@
             <button type="button" class="btn-export" id="btnExportarCsv">
                 <i class="fas fa-file-csv"></i> Exportar CSV
             </button>
-            <button type="button" class="btn-print" id="btnImprimirRelatorio">
-                <i class="fas fa-print"></i> Imprimir
+            <button type="button" class="btn-print" id="btnGerarPDF">
+                <i class="fas fa-file-pdf"></i> Gerar PDF
             </button>
             <button type="button" class="btn-clear" id="btnLimparFiltros">
                 <i class="fas fa-eraser"></i> Limpar
@@ -148,4 +148,54 @@
             </div>
         </div>
     </div>
+
+    <!-- ===== RANKING DE VEICULOS COM MAIS ACESSOS ===== -->
+    <div class="page-card">
+        <h2><i class="fas fa-car"></i> Veiculos com Mais Acessos — Ultimos 30 Dias</h2>
+        <p style="font-size:12px;color:#64748b;margin-bottom:16px;">Ranking dos veiculos que mais acessaram o condominio no periodo, agrupados por placa, tipo e nome.</p>
+
+        <div class="form-grid" style="margin-bottom:14px;">
+            <div>
+                <label>Periodo (dias)</label>
+                <select id="rankingDias">
+                    <option value="7">Ultimos 7 dias</option>
+                    <option value="15">Ultimos 15 dias</option>
+                    <option value="30" selected>Ultimos 30 dias</option>
+                    <option value="60">Ultimos 60 dias</option>
+                    <option value="90">Ultimos 90 dias</option>
+                </select>
+            </div>
+            <div>
+                <label>Tipo</label>
+                <select id="rankingTipo">
+                    <option value="">Todos</option>
+                    <option value="Morador">Morador</option>
+                    <option value="Visitante">Visitante</option>
+                    <option value="Prestador">Prestador</option>
+                </select>
+            </div>
+            <div>
+                <label>Placa (opcional)</label>
+                <input type="text" id="rankingPlaca" placeholder="ABC1D23">
+            </div>
+            <div>
+                <label>Top N veiculos</label>
+                <select id="rankingTop">
+                    <option value="10">Top 10</option>
+                    <option value="20" selected>Top 20</option>
+                    <option value="50">Top 50</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions" style="padding-top:0;">
+            <button type="button" class="btn-export" id="btnRankingCSV">
+                <i class="fas fa-file-csv"></i> Exportar CSV
+            </button>
+            <button type="button" class="btn-print" id="btnRankingPDF">
+                <i class="fas fa-file-pdf"></i> Gerar PDF
+            </button>
+        </div>
+    </div>
+
 </div>
