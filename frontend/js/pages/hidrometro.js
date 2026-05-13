@@ -121,6 +121,8 @@ export function init() {
         // Relatórios
         gerarRelatorio          : relatorioGerar,
         exportarRelatorioCSV    : relatorioExportarCSV,
+        // Demonstrativo de água
+        gerarDemonstrativo      : gerarDemonstrativo,
     };
 
     console.log('[Hidrometro] Módulo pronto.');
@@ -523,6 +525,11 @@ function _renderTabela(lista) {
                     <button class="action-btn history" title="Histórico"
                         onclick="window.HidrometroPage.verHistorico(${h.id})">
                         <i class="fas fa-history"></i>
+                    </button>
+                    <button class="action-btn btn-gerar-demo" title="Gerar Demonstrativo de Água"
+                        onclick="window.HidrometroPage.gerarDemonstrativo(${h.id})"
+                        style="background:linear-gradient(135deg,#16a34a,#166534);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;">
+                        <i class="fas fa-file-invoice"></i> Gerar
                     </button>
                 </td>
             </tr>`;
@@ -1696,3 +1703,125 @@ function relatorioExportarCSV() {
     URL.revokeObjectURL(url);
     _toast('Relatório exportado com sucesso!', 'success');
 }
+
+
+// ============================================================
+// DEMONSTRATIVO DE CONSUMO DE ÁGUA
+// ============================================================
+/**
+ * Abre o demonstrativo de água (estilo fatura) em nova aba.
+ * Exibe um mini-modal para o operador selecionar o mês de referência
+ * antes de abrir o relatório.
+ *
+ * @param {number} hidrometroId — ID do hidrômetro
+ */
+function gerarDemonstrativo(hidrometroId) {
+    if (!hidrometroId) return;
+
+    // Criar overlay do mini-modal
+    const overlay = document.createElement('div');
+    overlay.id = 'modalDemoAgua';
+    overlay.style.cssText = `
+        position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;
+        display:flex;align-items:center;justify-content:center;
+        animation:fadeIn .15s ease;
+    `;
+
+    // Mês atual como padrão
+    const hoje = new Date();
+    const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:28px 32px;width:380px;max-width:95vw;
+                    box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:sans-serif;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+                <div style="background:linear-gradient(135deg,#16a34a,#166534);border-radius:8px;
+                            width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-file-invoice" style="color:#fff;font-size:16px;"></i>
+                </div>
+                <div>
+                    <div style="font-size:15px;font-weight:800;color:#0f172a;">Demonstrativo de Água</div>
+                    <div style="font-size:11px;color:#64748b;">Selecione o mês de referência</div>
+                </div>
+            </div>
+
+            <label style="display:block;font-size:11px;font-weight:700;color:#475569;
+                          text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">
+                Mês / Ano de Referência
+            </label>
+            <input type="month" id="inputMesDemoAgua"
+                   value="${mesAtual}"
+                   style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;
+                          font-size:13px;color:#1e293b;outline:none;margin-bottom:20px;
+                          transition:border-color .2s;"
+                   onfocus="this.style.borderColor='#16a34a'"
+                   onblur="this.style.borderColor='#e2e8f0'">
+
+            <div style="font-size:10px;color:#94a3b8;margin-bottom:20px;line-height:1.6;">
+                Deixe em branco para usar a última leitura disponível.
+                O demonstrativo abrirá em nova aba pronto para impressão ou salvar como PDF.
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button onclick="document.getElementById('modalDemoAgua').remove()"
+                        style="flex:1;padding:10px;border:1.5px solid #e2e8f0;background:#f8fafc;
+                               border-radius:8px;font-size:13px;font-weight:600;color:#64748b;
+                               cursor:pointer;">
+                    Cancelar
+                </button>
+                <button id="btnAbrirDemo"
+                        onclick="window.HidrometroPage._abrirDemoAgua(${hidrometroId})"
+                        style="flex:2;padding:10px;border:none;
+                               background:linear-gradient(135deg,#16a34a,#166534);
+                               border-radius:8px;font-size:13px;font-weight:700;color:#fff;
+                               cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <i class="fas fa-external-link-alt"></i>
+                    Gerar Demonstrativo
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Fechar ao clicar fora
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    // Focar no input
+    setTimeout(() => {
+        const inp = document.getElementById('inputMesDemoAgua');
+        if (inp) inp.focus();
+    }, 100);
+}
+
+/**
+ * Abre a URL do demonstrativo em nova aba (chamado pelo botão do modal).
+ */
+window.HidrometroPage = window.HidrometroPage || {};
+(function() {
+    const _abrirDemoAgua = function(hidrometroId) {
+        const mesInput = document.getElementById('inputMesDemoAgua');
+        const mes = mesInput ? mesInput.value.trim() : '';
+
+        let url = `../api/api_demonstrativo_agua.php?hidrometro_id=${hidrometroId}`;
+        if (mes) url += `&mes=${encodeURIComponent(mes)}`;
+
+        window.open(url, '_blank');
+
+        // Fechar o modal
+        const modal = document.getElementById('modalDemoAgua');
+        if (modal) modal.remove();
+    };
+
+    // Aguardar o módulo ser inicializado para adicionar o método
+    const tentarRegistrar = function() {
+        if (window.HidrometroPage && typeof window.HidrometroPage === 'object') {
+            window.HidrometroPage._abrirDemoAgua = _abrirDemoAgua;
+        } else {
+            setTimeout(tentarRegistrar, 100);
+        }
+    };
+    tentarRegistrar();
+})();
