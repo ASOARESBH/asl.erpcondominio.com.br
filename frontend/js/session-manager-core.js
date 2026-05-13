@@ -257,6 +257,7 @@ class SessionManagerCore {
                         timeout_total_min:        this.timeoutTotalMin,
                         timeout_inatividade_min:  this.timeoutInatividadeMin,
                         aviso_expiracao_min:      this.avisoExpiracaoMin,
+                        sessao_inativa:           this.sessaoInativa,
                     }
                 });
 

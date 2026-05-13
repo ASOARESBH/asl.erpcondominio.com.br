@@ -1,262 +1,246 @@
 /**
- * Componente <app-user-menu>
- * UI 100% Passiva: Reage exclusivamente ao SessionManagerCore v3.0.
+ * user-menu.js v3.2 - Modo Dual (Legacy + Web Component)
  *
- * ATUALIZADO v3.0 (2026-05-10):
- *   ? Exibe nome do usu?rio logado e unidade (portal do morador)
- *   ? Countdown em tempo real (via evento countdownTick do SessionManager)
- *   ? Aviso visual (vermelho) quando restam ? 5 minutos
- *   ? Fallback: l? dados do localStorage se SessionManager n?o estiver pronto
+ * MODO LEGADO (automatico): Atualiza #topUserName, #topUserAvatar, #userMiniProfile
+ * MODO WEB COMPONENT: <app-user-menu> (para versoes futuras do layout)
+ *
+ * Integra com SessionManagerCore v3.0 via eventos userDataChanged e countdownTick.
  */
 
-class AppUserMenu extends HTMLElement {
-    constructor() {
-        super();
-        this.unsubscribeFunctions = [];
-        this.sessionManager = null;
-        this.ui = {
-            avatar: null, name: null, subinfo: null,
-            countdown: null, dropdown: null,
-            toggleBtn: null, perfilBtn: null, logoutBtn: null,
-        };
+// ============================================================
+// MODO LEGADO - Inicializacao automatica para o layout atual
+// ============================================================
+(function initLegacyUserMenu() {
+    'use strict';
+
+    var _initialized = false;
+    var _sessaoInativa = false;
+    var _countdownInterval = null;
+
+    function _getEl(id) { return document.getElementById(id); }
+
+    function _iniciais(nome) {
+        if (!nome) return 'U';
+        var p = nome.trim().split(' ');
+        var a = p[0] ? p[0].charAt(0) : '';
+        var b = p.length > 1 ? p[p.length - 1].charAt(0) : '';
+        return (a + b).toUpperCase() || 'U';
     }
 
-    connectedCallback() {
-        this.renderTemplate();
-        this.bindUiElements();
-        this.setupEventListeners();
-        this.initSessionIntegration();
+    function _formatarTempo(s) {
+        if (s === null || s === undefined) return '';
+        var mm = Math.floor(s / 60);
+        var ss = s % 60;
+        return String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0');
     }
 
-    disconnectedCallback() {
-        this.unsubscribeFunctions.forEach(unsub => unsub());
-        this.unsubscribeFunctions = [];
-    }
+    function _injetarElementos() {
+        var elNome = _getEl('topUserName');
+        if (!elNome || _getEl('topSessionTimer')) return;
 
-    renderTemplate() {
-        this.innerHTML = `
-            <div class="app-user-menu-container">
-                <div class="user-avatar" title="Perfil">?</div>
-                <div class="user-info">
-                    <span class="user-name">Carregando...</span>
-                    <span class="user-subinfo"></span>
-                    <span class="session-countdown" title="Tempo restante na sess?o"></span>
-                </div>
-                <div class="user-dropdown">
-                    <button class="menu-toggle" aria-label="Abrir menu do usu?rio" title="Op??es">
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="dropdown-menu">
-                        <button data-action="perfil">
-                            <i class="fas fa-user-circle"></i> Meu Perfil
-                        </button>
-                        <div class="divider"></div>
-                        <button data-action="logout" class="logout-btn">
-                            <i class="fas fa-sign-out-alt"></i> Sair do Sistema
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
+        var timer = document.createElement('span');
+        timer.id = 'topSessionTimer';
+        timer.style.cssText = 'display:inline-block;font-size:11px;color:#94a3b8;margin-left:8px;font-family:monospace;vertical-align:middle;';
+        elNome.parentNode.insertBefore(timer, elNome.nextSibling);
 
-    bindUiElements() {
-        this.ui.avatar    = this.querySelector('.user-avatar');
-        this.ui.name      = this.querySelector('.user-name');
-        this.ui.subinfo   = this.querySelector('.user-subinfo');
-        this.ui.countdown = this.querySelector('.session-countdown');
-        this.ui.dropdown  = this.querySelector('.dropdown-menu');
-        this.ui.toggleBtn = this.querySelector('.menu-toggle');
-        this.ui.perfilBtn = this.querySelector('[data-action="perfil"]');
-        this.ui.logoutBtn = this.querySelector('[data-action="logout"]');
-    }
+        var cargo = document.createElement('span');
+        cargo.id = 'topUserCargo';
+        cargo.style.cssText = 'display:block;font-size:10px;color:#64748b;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;';
+        elNome.parentNode.appendChild(cargo);
 
-    setupEventListeners() {
-        if (this.ui.toggleBtn) {
-            this.ui.toggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleDropdown();
-            });
+        elNome.style.cssText = 'font-size:13px;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;display:block;';
+
+        var avatar = _getEl('topUserAvatar');
+        if (avatar) {
+            avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;box-shadow:0 2px 8px rgba(37,99,235,0.4);transition:all 0.3s;';
         }
-        document.addEventListener('click', (e) => {
-            if (this.ui.dropdown && this.ui.dropdown.classList.contains('active')) {
-                if (!this.contains(e.target)) this.closeDropdown();
+
+        var container = _getEl('userMiniProfile');
+        if (container) {
+            container.style.cssText = 'display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 10px;border-radius:8px;transition:background 0.2s;';
+            container.addEventListener('mouseenter', function() { container.style.background = 'rgba(255,255,255,0.1)'; });
+            container.addEventListener('mouseleave', function() { container.style.background = ''; });
+        }
+    }
+
+    function _atualizarUI(nome, cargo, segundos, permanente) {
+        var elNome = _getEl('topUserName');
+        var elAvatar = _getEl('topUserAvatar');
+        var elCargo = _getEl('topUserCargo');
+        var elTimer = _getEl('topSessionTimer');
+
+        if (elNome) {
+            var primeiroNome = nome ? nome.split(' ')[0] : 'Usuario';
+            elNome.textContent = primeiroNome;
+            elNome.title = nome || 'Usuario';
+        }
+        if (elAvatar) {
+            elAvatar.textContent = _iniciais(nome);
+        }
+        if (elCargo && cargo) {
+            elCargo.textContent = cargo;
+        }
+
+        if (!elTimer) return;
+
+        if (permanente || _sessaoInativa) {
+            elTimer.textContent = 'Sem limite';
+            elTimer.style.color = '#16a34a';
+            elTimer.style.fontWeight = '600';
+            if (elAvatar) elAvatar.style.background = 'linear-gradient(135deg,#16a34a,#15803d)';
+            return;
+        }
+
+        if (segundos !== null && segundos !== undefined) {
+            elTimer.textContent = _formatarTempo(segundos);
+            elTimer.title = 'Sessao expira em ' + _formatarTempo(segundos);
+            if (segundos <= 300) {
+                elTimer.style.color = '#dc2626';
+                elTimer.style.fontWeight = '700';
+                if (elAvatar) elAvatar.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+            } else {
+                elTimer.style.color = '#94a3b8';
+                elTimer.style.fontWeight = '400';
+                if (elAvatar) elAvatar.style.background = '';
+            }
+        }
+    }
+
+    function _iniciarContador(segundosInicio) {
+        if (_countdownInterval) clearInterval(_countdownInterval);
+        if (segundosInicio === null || segundosInicio === undefined || _sessaoInativa) return;
+
+        var s = parseInt(segundosInicio, 10);
+        _countdownInterval = setInterval(function() {
+            if (s <= 0) { clearInterval(_countdownInterval); return; }
+            s--;
+            var elTimer = _getEl('topSessionTimer');
+            if (!elTimer) return;
+            elTimer.textContent = _formatarTempo(s);
+            if (s <= 300) {
+                elTimer.style.color = '#dc2626';
+                elTimer.style.fontWeight = '700';
+            }
+        }, 1000);
+    }
+
+    function _integrar() {
+        var sm = window.SessionManagerCore;
+        if (!sm || !sm.instance) {
+            setTimeout(_integrar, 300);
+            return;
+        }
+        var inst = sm.instance;
+
+        // Dados ja disponiveis (sessao verificada antes deste script)
+        if (inst.currentUser) {
+            var u = inst.currentUser;
+            _sessaoInativa = inst.sessaoInativa || false;
+            _atualizarUI(u.nome || u.name || 'Usuario', u.funcao || u.departamento || '', inst.countdownSeconds, _sessaoInativa);
+            if (!_sessaoInativa && inst.countdownSeconds) _iniciarContador(inst.countdownSeconds);
+        }
+
+        // Evento: dados completos apos verificacao com API
+        inst.on('userDataChanged', function(dados) {
+            var user = dados.user || dados.usuario;
+            if (!user) return;
+            var nome = user.nome || user.name || 'Usuario';
+            var cargo = user.funcao || user.departamento || user.permissao || '';
+            _sessaoInativa = (dados.sessao && dados.sessao.sessao_inativa) || inst.sessaoInativa || false;
+            var expire = dados.expireTime || dados.tempo_restante || null;
+            _atualizarUI(nome, cargo, expire, _sessaoInativa);
+            if (!_sessaoInativa && expire) _iniciarContador(expire);
+            console.log('[UserMenu] Usuario: ' + nome + ' | Cargo: ' + cargo + ' | Sessao inativa: ' + _sessaoInativa);
+        });
+
+        // Evento: tick do countdown (a cada segundo)
+        inst.on('countdownTick', function(dados) {
+            var elTimer = _getEl('topSessionTimer');
+            if (!elTimer) return;
+            if (dados.permanente || _sessaoInativa) {
+                elTimer.textContent = 'Sem limite';
+                elTimer.style.color = '#16a34a';
+            } else {
+                elTimer.textContent = _formatarTempo(dados.segundos);
+                elTimer.title = 'Sessao expira em ' + _formatarTempo(dados.segundos);
+                if (dados.aviso || dados.segundos <= 300) {
+                    elTimer.style.color = '#dc2626';
+                    elTimer.style.fontWeight = '700';
+                } else {
+                    elTimer.style.color = '#94a3b8';
+                    elTimer.style.fontWeight = '400';
+                }
             }
         });
-        if (this.ui.perfilBtn) {
-            this.ui.perfilBtn.addEventListener('click', () => {
-                if (window.AppRouter && typeof window.AppRouter.loadPage === 'function') {
-                    window.AppRouter.loadPage('configuracao');
-                } else {
-                    window.location.href = 'layout-base.html?page=configuracao';
-                }
-                this.closeDropdown();
-            });
-        }
-        if (this.ui.logoutBtn) {
-            this.ui.logoutBtn.addEventListener('click', () => {
-                if (this.sessionManager) this.sessionManager.logout();
-                this.closeDropdown();
-            });
-        }
+
+        console.log('[UserMenu] Integrado ao SessionManagerCore');
     }
 
-    toggleDropdown() {
-        if (this.ui.dropdown) {
-            this.ui.dropdown.classList.toggle('active');
-            const icon = this.ui.toggleBtn ? this.ui.toggleBtn.querySelector('i') : null;
-            if (icon) {
-                if (this.ui.dropdown.classList.contains('active')) {
-                    icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-                } else {
-                    icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-                }
+    function _init() {
+        if (_initialized) return;
+        _initialized = true;
+        _injetarElementos();
+        _integrar();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _init);
+    } else {
+        setTimeout(_init, 50);
+    }
+})();
+
+// ============================================================
+// WEB COMPONENT - Para versoes futuras do layout-base.html
+// ============================================================
+if (!customElements.get('app-user-menu')) {
+    class AppUserMenu extends HTMLElement {
+        constructor() {
+            super();
+            this.unsubscribeFunctions = [];
+            this.ui = { avatar: null, name: null, subinfo: null, countdown: null, dropdown: null, toggleBtn: null, logoutBtn: null };
+        }
+        connectedCallback() {
+            this.innerHTML = '<div class="app-user-menu-container"><div class="user-avatar">U</div><div class="user-info"><span class="user-name">Carregando...</span><span class="user-subinfo"></span><span class="session-countdown"></span></div><div class="user-dropdown"><button class="menu-toggle"><i class="fas fa-chevron-down"></i></button><div class="dropdown-menu"><button data-action="logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</button></div></div></div>';
+            this.ui.avatar    = this.querySelector('.user-avatar');
+            this.ui.name      = this.querySelector('.user-name');
+            this.ui.subinfo   = this.querySelector('.user-subinfo');
+            this.ui.countdown = this.querySelector('.session-countdown');
+            this.ui.dropdown  = this.querySelector('.dropdown-menu');
+            this.ui.toggleBtn = this.querySelector('.menu-toggle');
+            this.ui.logoutBtn = this.querySelector('[data-action="logout"]');
+            var self = this;
+            if (this.ui.toggleBtn) this.ui.toggleBtn.addEventListener('click', function(e) { e.stopPropagation(); if (self.ui.dropdown) self.ui.dropdown.classList.toggle('active'); });
+            if (this.ui.logoutBtn) this.ui.logoutBtn.addEventListener('click', function() { var sm = window.SessionManagerCore; if (sm && sm.instance) sm.instance.logout(); else window.location.href = '/frontend/login.html'; });
+            this._integrar();
+        }
+        disconnectedCallback() { this.unsubscribeFunctions.forEach(function(u) { u(); }); }
+        _integrar() {
+            var self = this;
+            var sm = window.SessionManagerCore;
+            if (!sm || !sm.instance) { setTimeout(function() { self._integrar(); }, 300); return; }
+            var inst = sm.instance;
+            if (inst.currentUser) this._atualizar(inst.currentUser, inst.countdownSeconds, inst.sessaoInativa);
+            inst.on('userDataChanged', function(d) { self._atualizar(d.user || d.usuario, d.expireTime || d.tempo_restante, inst.sessaoInativa); });
+            inst.on('countdownTick', function(d) {
+                if (!self.ui.countdown) return;
+                if (d.permanente) { self.ui.countdown.textContent = 'Sem limite'; self.ui.countdown.style.color = '#16a34a'; }
+                else if (d.segundos !== undefined) { self.ui.countdown.textContent = String(Math.floor(d.segundos/60)).padStart(2,'0') + ':' + String(d.segundos%60).padStart(2,'0'); }
+            });
+        }
+        _atualizar(user, expire, inativa) {
+            if (!user) return;
+            var nome = user.nome || 'Usuario';
+            var p = nome.trim().split(' ');
+            var ini = ((p[0]||'').charAt(0) + ((p.length>1?p[p.length-1]:'')||'').charAt(0)).toUpperCase() || 'U';
+            if (this.ui.name) this.ui.name.textContent = nome;
+            if (this.ui.avatar) this.ui.avatar.textContent = ini;
+            if (this.ui.subinfo) this.ui.subinfo.textContent = user.funcao || user.departamento || '';
+            if (this.ui.countdown) {
+                if (inativa) { this.ui.countdown.textContent = 'Sem limite'; this.ui.countdown.style.color = '#16a34a'; }
+                else if (expire) { this.ui.countdown.textContent = String(Math.floor(expire/60)).padStart(2,'0') + ':' + String(expire%60).padStart(2,'0'); }
             }
         }
     }
-
-    closeDropdown() {
-        if (this.ui.dropdown) {
-            this.ui.dropdown.classList.remove('active');
-            const icon = this.ui.toggleBtn ? this.ui.toggleBtn.querySelector('i') : null;
-            if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-        }
-    }
-
-    async initSessionIntegration() {
-        if (typeof window.SessionManagerCore === 'undefined') {
-            console.warn('[AppUserMenu] [!] SessionManagerCore n?o encontrado.');
-            this._carregarDadosLocalStorage();
-            return;
-        }
-
-        this.sessionManager = SessionManagerCore.getInstance();
-
-        try {
-            if (this.sessionManager.initializationPromise) {
-                await this.sessionManager.initializationPromise;
-            }
-
-            if (this.sessionManager.isLoggedIn()) {
-                this.updateUI(this.sessionManager.getUser(), this.sessionManager.getSessionExpireTime());
-            } else {
-                this._carregarDadosLocalStorage();
-            }
-
-            // Ouvir mudan?as completas (verifica??o com API)
-            const unsubData = this.sessionManager.on('userDataChanged', (dados) => {
-                const user   = dados.user || dados.usuario;
-                const expire = dados.expireTime || dados.tempo_restante;
-                this.updateUI(user, expire);
-            });
-
-            // Ouvir tick do countdown (a cada segundo ? sem fetch)
-            const unsubTick = this.sessionManager.on('countdownTick', (dados) => {
-                if (dados.permanente) {
-                    this.updateCountdown(null, false, true); // sess?o inativa: exibe Sem limite
-                } else {
-                    this.updateCountdown(dados.segundos, dados.aviso, false);
-                }
-            });
-
-            // Ouvir renova??o
-            const unsubRenew = this.sessionManager.on('sessionRenewed', (dados) => {
-                const user   = dados.user || dados.usuario || this.sessionManager.getUser();
-                const expire = dados.expireTime || dados.tempo_restante;
-                this.updateUI(user, expire);
-            });
-
-            if (unsubData)  this.unsubscribeFunctions.push(unsubData);
-            if (unsubTick)  this.unsubscribeFunctions.push(unsubTick);
-            if (unsubRenew) this.unsubscribeFunctions.push(unsubRenew);
-
-        } catch (err) {
-            console.error('[AppUserMenu] [ERRO] Erro ao integrar com SessionManager:', err);
-            this._carregarDadosLocalStorage();
-        }
-    }
-
-    _carregarDadosLocalStorage() {
-        try {
-            const nome    = localStorage.getItem('morador_nome')    || localStorage.getItem('usuario_nome') || '';
-            const unidade = localStorage.getItem('morador_unidade') || '';
-            if (nome) this.updateUI({ nome, unidade }, null);
-        } catch (e) {}
-    }
-
-    updateUI(userData, expireTimeSeconds) {
-        if (!userData) return;
-
-        const nomeCompleto = userData.nome || 'Usu?rio';
-        const unidade      = userData.unidade || userData.departamento || userData.funcao || '';
-
-        // Nome
-        if (this.ui.name) {
-            this.ui.name.textContent = nomeCompleto;
-            this.ui.name.title       = nomeCompleto;
-        }
-
-        // Subinfo (unidade ou cargo)
-        if (this.ui.subinfo) {
-            if (unidade) {
-                this.ui.subinfo.textContent  = 'Unidade ' + unidade;
-                this.ui.subinfo.style.display = 'block';
-            } else {
-                this.ui.subinfo.textContent  = '';
-                this.ui.subinfo.style.display = 'none';
-            }
-        }
-
-        // Avatar com iniciais
-        const partes    = nomeCompleto.trim().split(' ');
-        const primeiro  = partes[0] || '';
-        const sobrenome = partes.length > 1 ? partes[partes.length - 1] : '';
-        const iniciais  = (primeiro.charAt(0) + (sobrenome.charAt(0) || '')).toUpperCase();
-        if (this.ui.avatar) this.ui.avatar.textContent = iniciais || 'U';
-
-        // Countdown
-        if (expireTimeSeconds !== undefined && expireTimeSeconds !== null) {
-            this.updateCountdown(expireTimeSeconds, expireTimeSeconds <= 300);
-        }
-
-        // Compatibilidade legada
-        const legacyName = document.querySelector('#topUserName');
-        if (legacyName) legacyName.textContent = nomeCompleto;
-
-        const legacyCountdown = document.querySelector('#sessionCountdown');
-        if (legacyCountdown && expireTimeSeconds) {
-            legacyCountdown.textContent = '(' + Math.floor(expireTimeSeconds / 60) + 'm rest)';
-        }
-    }
-
-    updateCountdown(segundos, isAviso, permanente = false) {
-        if (!this.ui.countdown) return;
-        // Sess?o inativa: exibe Sem limite verde
-        if (permanente) {
-            this.ui.countdown.textContent      = '[inf] Sess?o Inativa';
-            this.ui.countdown.title            = 'Sess?o configurada para nunca expirar';
-            this.ui.countdown.style.color      = '#16a34a';
-            this.ui.countdown.style.fontWeight = '600';
-            this.ui.countdown.classList.remove('warning');
-            return;
-        }
-        if (segundos === null || segundos === undefined) {
-            this.ui.countdown.textContent = '';
-            return;
-        }
-        this.ui.countdown.style.color      = '';
-        this.ui.countdown.style.fontWeight = '';
-        const mm  = Math.floor(segundos / 60);
-        const ss  = segundos % 60;
-        const fmt = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
-        this.ui.countdown.textContent = '? ' + fmt;
-        this.ui.countdown.title       = 'Sess?o expira em ' + fmt;
-        if (isAviso || segundos <= 300) {
-            this.ui.countdown.classList.add('warning');
-        } else {
-            this.ui.countdown.classList.remove('warning');
-        }
-    }
+    customElements.define('app-user-menu', AppUserMenu);
 }
-
-customElements.define('app-user-menu', AppUserMenu);
