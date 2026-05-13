@@ -49,7 +49,7 @@ if ($metodo === 'GET') {
     if (isset($_GET['id'])) {
         // Buscar usuário específico
         $id = intval($_GET['id']);
-        $stmt = $conexao->prepare("SELECT id, nome, email, funcao, departamento, permissao, ativo, DATE_FORMAT(data_criacao, '%d/%m/%Y %H:%i') as data_criacao FROM usuarios WHERE id = ?");
+        $stmt = $conexao->prepare("SELECT id, nome, email, funcao, departamento, permissao, ativo, COALESCE(sessao_inativa,0) AS sessao_inativa, DATE_FORMAT(data_criacao, '%d/%m/%Y %H:%i') as data_criacao FROM usuarios WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $resultado = $stmt->get_result();
@@ -61,9 +61,10 @@ if ($metodo === 'GET') {
         }
     } else {
         // Listar todos os usuários
-        $sql = "SELECT id, nome, email, funcao, departamento, permissao, ativo, 
-                DATE_FORMAT(data_criacao, '%d/%m/%Y %H:%i') as data_criacao 
-                FROM usuarios 
+        $sql = "SELECT id, nome, email, funcao, departamento, permissao, ativo,
+                COALESCE(sessao_inativa,0) AS sessao_inativa,
+                DATE_FORMAT(data_criacao, '%d/%m/%Y %H:%i') as data_criacao
+                FROM usuarios
                 ORDER BY nome ASC";
         
         $resultado = $conexao->query($sql);
@@ -90,6 +91,7 @@ if ($metodo === 'POST') {
     $departamento = sanitizar($conexao, $dados['departamento'] ?? '');
     $permissao = sanitizar($conexao, $dados['permissao'] ?? 'operador');
     $ativo = isset($dados['ativo']) ? intval($dados['ativo']) : 1;
+    $sessao_inativa = isset($dados['sessao_inativa']) ? intval($dados['sessao_inativa']) : 0;
     
     // Validações
     if (empty($nome) || empty($email) || empty($senha) || empty($funcao)) {
@@ -112,8 +114,8 @@ if ($metodo === 'POST') {
     $senha_hash = password_hash($senha, PASSWORD_DEFAULT);
     
     // Inserir usuário
-    $stmt = $conexao->prepare("INSERT INTO usuarios (nome, email, senha, funcao, departamento, permissao, ativo) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("ssssssi", $nome, $email, $senha_hash, $funcao, $departamento, $permissao, $ativo);
+    $stmt = $conexao->prepare("INSERT INTO usuarios (nome, email, senha, funcao, departamento, permissao, ativo, sessao_inativa) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssssii", $nome, $email, $senha_hash, $funcao, $departamento, $permissao, $ativo, $sessao_inativa);
     
     if ($stmt->execute()) {
         $id_inserido = $conexao->insert_id;
@@ -137,6 +139,7 @@ if ($metodo === 'PUT') {
     $departamento = sanitizar($conexao, $dados['departamento'] ?? '');
     $permissao = sanitizar($conexao, $dados['permissao'] ?? 'operador');
     $ativo = isset($dados['ativo']) ? intval($dados['ativo']) : 1;
+    $sessao_inativa = isset($dados['sessao_inativa']) ? intval($dados['sessao_inativa']) : 0;
     
     // Validações
     if ($id <= 0 || empty($nome) || empty($email) || empty($funcao)) {
@@ -158,11 +161,11 @@ if ($metodo === 'PUT') {
     // Atualizar com ou sem senha
     if (isset($dados['senha']) && !empty($dados['senha']) && $dados['senha'] !== '********') {
         $senha_hash = password_hash($dados['senha'], PASSWORD_DEFAULT);
-        $stmt = $conexao->prepare("UPDATE usuarios SET nome=?, email=?, senha=?, funcao=?, departamento=?, permissao=?, ativo=? WHERE id=?");
-        $stmt->bind_param("ssssssii", $nome, $email, $senha_hash, $funcao, $departamento, $permissao, $ativo, $id);
+        $stmt = $conexao->prepare("UPDATE usuarios SET nome=?, email=?, senha=?, funcao=?, departamento=?, permissao=?, ativo=?, sessao_inativa=? WHERE id=?");
+        $stmt->bind_param("sssssssii", $nome, $email, $senha_hash, $funcao, $departamento, $permissao, $ativo, $sessao_inativa, $id);
     } else {
-        $stmt = $conexao->prepare("UPDATE usuarios SET nome=?, email=?, funcao=?, departamento=?, permissao=?, ativo=? WHERE id=?");
-        $stmt->bind_param("sssssii", $nome, $email, $funcao, $departamento, $permissao, $ativo, $id);
+        $stmt = $conexao->prepare("UPDATE usuarios SET nome=?, email=?, funcao=?, departamento=?, permissao=?, ativo=?, sessao_inativa=? WHERE id=?");
+        $stmt->bind_param("ssssssii", $nome, $email, $funcao, $departamento, $permissao, $ativo, $sessao_inativa, $id);
     }
     
     if ($stmt->execute()) {

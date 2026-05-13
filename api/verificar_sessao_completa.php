@@ -1,11 +1,16 @@
 <?php
 // =====================================================
-// VERIFICAÇÃO DE SESSÃO COMPLETA E CENTRALIZADA v3.0
+// VERIFICAÇÃO DE SESSÃO COMPLETA E CENTRALIZADA v3.1
 // =====================================================
+// CORREÇÕES v3.1 (2026-05-13):
+// - Timeout padrão: 60min total, sem inatividade (0 = desabilitado)
+// - Suporte a sessao_inativa: se ativo, nunca faz logout automático
+// - Busca sessao_inativa da tabela usuarios (ERP) e moradores (portal)
+// - Retorna sessao_inativa no JSON para o frontend
+//
 // CORREÇÕES v3.0 (2026-05-10):
 // - Usa token Bearer da tabela sessoes_portal (portal do morador)
 //   em vez de $_SESSION (que nunca era preenchido pelo login do portal)
-// - Timeout padrão: 30min total, 10min inatividade (configurável)
 // - Suporte a timeout personalizado por usuário (admin configura)
 // - Controle de inatividade: atualiza ultimo_ativo a cada verificação
 // - Retorna dados do morador (nome, unidade, etc.) para o menu superior
@@ -34,8 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit; }
 
 require_once 'config.php';
 
-define('SESSAO_TIMEOUT_TOTAL_MIN',       30);
-define('SESSAO_TIMEOUT_INATIVIDADE_MIN', 10);
+// Padrões: 60 min total, 0 = sem timeout de inatividade
+define('SESSAO_TIMEOUT_TOTAL_MIN',       60);
+define('SESSAO_TIMEOUT_INATIVIDADE_MIN',  0);
 define('SESSAO_AVISO_EXPIRACAO_MIN',      5);
 
 function log_sessao($msg, $nivel = 'INFO') {
@@ -98,35 +104,40 @@ function verificar_sessao_portal($conexao, $token, $cfg) {
 
     $usa_custom = (int)($sess['sessao_personalizada'] ?? 0);
     if ($usa_custom && !empty($sess['m_timeout_total'])) {
-        $t_total = (int)$sess['m_timeout_total'];
+        $t_total  = (int)$sess['m_timeout_total'];
         $t_inativ = (int)($sess['m_timeout_inatividade'] ?? $cfg['inatividade']);
     } else {
         $t_total  = (int)($sess['timeout_total_min']       ?: $cfg['total']);
         $t_inativ = (int)($sess['timeout_inatividade_min'] ?: $cfg['inatividade']);
     }
 
-    $agora   = time();
-    $login   = strtotime($sess['data_login']);
-    $ativo   = $sess['ultimo_ativo'] ? strtotime($sess['ultimo_ativo']) : $login;
-    $seg_login = $agora - $login;
+    $agora      = time();
+    $login      = strtotime($sess['data_login']);
+    $ativo      = $sess['ultimo_ativo'] ? strtotime($sess['ultimo_ativo']) : $login;
+    $seg_login  = $agora - $login;
     $seg_inativ = $agora - $ativo;
-    $lim_total  = $t_total  * 60;
-    $lim_inativ = $t_inativ * 60;
+    $lim_total  = $t_total * 60;
 
-    if ($seg_login >= $lim_total) {
+    // Verificar expiração por tempo total
+    if ($lim_total > 0 && $seg_login >= $lim_total) {
         log_sessao("Expirou timeout total ({$t_total}min) — {$sess['morador_nome']}", 'INFO');
         $conexao->query("UPDATE sessoes_portal SET ativo=0 WHERE id={$sess['sessao_id']}");
         return ['expirou' => true, 'motivo' => 'timeout_total'];
     }
-    if ($seg_inativ >= $lim_inativ) {
-        log_sessao("Expirou inatividade ({$t_inativ}min) — {$sess['morador_nome']}", 'INFO');
-        $conexao->query("UPDATE sessoes_portal SET ativo=0 WHERE id={$sess['sessao_id']}");
-        return ['expirou' => true, 'motivo' => 'inatividade'];
+
+    // Verificar expiração por inatividade (0 = desabilitado)
+    if ($t_inativ > 0) {
+        $lim_inativ = $t_inativ * 60;
+        if ($seg_inativ >= $lim_inativ) {
+            log_sessao("Expirou inatividade ({$t_inativ}min) — {$sess['morador_nome']}", 'INFO');
+            $conexao->query("UPDATE sessoes_portal SET ativo=0 WHERE id={$sess['sessao_id']}");
+            return ['expirou' => true, 'motivo' => 'inatividade'];
+        }
     }
 
     $conexao->query("UPDATE sessoes_portal SET ultimo_ativo=NOW() WHERE id={$sess['sessao_id']}");
-    $rest_total  = max(0, $lim_total  - $seg_login);
-    $rest_inativ = max(0, $lim_inativ - $seg_inativ);
+    $rest_total  = $lim_total > 0 ? max(0, $lim_total - $seg_login) : 9999999;
+    $rest_inativ = $t_inativ > 0  ? max(0, $t_inativ * 60 - $seg_inativ) : 9999999;
     $tempo_rest  = min($rest_total, $rest_inativ);
     log_sessao("Sessao valida — {$sess['morador_nome']} | restante:{$tempo_rest}s", 'INFO');
 
@@ -146,9 +157,14 @@ function verificar_sessao_portal($conexao, $token, $cfg) {
 function verificar_sessao_erp() {
     if (!isset($_SESSION['usuario_logado']) || $_SESSION['usuario_logado'] !== true) return false;
     if (!isset($_SESSION['usuario_id'])     || empty($_SESSION['usuario_id']))        return false;
+
+    // Se sessao_inativa está ativa, nunca expira
+    if (!empty($_SESSION['sessao_inativa'])) return true;
+
     if (isset($_SESSION['login_timestamp'])) {
         $d = time() - $_SESSION['login_timestamp'];
         if ($d > SESSAO_TIMEOUT_TOTAL_MIN * 60) return false;
+        // Renovar timestamp a cada 5 min de atividade
         if ($d > 300) $_SESSION['login_timestamp'] = time();
     }
     return true;
@@ -180,7 +196,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             retornar_erro_sessao($msg);
         }
         $tr = $sessao['tempo_restante_seg'];
-        $mm = floor($tr/60); $ss = $tr % 60;
+        // Se tempo_rest é 9999999, é sessão sem expiração
+        $sessao_inativa_flag = ($tr >= 9999999);
+        if ($sessao_inativa_flag) $tr = null; // null = ∞ no frontend
+        $mm = $tr !== null ? floor($tr/60) : 0;
+        $ss = $tr !== null ? ($tr % 60)    : 0;
         retornar_sucesso_sessao([
             'sessao_ativa' => true, 'tipo' => 'portal_morador',
             'usuario' => [
@@ -190,40 +210,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             ],
             'sessao' => [
                 'tempo_restante' => $tr,
-                'tempo_formatado' => sprintf('%02d:%02d', $mm, $ss),
+                'tempo_formatado' => $tr !== null ? sprintf('%02d:%02d', $mm, $ss) : '∞',
                 'restante_total_seg' => $sessao['restante_total_seg'],
                 'restante_inatividade_seg' => $sessao['restante_inatividade_seg'],
                 'timeout_total_min' => $sessao['timeout_total_min'],
                 'timeout_inatividade_min' => $sessao['timeout_inatividade_min'],
                 'aviso_expiracao_min' => $config['aviso'],
                 'session_id' => $sessao['sessao_id'],
+                'sessao_inativa' => $sessao_inativa_flag,
             ],
             'tempo_restante_segundos'  => $tr,
-            'tempo_restante_formatado' => sprintf('%02d:%02d', $mm, $ss),
+            'tempo_restante_formatado' => $tr !== null ? sprintf('%02d:%02d', $mm, $ss) : '∞',
             'session_id' => $sessao['sessao_id'],
         ]);
     }
 
     if (verificar_sessao_erp()) {
-        $d = time() - ($_SESSION['login_timestamp'] ?? time());
-        $tr = max(0, SESSAO_TIMEOUT_TOTAL_MIN*60 - $d);
-        $mm = floor($tr/60); $ss = $tr % 60;
+        $sessao_inativa_flag = !empty($_SESSION['sessao_inativa']);
+        $d  = time() - ($_SESSION['login_timestamp'] ?? time());
+        $tr = $sessao_inativa_flag ? null : max(0, SESSAO_TIMEOUT_TOTAL_MIN * 60 - $d);
+        $mm = $tr !== null ? floor($tr/60) : 0;
+        $ss = $tr !== null ? ($tr % 60)    : 0;
+
+        // Buscar sessao_inativa atualizado do banco (pode ter sido alterado pelo admin)
+        $uid = (int)($_SESSION['usuario_id'] ?? 0);
+        if ($uid > 0) {
+            $stmt_u = $conexao->prepare("SELECT sessao_inativa FROM usuarios WHERE id = ? LIMIT 1");
+            if ($stmt_u) {
+                $stmt_u->bind_param('i', $uid);
+                $stmt_u->execute();
+                $row_u = $stmt_u->get_result()->fetch_assoc();
+                $stmt_u->close();
+                if ($row_u) {
+                    $sessao_inativa_flag = (bool)$row_u['sessao_inativa'];
+                    // Atualizar sessão PHP para refletir mudança
+                    $_SESSION['sessao_inativa'] = $sessao_inativa_flag ? 1 : 0;
+                    if ($sessao_inativa_flag) $tr = null;
+                }
+            }
+        }
+
         retornar_sucesso_sessao([
             'sessao_ativa' => true, 'tipo' => 'erp_interno',
             'usuario' => [
-                'id' => $_SESSION['usuario_id'] ?? null, 'nome' => $_SESSION['usuario_nome'] ?? null,
-                'email' => $_SESSION['usuario_email'] ?? null, 'funcao' => $_SESSION['usuario_funcao'] ?? null,
-                'departamento' => $_SESSION['usuario_departamento'] ?? null,
-                'permissao' => $_SESSION['usuario_permissao'] ?? null, 'tipo' => 'erp',
+                'id'          => $_SESSION['usuario_id']         ?? null,
+                'nome'        => $_SESSION['usuario_nome']        ?? null,
+                'email'       => $_SESSION['usuario_email']       ?? null,
+                'funcao'      => $_SESSION['usuario_funcao']      ?? null,
+                'departamento'=> $_SESSION['usuario_departamento']?? null,
+                'permissao'   => $_SESSION['usuario_permissao']   ?? null,
+                'tipo'        => 'erp',
             ],
             'sessao' => [
-                'tempo_restante' => $tr, 'tempo_formatado' => sprintf('%02d:%02d', $mm, $ss),
-                'timeout_total_min' => SESSAO_TIMEOUT_TOTAL_MIN,
-                'timeout_inatividade_min' => SESSAO_TIMEOUT_INATIVIDADE_MIN,
-                'aviso_expiracao_min' => SESSAO_AVISO_EXPIRACAO_MIN,
-                'session_id' => session_id(),
+                'tempo_restante'         => $tr,
+                'tempo_formatado'        => $tr !== null ? sprintf('%02d:%02d', $mm, $ss) : '∞',
+                'timeout_total_min'      => SESSAO_TIMEOUT_TOTAL_MIN,
+                'timeout_inatividade_min'=> SESSAO_TIMEOUT_INATIVIDADE_MIN,
+                'aviso_expiracao_min'    => SESSAO_AVISO_EXPIRACAO_MIN,
+                'session_id'             => session_id(),
+                'sessao_inativa'         => $sessao_inativa_flag,
             ],
-            'tempo_restante_segundos' => $tr, 'tempo_restante_formatado' => sprintf('%02d:%02d', $mm, $ss),
+            'tempo_restante_segundos'  => $tr,
+            'tempo_restante_formatado' => $tr !== null ? sprintf('%02d:%02d', $mm, $ss) : '∞',
             'session_id' => session_id(),
         ]);
     }
@@ -245,10 +293,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $af = $stmt->affected_rows; $stmt->close();
             if ($acao === 'renovar' && $af === 0) retornar_erro_sessao('Sessão não encontrada para renovação');
             log_sessao("Sessao renovada/ping — token: " . substr($token,0,8), 'INFO');
-            retornar_sucesso_sessao(['mensagem'=>'Sessão renovada','novo_ultimo_ativo'=>date('Y-m-d H:i:s'),'tempo_restante_segundos'=>$config['inatividade']*60]);
+            $tr_renovado = $config['inatividade'] > 0 ? $config['inatividade'] * 60 : null;
+            retornar_sucesso_sessao(['mensagem'=>'Sessão renovada','novo_ultimo_ativo'=>date('Y-m-d H:i:s'),'tempo_restante_segundos'=>$tr_renovado]);
         } elseif (verificar_sessao_erp()) {
-            $_SESSION['login_timestamp'] = time();
-            retornar_sucesso_sessao(['mensagem'=>'Sessão ERP renovada','novo_timestamp'=>$_SESSION['login_timestamp']]);
+            if (empty($_SESSION['sessao_inativa'])) {
+                $_SESSION['login_timestamp'] = time();
+            }
+            retornar_sucesso_sessao(['mensagem'=>'Sessão ERP renovada','novo_timestamp'=>$_SESSION['login_timestamp'] ?? time()]);
         } else {
             retornar_erro_sessao('Nenhuma sessão para renovar');
         }

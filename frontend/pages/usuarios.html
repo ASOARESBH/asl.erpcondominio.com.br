@@ -52,6 +52,40 @@
                     </select>
                 </div>
             </div>
+            <!-- Sessão Inativa -->
+            <div class="form-group" style="margin-top:1rem;">
+                <div style="
+                    background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+                    border: 1.5px solid #86efac;
+                    border-radius: 10px;
+                    padding: 1rem 1.25rem;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 1rem;
+                ">
+                    <div style="padding-top:2px;">
+                        <input type="checkbox" id="sessao_inativa" style="
+                            width: 18px; height: 18px; cursor: pointer;
+                            accent-color: #16a34a;
+                        ">
+                    </div>
+                    <div>
+                        <label for="sessao_inativa" style="
+                            font-weight: 600; color: #15803d; cursor: pointer;
+                            font-size: 0.95rem; display: block; margin-bottom: 0.25rem;
+                        ">
+                            <i class="fas fa-infinity" style="margin-right:6px;"></i>
+                            Sessão Inativa (Nunca Expira)
+                        </label>
+                        <p style="font-size:0.82rem; color:#166534; margin:0; line-height:1.4;">
+                            Quando ativado, o sistema <strong>nunca fará logout automático</strong> deste usuário,
+                            independente do tempo de inatividade ou do timeout configurado.
+                            Ideal para usuários que precisam manter o acesso aberto continuamente
+                            (ex: portaria, monitoramento 24h).
+                        </p>
+                    </div>
+                </div>
+            </div>
             <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                 <button type="submit" class="btn-primary-modern" id="btnSalvar"><i class="fas fa-save"></i> <span
                         id="btnSalvarTexto">Salvar Usuário</span></button>
@@ -78,12 +112,13 @@
                         <th>Departamento</th>
                         <th>Permissão</th>
                         <th>Status</th>
+                        <th style="text-align:center;">Sessão</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaUsuarios">
                     <tr>
-                        <td colspan="8" style="text-align: center;">Carregando...</td>
+                        <td colspan="9" style="text-align: center;">Carregando...</td>
                     </tr>
                 </tbody>
             </table>

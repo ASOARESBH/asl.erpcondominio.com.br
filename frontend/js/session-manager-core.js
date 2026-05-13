@@ -1,7 +1,14 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════
- * SESSION MANAGER CORE v3.0 - ÚNICO PONTO DE CONTROLE DE SESSÃO
+ * SESSION MANAGER CORE v3.1 - ÚNICO PONTO DE CONTROLE DE SESSÃO
  * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * CORREÇÕES v3.1 (2026-05-13):
+ *   • API_BASE usa URL absoluta (window.location.origin + '/api/') — corrige
+ *     resolução errada '../api/' → /frontend/api/ (não existe)
+ *   • Timeout padrão: 60 min total, sem inatividade (0 = desabilitado)
+ *   • Suporte a sessaoInativa: true = nunca faz logout automático
+ *   • Countdown exibe '∞' quando sessão inativa está ativa
  *
  * CORREÇÕES v3.0 (2026-05-10):
  *   • Envia token Bearer (localStorage.portal_token) nas requisições ao portal
@@ -9,7 +16,7 @@
  *   • Ping automático de atividade (a cada 2 min) para reset do timer de inatividade
  *   • Countdown em tempo real no menu superior (decrementa a cada segundo)
  *   • Aviso visual quando restam ≤ 5 minutos
- *   • Padrão: 30 min total, 10 min inatividade
+ *   • Padrão: 60 min total, sem timeout de inatividade
  *
  * ✅ PRINCÍPIOS:
  *   • Sessão ≠ UI (UI nunca valida ou renova sessão)
@@ -38,7 +45,9 @@ class SessionManagerCore {
         }
 
         // ─── CONSTANTES ──────────────────────────────────────────────────────
-        this.API_BASE          = '../api/';
+        // URL absoluta: evita resolução errada para /frontend/api/ quando
+        // o script está em /frontend/js/ e o browser resolve '../api/' como /frontend/api/
+        this.API_BASE          = window.location.origin + '/api/';
         this.CHECK_INTERVAL    = 60000;   // 60s — verificação completa com a API
         this.PING_INTERVAL     = 120000;  // 2min — ping de atividade (reset inatividade)
         this.COUNTDOWN_TICK    = 1000;    // 1s — decremento local do countdown
@@ -58,9 +67,11 @@ class SessionManagerCore {
         this.isOnline          = navigator.onLine;
 
         // Configurações de timeout (preenchidas pela API)
-        this.timeoutTotalMin      = 30;
-        this.timeoutInatividadeMin = 10;
+        // Padrão: 60 min total, sem limite de inatividade (0 = desabilitado)
+        this.timeoutTotalMin      = 60;
+        this.timeoutInatividadeMin = 0;   // 0 = sem timeout de inatividade
         this.avisoExpiracaoMin    = 5;
+        this.sessaoInativa        = false; // true = nunca faz logout automático
 
         // ─── TIMERS ──────────────────────────────────────────────────────────
         this.checkTimer     = null;   // verificação periódica (60s)
@@ -218,9 +229,15 @@ class SessionManagerCore {
 
                 // Salvar configurações de timeout retornadas pela API
                 if (data.sessao) {
-                    this.timeoutTotalMin       = data.sessao.timeout_total_min       ?? 30;
-                    this.timeoutInatividadeMin = data.sessao.timeout_inatividade_min ?? 10;
+                    this.timeoutTotalMin       = data.sessao.timeout_total_min       ?? 60;
+                    this.timeoutInatividadeMin = data.sessao.timeout_inatividade_min ?? 0;
                     this.avisoExpiracaoMin     = data.sessao.aviso_expiracao_min     ?? 5;
+                    // sessao_inativa: true = nunca faz logout automático
+                    this.sessaoInativa         = data.sessao.sessao_inativa          ?? false;
+                }
+                // Se sessão inativa, não decrementar countdown (sessão permanente)
+                if (this.sessaoInativa) {
+                    this.countdownSeconds = null; // null = exibe '∞' no menu
                 }
 
                 this.persistState();
@@ -283,6 +300,18 @@ class SessionManagerCore {
         if (this.countdownTimer) {
             clearInterval(this.countdownTimer);
             this.countdownTimer = null;
+        }
+
+        // Sessão inativa: não decrementar, exibir '∞'
+        if (this.sessaoInativa) {
+            this.emit('countdownTick', {
+                segundos:  null,
+                formatado: '∞',
+                aviso:     false,
+                expirou:   false,
+                permanente: true,
+            });
+            return;
         }
 
         if (this.countdownSeconds === null || this.countdownSeconds <= 0) return;
@@ -464,8 +493,15 @@ class SessionManagerCore {
         console.log('[SessionManager] ⏹️ Verificações periódicas paradas');
     }
 
-    // ─── TRATAMENTO DE EXPIRAÇÃO ─────────────────────────────────────────────
+    // ─── TRATAMENTO DE EXPIRAÇÃO ───────────────────────────────────────────────────────────────────────────
     handleSessionExpired(reason) {
+        // Se sessão inativa está ativa, NUNCA faz logout automático
+        if (this.sessaoInativa) {
+            console.log('[SessionManager] ♾️ Sessão inativa ativa — ignorando expiração:', reason);
+            // Tentar renovar a sessão no servidor
+            this.checkSession();
+            return;
+        }
         console.warn(`[SessionManager] ❌ Sessão expirou (motivo: ${reason})`);
         this.isAuthenticated   = false;
         this.currentUser       = null;
@@ -476,9 +512,7 @@ class SessionManagerCore {
         if (!this.isPublicPage()) {
             setTimeout(() => this.redirectToLogin(), 500);
         }
-    }
-
-    // ─── EVENT SYSTEM ────────────────────────────────────────────────────────
+    }STEM ────────────────────────────────────────────────────────
     on(event, callback) {
         if (typeof callback === 'function') {
             if (!this.listeners.has(event)) this.listeners.set(event, []);

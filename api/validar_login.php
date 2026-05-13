@@ -69,7 +69,7 @@ try {
     $conexao = conectar_banco();
     
     // Preparar consulta para buscar usuário
-    $stmt = $conexao->prepare("SELECT id, nome, email, senha, funcao, departamento, permissao, ativo FROM usuarios WHERE email = ? LIMIT 1");
+    $stmt = $conexao->prepare("SELECT id, nome, email, senha, funcao, departamento, permissao, ativo, COALESCE(sessao_inativa,0) AS sessao_inativa FROM usuarios WHERE email = ? LIMIT 1");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $resultado = $stmt->get_result();
@@ -119,8 +119,9 @@ try {
     $_SESSION['usuario_funcao'] = $usuario['funcao'];
     $_SESSION['usuario_departamento'] = $usuario['departamento'];
     $_SESSION['usuario_permissao'] = $usuario['permissao'];
-    $_SESSION['usuario_logado'] = true;
-    $_SESSION['login_timestamp'] = time();
+    $_SESSION['usuario_logado']  = true;
+    $_SESSION['login_timestamp']  = time();
+    $_SESSION['sessao_inativa']   = !empty($usuario['sessao_inativa']) ? 1 : 0;
     
     // Regenerar ID da sessão para segurança
     session_regenerate_id(true);

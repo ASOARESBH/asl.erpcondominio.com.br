@@ -152,7 +152,11 @@ class AppUserMenu extends HTMLElement {
 
             // Ouvir tick do countdown (a cada segundo — sem fetch)
             const unsubTick = this.sessionManager.on('countdownTick', (dados) => {
-                this.updateCountdown(dados.segundos, dados.aviso);
+                if (dados.permanente) {
+                    this.updateCountdown(null, false, true); // sessão inativa: exibe ∞
+                } else {
+                    this.updateCountdown(dados.segundos, dados.aviso, false);
+                }
             });
 
             // Ouvir renovação
@@ -225,15 +229,26 @@ class AppUserMenu extends HTMLElement {
         }
     }
 
-    updateCountdown(segundos, isAviso) {
+    updateCountdown(segundos, isAviso, permanente = false) {
         if (!this.ui.countdown) return;
+        // Sessão inativa: exibe ∞ verde
+        if (permanente) {
+            this.ui.countdown.textContent      = '♾️ Sessão Inativa';
+            this.ui.countdown.title            = 'Sessão configurada para nunca expirar';
+            this.ui.countdown.style.color      = '#16a34a';
+            this.ui.countdown.style.fontWeight = '600';
+            this.ui.countdown.classList.remove('warning');
+            return;
+        }
         if (segundos === null || segundos === undefined) {
             this.ui.countdown.textContent = '';
             return;
         }
-        const mm     = Math.floor(segundos / 60);
-        const ss     = segundos % 60;
-        const fmt    = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+        this.ui.countdown.style.color      = '';
+        this.ui.countdown.style.fontWeight = '';
+        const mm  = Math.floor(segundos / 60);
+        const ss  = segundos % 60;
+        const fmt = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
         this.ui.countdown.textContent = '⏱ ' + fmt;
         this.ui.countdown.title       = 'Sessão expira em ' + fmt;
         if (isAviso || segundos <= 300) {
