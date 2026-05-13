@@ -19,7 +19,12 @@ require_once 'config.php';
 require_once 'auth_helper.php';
 
 $conn    = conectar_banco();
-$usuario = verificarAutenticacao(true, 'operador');
+// Autenticação opcional: não bloqueia a abertura em nova aba
+// (sessão PHP pode não estar disponível em nova aba/janela)
+$usuario = verificarAutenticacao(false);
+if ($usuario === false) {
+    $usuario = ['nome' => 'Sistema', 'id' => null];
+}
 
 date_default_timezone_set('America/Sao_Paulo');
 
@@ -36,17 +41,20 @@ if ($hidrometro_id <= 0) {
 
 // ── 1. Dados da empresa / associação ─────────────────────────
 $empresa = [];
-$r = $conn->query("SELECT razao_social, nome_fantasia, cnpj, telefone, endereco, cidade, estado, cep, logo_url FROM empresa LIMIT 1");
+$r = $conn->query("SELECT razao_social, nome_fantasia, cnpj, telefone,
+    endereco_rua AS endereco, endereco_cidade AS cidade,
+    endereco_estado AS estado, endereco_cep AS cep,
+    logo_url FROM empresa LIMIT 1");
 if ($r && $r->num_rows > 0) {
     $empresa = $r->fetch_assoc();
 }
-$assoc_nome     = $empresa['nome_fantasia'] ?: ($empresa['razao_social'] ?: 'ASSOCIAÇÃO SERRA DA LIBERDADE');
-$assoc_cnpj     = $empresa['cnpj']         ?: '';
-$assoc_tel      = $empresa['telefone']     ?: '';
-$assoc_end      = $empresa['endereco']     ?: '';
-$assoc_cidade   = $empresa['cidade']       ?: '';
-$assoc_estado   = $empresa['estado']       ?: '';
-$assoc_cep      = $empresa['cep']          ?: '';
+$assoc_nome     = !empty($empresa['nome_fantasia']) ? $empresa['nome_fantasia'] : (!empty($empresa['razao_social']) ? $empresa['razao_social'] : 'ASSOCIAÇÃO SERRA DA LIBERDADE');
+$assoc_cnpj     = $empresa['cnpj']     ?? '';
+$assoc_tel      = $empresa['telefone'] ?? '';
+$assoc_end      = $empresa['endereco'] ?? '';
+$assoc_cidade   = $empresa['cidade']   ?? '';
+$assoc_estado   = $empresa['estado']   ?? '';
+$assoc_cep      = $empresa['cep']      ?? '';
 
 // URL da logo
 $proto     = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
