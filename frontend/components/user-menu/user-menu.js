@@ -3,10 +3,10 @@
  * UI 100% Passiva: Reage exclusivamente ao SessionManagerCore v3.0.
  *
  * ATUALIZADO v3.0 (2026-05-10):
- *   • Exibe nome do usuário logado e unidade (portal do morador)
- *   • Countdown em tempo real (via evento countdownTick do SessionManager)
- *   • Aviso visual (vermelho) quando restam ≤ 5 minutos
- *   • Fallback: lê dados do localStorage se SessionManager não estiver pronto
+ *   ? Exibe nome do usu?rio logado e unidade (portal do morador)
+ *   ? Countdown em tempo real (via evento countdownTick do SessionManager)
+ *   ? Aviso visual (vermelho) quando restam ? 5 minutos
+ *   ? Fallback: l? dados do localStorage se SessionManager n?o estiver pronto
  */
 
 class AppUserMenu extends HTMLElement {
@@ -40,10 +40,10 @@ class AppUserMenu extends HTMLElement {
                 <div class="user-info">
                     <span class="user-name">Carregando...</span>
                     <span class="user-subinfo"></span>
-                    <span class="session-countdown" title="Tempo restante na sessão"></span>
+                    <span class="session-countdown" title="Tempo restante na sess?o"></span>
                 </div>
                 <div class="user-dropdown">
-                    <button class="menu-toggle" aria-label="Abrir menu do usuário" title="Opções">
+                    <button class="menu-toggle" aria-label="Abrir menu do usu?rio" title="Op??es">
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-menu">
@@ -125,7 +125,7 @@ class AppUserMenu extends HTMLElement {
 
     async initSessionIntegration() {
         if (typeof window.SessionManagerCore === 'undefined') {
-            console.warn('[AppUserMenu] ⚠️ SessionManagerCore não encontrado.');
+            console.warn('[AppUserMenu] [!] SessionManagerCore n?o encontrado.');
             this._carregarDadosLocalStorage();
             return;
         }
@@ -143,23 +143,23 @@ class AppUserMenu extends HTMLElement {
                 this._carregarDadosLocalStorage();
             }
 
-            // Ouvir mudanças completas (verificação com API)
+            // Ouvir mudan?as completas (verifica??o com API)
             const unsubData = this.sessionManager.on('userDataChanged', (dados) => {
                 const user   = dados.user || dados.usuario;
                 const expire = dados.expireTime || dados.tempo_restante;
                 this.updateUI(user, expire);
             });
 
-            // Ouvir tick do countdown (a cada segundo — sem fetch)
+            // Ouvir tick do countdown (a cada segundo ? sem fetch)
             const unsubTick = this.sessionManager.on('countdownTick', (dados) => {
                 if (dados.permanente) {
-                    this.updateCountdown(null, false, true); // sessão inativa: exibe ∞
+                    this.updateCountdown(null, false, true); // sess?o inativa: exibe Sem limite
                 } else {
                     this.updateCountdown(dados.segundos, dados.aviso, false);
                 }
             });
 
-            // Ouvir renovação
+            // Ouvir renova??o
             const unsubRenew = this.sessionManager.on('sessionRenewed', (dados) => {
                 const user   = dados.user || dados.usuario || this.sessionManager.getUser();
                 const expire = dados.expireTime || dados.tempo_restante;
@@ -171,7 +171,7 @@ class AppUserMenu extends HTMLElement {
             if (unsubRenew) this.unsubscribeFunctions.push(unsubRenew);
 
         } catch (err) {
-            console.error('[AppUserMenu] ❌ Erro ao integrar com SessionManager:', err);
+            console.error('[AppUserMenu] [ERRO] Erro ao integrar com SessionManager:', err);
             this._carregarDadosLocalStorage();
         }
     }
@@ -187,7 +187,7 @@ class AppUserMenu extends HTMLElement {
     updateUI(userData, expireTimeSeconds) {
         if (!userData) return;
 
-        const nomeCompleto = userData.nome || 'Usuário';
+        const nomeCompleto = userData.nome || 'Usu?rio';
         const unidade      = userData.unidade || userData.departamento || userData.funcao || '';
 
         // Nome
@@ -231,10 +231,10 @@ class AppUserMenu extends HTMLElement {
 
     updateCountdown(segundos, isAviso, permanente = false) {
         if (!this.ui.countdown) return;
-        // Sessão inativa: exibe ∞ verde
+        // Sess?o inativa: exibe Sem limite verde
         if (permanente) {
-            this.ui.countdown.textContent      = '♾️ Sessão Inativa';
-            this.ui.countdown.title            = 'Sessão configurada para nunca expirar';
+            this.ui.countdown.textContent      = '[inf] Sess?o Inativa';
+            this.ui.countdown.title            = 'Sess?o configurada para nunca expirar';
             this.ui.countdown.style.color      = '#16a34a';
             this.ui.countdown.style.fontWeight = '600';
             this.ui.countdown.classList.remove('warning');
@@ -249,8 +249,8 @@ class AppUserMenu extends HTMLElement {
         const mm  = Math.floor(segundos / 60);
         const ss  = segundos % 60;
         const fmt = String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
-        this.ui.countdown.textContent = '⏱ ' + fmt;
-        this.ui.countdown.title       = 'Sessão expira em ' + fmt;
+        this.ui.countdown.textContent = '? ' + fmt;
+        this.ui.countdown.title       = 'Sess?o expira em ' + fmt;
         if (isAviso || segundos <= 300) {
             this.ui.countdown.classList.add('warning');
         } else {
