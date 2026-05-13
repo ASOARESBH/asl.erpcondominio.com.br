@@ -30,7 +30,9 @@ export function init() {
         excluir:        _excluirVisitante,
         cancelarEdicao: _resetForm,
         verFoto:        _verFoto,
-        verDoc:         _verDoc
+        verDoc:         _verDoc,
+        relExportarCSV: relExportarCSV,
+        relGerarPDF:    relGerarPDF
     };
     console.log('[Visitantes] Módulo pronto.');
 }
@@ -518,4 +520,133 @@ function _esc(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+// ===== RELATORIOS =====
+
+function _relColetarFiltros() {
+    return {
+        nome:     (document.getElementById('relNome')?.value     || '').trim(),
+        cpf:      (document.getElementById('relCpf')?.value      || '').trim(),
+        email:    (document.getElementById('relEmail')?.value    || '').trim(),
+        tem_foto: (document.getElementById('relTemFoto')?.value  || ''),
+        tem_doc:  (document.getElementById('relTemDoc')?.value   || ''),
+        ativo:    (document.getElementById('relAtivo')?.value    || '')
+    };
+}
+
+function _relFiltrarCache(filtros) {
+    return visitantesCache.filter(v => {
+        const nome  = (v.nome_completo || '').toLowerCase();
+        const doc   = (v.documento || '').toLowerCase().replace(/\D/g, '');
+        const email = (v.email || '').toLowerCase();
+        const foto  = !!(v.foto);
+        const docA  = !!(v.documento_arquivo);
+        const ativo = String(v.ativo ?? '1');
+
+        if (filtros.nome    && !nome.includes(filtros.nome.toLowerCase()))  return false;
+        if (filtros.cpf     && !doc.includes(filtros.cpf.replace(/\D/g, ''))) return false;
+        if (filtros.email   && !email.includes(filtros.email.toLowerCase())) return false;
+        if (filtros.tem_foto === 'sim' && !foto)  return false;
+        if (filtros.tem_foto === 'nao' &&  foto)  return false;
+        if (filtros.tem_doc  === 'sim' && !docA)  return false;
+        if (filtros.tem_doc  === 'nao' &&  docA)  return false;
+        if (filtros.ativo === '1' && ativo !== '1') return false;
+        if (filtros.ativo === '0' && ativo !== '0') return false;
+        return true;
+    });
+}
+
+function relExportarCSV() {
+    const filtros    = _relColetarFiltros();
+    const dados      = _relFiltrarCache(filtros);
+    const preview    = document.getElementById('relPreviewVisitantes');
+
+    if (!dados.length) {
+        if (preview) preview.innerHTML = '<p style="color:#e74c3c;padding:10px;"><i class="fas fa-exclamation-circle"></i> Nenhum visitante encontrado com os filtros aplicados.</p>';
+        return;
+    }
+
+    // Cabecalho CSV
+    const cabecalho = ['ID','Nome Completo','Tipo Documento','Documento','E-mail','Telefone','Celular','Placa Veiculo','Possui Foto','Possui Documento','Status','Data Cadastro'];
+    const linhas    = dados.map(v => [
+        v.id || '',
+        v.nome_completo || '',
+        v.tipo_documento || 'CPF',
+        v.documento || '',
+        v.email || '',
+        v.telefone_contato || '',
+        v.celular || '',
+        v.placa_veiculo || '',
+        v.foto ? 'Sim' : 'Nao',
+        v.documento_arquivo ? 'Sim' : 'Nao',
+        (v.ativo == 1) ? 'Ativo' : 'Inativo',
+        v.data_cadastro_formatada || ''
+    ].map(c => '"' + String(c).replace(/"/g, '""') + '"'));
+
+    const csv = [cabecalho.join(','), ...linhas.map(l => l.join(','))].join('\n');
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'relatorio_visitantes_' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Exibir preview
+    _relMostrarPreview(dados, preview);
+}
+
+function relGerarPDF() {
+    const filtros = _relColetarFiltros();
+    const base    = window.location.origin + '/api/api_relatorio_visitantes_pdf.php';
+    const params  = new URLSearchParams();
+    if (filtros.nome)     params.set('nome',     filtros.nome);
+    if (filtros.cpf)      params.set('cpf',      filtros.cpf);
+    if (filtros.email)    params.set('email',    filtros.email);
+    if (filtros.tem_foto) params.set('tem_foto', filtros.tem_foto);
+    if (filtros.tem_doc)  params.set('tem_doc',  filtros.tem_doc);
+    if (filtros.ativo)    params.set('ativo',    filtros.ativo);
+    window.open(base + '?' + params.toString(), '_blank');
+}
+
+function _relMostrarPreview(dados, container) {
+    if (!container) return;
+    const total    = dados.length;
+    const comFoto  = dados.filter(v => v.foto).length;
+    const comDoc   = dados.filter(v => v.documento_arquivo).length;
+    const ativos   = dados.filter(v => (v.ativo ?? 1) == 1).length;
+
+    const kpis = `<div class="rel-kpis">
+        <div class="rel-kpi"><div class="rel-kpi-valor">${total}</div><div class="rel-kpi-label">Total</div></div>
+        <div class="rel-kpi"><div class="rel-kpi-valor">${ativos}</div><div class="rel-kpi-label">Ativos</div></div>
+        <div class="rel-kpi"><div class="rel-kpi-valor">${comFoto}</div><div class="rel-kpi-label">Com Foto</div></div>
+        <div class="rel-kpi"><div class="rel-kpi-valor">${comDoc}</div><div class="rel-kpi-label">Com Documento</div></div>
+    </div>`;
+
+    const linhas = dados.slice(0, 50).map(v => `
+        <tr>
+            <td>${_esc(v.nome_completo || '—')}</td>
+            <td>${_esc(v.tipo_documento || 'CPF')}</td>
+            <td>${_esc(v.documento || '—')}</td>
+            <td>${_esc(v.email || '—')}</td>
+            <td>${_esc(v.telefone_contato || v.celular || '—')}</td>
+            <td style="text-align:center"><span class="rel-badge ${v.foto ? 'rel-badge-sim' : 'rel-badge-nao'}">${v.foto ? 'Sim' : 'Nao'}</span></td>
+            <td style="text-align:center"><span class="rel-badge ${v.documento_arquivo ? 'rel-badge-sim' : 'rel-badge-nao'}">${v.documento_arquivo ? 'Sim' : 'Nao'}</span></td>
+            <td style="text-align:center"><span class="rel-badge ${(v.ativo==1) ? 'rel-badge-ativo' : 'rel-badge-inativo'}">${(v.ativo==1) ? 'Ativo' : 'Inativo'}</span></td>
+        </tr>`).join('');
+
+    const aviso = total > 50 ? `<p style="font-size:11px;color:#64748b;margin-top:6px;">Exibindo 50 de ${total} registros. O CSV/PDF contera todos.</p>` : '';
+
+    container.innerHTML = kpis + `
+        <table>
+            <thead><tr>
+                <th>Nome</th><th>Tipo</th><th>Documento</th><th>E-mail</th>
+                <th>Telefone</th><th>Foto</th><th>Doc.</th><th>Status</th>
+            </tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>` + aviso;
 }
