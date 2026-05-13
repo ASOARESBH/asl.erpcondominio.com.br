@@ -60,6 +60,7 @@ export function init() {
         relFiltrarDependente: _relFiltrarDependente,
         relFiltrarContato:   _relFiltrarContato,
         relExportarCSV:      _relExportarCSV,
+        relGerarPDF:         _relGerarPDF,
         // Anexos
         abrirAnexos:       _abrirModalAnexos,
         fecharModalAnexos: _fecharModalAnexos,
@@ -949,9 +950,12 @@ function _relCarregarDados() {
         fetch(API_MORADORES).then(r => r.json()),
         fetch(API_DEPENDENTES).then(r => r.json()),
     ]).then(([resMor, resDep]) => {
-        _relDados.moradores   = (resMor.sucesso  ? resMor.dados  : []) || [];
-        _relDados.dependentes = (resDep.sucesso  ? resDep.dados  : []) || [];
-        log('Dados relatórios:', { moradores: _relDados.moradores.length, dependentes: _relDados.dependentes.length });
+        // API de moradores retorna dados.itens (paginado); dependentes retorna dados (array direto)
+        const dadosMor = resMor.sucesso ? (resMor.dados?.itens || resMor.dados || []) : [];
+        const dadosDep = resDep.sucesso ? (Array.isArray(resDep.dados) ? resDep.dados : (resDep.dados?.itens || [])) : [];
+        _relDados.moradores   = Array.isArray(dadosMor) ? dadosMor : [];
+        _relDados.dependentes = Array.isArray(dadosDep) ? dadosDep : [];
+        log('Dados relatorios:', { moradores: _relDados.moradores.length, dependentes: _relDados.dependentes.length });
         _relAtualizarKPIs();
         _relFiltrarUnidade();
         _relFiltrarContato();
@@ -1173,6 +1177,17 @@ function _relRenderGrafico(ranking) {
         script.onload = renderChart;
         document.head.appendChild(script);
     }
+}
+
+function _relGerarPDF(tipo) {
+    log('Gerar PDF tipo:', tipo);
+    var filtro = '';
+    if (tipo === 'unidade')    filtro = document.getElementById('rel-filtro-unidade')?.value    || '';
+    if (tipo === 'dependente') filtro = document.getElementById('rel-filtro-dependente')?.value || '';
+    if (tipo === 'contato')   filtro = document.getElementById('rel-filtro-contato')?.value    || '';
+    var base = window.location.origin + '/api/api_relatorio_moradores_pdf.php';
+    var url  = base + '?tipo=' + encodeURIComponent(tipo) + '&filtro=' + encodeURIComponent(filtro);
+    window.open(url, '_blank');
 }
 
 function _relExportarCSV(tipo) {
