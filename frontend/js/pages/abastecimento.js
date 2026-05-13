@@ -641,6 +641,26 @@ function _setupRelatorio() {
 
     _on(btnGerar,    'click', _gerarRelatorio);
     _on(btnExportar, 'click', _exportarCSV);
+
+    // Vincular botão de PDF (já existe no HTML)
+    const btnPDF = document.getElementById('btnExportarPDF');
+    if (btnPDF) {
+        _on(btnPDF, 'click', () => {
+            const veiculoId  = document.getElementById('filtro_veiculo').value;
+            const dataInicio = document.getElementById('filtro_data_inicio').value;
+            const dataFim    = document.getElementById('filtro_data_fim').value;
+            const combustivel= document.getElementById('filtro_combustivel').value;
+
+            let url = `/api/api_relatorio_abastecimento_pdf.php?print=true`;
+            if (veiculoId)   url += `&veiculo_id=${encodeURIComponent(veiculoId)}`;
+            if (dataInicio)  url += `&data_inicio=${encodeURIComponent(dataInicio)}`;
+            if (dataFim)     url += `&data_fim=${encodeURIComponent(dataFim)}`;
+            if (combustivel) url += `&combustivel=${encodeURIComponent(combustivel)}`;
+
+            console.log('[Abastecimento] Abrindo relatório PDF:', url);
+            window.open(url, '_blank');
+        });
+    }
 }
 
 function _carregarVeiculosSelectFiltro() {
