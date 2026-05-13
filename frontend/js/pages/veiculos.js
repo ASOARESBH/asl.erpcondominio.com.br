@@ -26,7 +26,8 @@ export function init() {
         buscar: buscarVeiculos,
         editar: editarVeiculo,
         excluir: excluirVeiculo,
-        cancelarEdicao: resetForm
+        cancelarEdicao: resetForm,
+        gerarPDF: gerarPDF
     };
 }
 
@@ -541,4 +542,11 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
+}
+
+function gerarPDF() {
+    var filtro = document.getElementById('buscaVeiculo')?.value || '';
+    var base = window.location.origin + '/api/api_relatorio_veiculos_pdf.php';
+    var url  = base + '?filtro=' + encodeURIComponent(filtro);
+    window.open(url, '_blank');
 }
