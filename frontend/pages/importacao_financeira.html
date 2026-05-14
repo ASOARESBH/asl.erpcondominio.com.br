@@ -1,0 +1,227 @@
+<!-- Page Metadata -->
+<div id="page-metadata" data-title="Importação Financeira" data-icon="fa-file-import" style="display:none;"></div>
+
+<div class="page-wrapper page-importacao-financeira">
+
+    <!-- ── Cabeçalho ─────────────────────────────────────────── -->
+    <div class="page-header">
+        <h1><i class="fas fa-file-import"></i> Importação Financeira</h1>
+        <p>Importe arquivos CSV ou PDF de outros sistemas e concilie com os lançamentos existentes</p>
+    </div>
+
+    <!-- ── Submenu financeiro ─────────────────────────────────── -->
+    <nav class="page-card financeiro-submenu" aria-label="Atalhos financeiros">
+        <a href="#" onclick="AppRouter.navigate('financeiro'); return false;" class="submenu-link">
+            <i class="fas fa-home"></i> Início
+        </a>
+        <a href="#" onclick="AppRouter.navigate('contas_pagar'); return false;" class="submenu-link">
+            <i class="fas fa-arrow-up"></i> Contas a Pagar
+        </a>
+        <a href="#" onclick="AppRouter.navigate('contas_receber'); return false;" class="submenu-link">
+            <i class="fas fa-arrow-down"></i> Contas a Receber
+        </a>
+        <a href="#" onclick="AppRouter.navigate('planos_contas'); return false;" class="submenu-link">
+            <i class="fas fa-list"></i> Planos de Contas
+        </a>
+        <a href="#" onclick="AppRouter.navigate('importacao_financeira'); return false;" class="submenu-link active">
+            <i class="fas fa-file-import"></i> Importação
+        </a>
+    </nav>
+
+    <!-- ── Formulário de Upload ───────────────────────────────── -->
+    <div class="page-card" id="imp_cardUpload">
+        <h2 class="section-title"><i class="fas fa-upload"></i> Novo Arquivo de Importação</h2>
+
+        <form id="imp_formUpload" autocomplete="off">
+            <div class="form-grid-3">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Conta <span class="required">*</span></label>
+                    <select id="imp_tipoConta" name="tipo_conta" class="form-control" required>
+                        <option value="PAGAR">Contas a Pagar</option>
+                        <option value="RECEBER">Contas a Receber</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Data Início (Vencimento)</label>
+                    <input type="date" id="imp_dataInicio" name="data_inicio" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Data Fim (Vencimento)</label>
+                    <input type="date" id="imp_dataFim" name="data_fim" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:12px;">
+                <label class="form-label">Arquivo CSV ou PDF <span class="required">*</span></label>
+                <div id="imp_dropZone" class="imp-drop-zone" onclick="document.getElementById('imp_arquivo').click()">
+                    <i class="fas fa-cloud-upload-alt" style="font-size:2rem;color:#2563eb;margin-bottom:8px;"></i>
+                    <p style="margin:0;font-weight:600;color:#1e3a8a;">Clique ou arraste o arquivo aqui</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Suporta CSV e PDF (BRCondos, outros sistemas)</p>
+                    <p id="imp_nomeArquivo" style="margin:8px 0 0;font-size:12px;color:#2563eb;font-weight:600;"></p>
+                </div>
+                <input type="file" id="imp_arquivo" name="arquivo" accept=".csv,.pdf" style="display:none;" required>
+            </div>
+
+            <div class="form-actions" style="margin-top:16px;">
+                <button type="submit" class="btn btn-primary" id="imp_btnImportar">
+                    <i class="fas fa-file-import"></i> Processar Arquivo
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="ImportacaoFinanceira.limparForm()">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+        </form>
+
+        <!-- Barra de progresso -->
+        <div id="imp_progressBar" style="display:none;margin-top:16px;">
+            <div style="background:#e2e8f0;border-radius:8px;overflow:hidden;height:8px;">
+                <div id="imp_progressFill" style="background:linear-gradient(90deg,#1e3a8a,#2563eb);height:100%;width:0%;transition:width .3s;"></div>
+            </div>
+            <p id="imp_progressText" style="margin:6px 0 0;font-size:12px;color:#64748b;text-align:center;">Processando...</p>
+        </div>
+    </div>
+
+    <!-- ── Resultado do processamento ────────────────────────── -->
+    <div id="imp_cardResultado" class="page-card" style="display:none;">
+        <h2 class="section-title"><i class="fas fa-chart-bar"></i> Resultado da Importação</h2>
+        <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+            <div class="kpi-card page-card" style="border-top:4px solid #2563eb;">
+                <div class="kpi-label">Total Registros</div>
+                <div class="kpi-value" id="imp_kpiTotal">0</div>
+            </div>
+            <div class="kpi-card page-card" style="border-top:4px solid #16a34a;">
+                <div class="kpi-label">Novos (Pendentes)</div>
+                <div class="kpi-value" id="imp_kpiNovos" style="color:#16a34a;">0</div>
+            </div>
+            <div class="kpi-card page-card" style="border-top:4px solid #f59e0b;">
+                <div class="kpi-label">Duplicatas</div>
+                <div class="kpi-value" id="imp_kpiDuplicatas" style="color:#d97706;">0</div>
+            </div>
+            <div class="kpi-card page-card" style="border-top:4px solid #dc2626;">
+                <div class="kpi-label">Erros</div>
+                <div class="kpi-value" id="imp_kpiErros" style="color:#dc2626;">0</div>
+            </div>
+        </div>
+        <div class="form-actions" style="margin-top:12px;">
+            <button class="btn btn-primary" id="imp_btnConfirmar" onclick="ImportacaoFinanceira.confirmarImportacao()">
+                <i class="fas fa-check-circle"></i> Confirmar Importação dos Novos Registros
+            </button>
+            <button class="btn btn-secondary" onclick="ImportacaoFinanceira.verConciliacao()">
+                <i class="fas fa-balance-scale"></i> Abrir Conciliação
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Conciliação Manual ─────────────────────────────────── -->
+    <div id="imp_cardConciliacao" class="page-card" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem;">
+            <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-balance-scale"></i> Conciliação Manual</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <select id="imp_filtroStatusConc" class="form-control-sm" onchange="ImportacaoFinanceira.filtrarItens()">
+                    <option value="">Todos os Status</option>
+                    <option value="PENDENTE">Pendentes</option>
+                    <option value="DUPLICATA">Duplicatas</option>
+                    <option value="IMPORTADO">Importados</option>
+                    <option value="CONCILIADO">Conciliados</option>
+                    <option value="IGNORADO">Ignorados</option>
+                    <option value="ERRO">Erros</option>
+                </select>
+                <button class="btn btn-sm btn-secondary" onclick="ImportacaoFinanceira.fecharConciliacao()">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+
+        <div class="table-container" style="overflow-x:auto;">
+            <table id="imp_tabelaConciliacao" style="min-width:900px;">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">#</th>
+                        <th>Fornecedor</th>
+                        <th>Vence Em</th>
+                        <th>Pago Em</th>
+                        <th style="text-align:right;">Valor</th>
+                        <th>Classificação</th>
+                        <th>Observação</th>
+                        <th>Status</th>
+                        <th style="width:160px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="imp_corpoConc">
+                    <tr><td colspan="9" class="empty-table">Selecione um lote para visualizar os itens</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── Histórico de Lotes ─────────────────────────────────── -->
+    <div class="page-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h2 class="section-title" style="margin-bottom:0;"><i class="fas fa-history"></i> Histórico de Importações</h2>
+            <button class="btn btn-sm btn-secondary" onclick="ImportacaoFinanceira.carregarLotes()">
+                <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+        </div>
+        <div class="table-container">
+            <table id="imp_tabelaLotes">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Arquivo</th>
+                        <th>Tipo</th>
+                        <th>Conta</th>
+                        <th>Período</th>
+                        <th>Total</th>
+                        <th>Importados</th>
+                        <th>Duplicatas</th>
+                        <th>Erros</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="imp_corpoLotes">
+                    <tr><td colspan="12" class="empty-table">Nenhuma importação realizada</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Estilos da página ──────────────────────────────────────── -->
+<style>
+.imp-drop-zone {
+    border: 2px dashed #2563eb;
+    border-radius: 10px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: #f0f6ff;
+    transition: background .2s, border-color .2s;
+}
+.imp-drop-zone:hover, .imp-drop-zone.drag-over {
+    background: #dbeafe;
+    border-color: #1e3a8a;
+}
+.badge-imp {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.badge-pendente   { background:#dbeafe;color:#1d4ed8; }
+.badge-importado  { background:#dcfce7;color:#166534; }
+.badge-duplicata  { background:#fef3c7;color:#92400e; }
+.badge-conciliado { background:#f3e8ff;color:#6b21a8; }
+.badge-ignorado   { background:#f1f5f9;color:#475569; }
+.badge-erro       { background:#fee2e2;color:#991b1b; }
+.badge-pagar      { background:#fee2e2;color:#991b1b; }
+.badge-receber    { background:#dcfce7;color:#166534; }
+.badge-csv        { background:#dbeafe;color:#1d4ed8; }
+.badge-pdf        { background:#fef3c7;color:#92400e; }
+.form-grid-3 { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
+@media(max-width:768px){ .form-grid-3 { grid-template-columns:1fr; } }
+</style>

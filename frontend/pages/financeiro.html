@@ -20,6 +20,9 @@
         <a href="#" onclick="AppRouter.navigate('planos_contas'); return false;" class="submenu-link">
             <i class="fas fa-list"></i> Planos de Contas
         </a>
+        <a href="#" onclick="AppRouter.navigate('importacao_financeira'); return false;" class="submenu-link">
+            <i class="fas fa-file-import"></i> Importação
+        </a>
     </nav>
 
     <div class="stats-grid">
@@ -68,6 +71,13 @@
             <h3>Planos de Contas</h3>
             <p>Cadastre e gerencie todos os planos de contas do condomínio. Organize receitas, despesas, ativos e passivos. Defina categorias e natureza das contas para melhor controle financeiro.</p>
             <a href="#" onclick="AppRouter.navigate('planos_contas'); return false;" class="action-link">Acessar Planos de Contas</a>
+        </div>
+
+        <div class="page-card action-card">
+            <div class="action-icon" style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;"><i class="fas fa-file-import"></i></div>
+            <h3>Importação Financeira</h3>
+            <p>Importe arquivos CSV ou PDF de outros sistemas (ex: BRCondos) para cadastrar automaticamente contas a pagar ou a receber. Detecta duplicatas e permite conciliação manual.</p>
+            <a href="#" onclick="AppRouter.navigate('importacao_financeira'); return false;" class="action-link">Acessar Importação</a>
         </div>
     </div>
 

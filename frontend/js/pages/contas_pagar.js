@@ -152,22 +152,36 @@ function _renderTabela() {
 
 // ─── Calcular KPIs ────────────────────────────────────────────────────────────
 function _calcularKPIs() {
-    let pendente = 0, pago = 0, atrasadas = 0;
+    let pendente = 0, pagoTotal = 0, pagoMes = 0, atrasadas = 0;
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
+    const anoAtual = hoje.getFullYear();
+    const mesAtual = hoje.getMonth(); // 0-indexed
 
     _state.lista.forEach(c => {
         const val = parseFloat(c.valor_original) || 0;
         if (c.status === 'PAGO') {
-            pago += val;
+            pagoTotal += val;
+            // Verificar se o pagamento foi no mês atual
+            if (c.data_pagamento) {
+                // data_pagamento pode vir como 'YYYY-MM-DD'
+                const dp = new Date(c.data_pagamento + 'T00:00:00');
+                if (dp.getFullYear() === anoAtual && dp.getMonth() === mesAtual) {
+                    pagoMes += val;
+                }
+            }
         } else if (c.status === 'PENDENTE' || c.status === 'PARCIAL') {
             pendente += val;
-            if (new Date(c.data_vencimento) < hoje) atrasadas++;
+            if (new Date(c.data_vencimento + 'T00:00:00') < hoje) atrasadas++;
         }
     });
 
     _setEl('cp_totalPendente',   _formatarMoeda(pendente));
-    _setEl('cp_totalPago',       _formatarMoeda(pago));
+    // Mostrar pago do mês no KPI principal; pago total como subtexto
+    _setEl('cp_totalPago',       _formatarMoeda(pagoMes));
+    // Subtexto com total geral pago (se existir o elemento)
+    const elSubPago = document.getElementById('cp_subPagoTotal');
+    if (elSubPago) elSubPago.textContent = 'Total geral: ' + _formatarMoeda(pagoTotal);
     _setEl('cp_contasAtrasadas', atrasadas);
 
     // Barra de alerta de contas atrasadas
