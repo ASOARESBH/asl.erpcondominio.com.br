@@ -35,14 +35,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Verificar autenticação - apenas admin pode gerenciar usuários
-verificarAutenticacao(true, 'admin');
+// Verificar autenticação — GET permite gerente, demais operações exigem admin
+verificarAutenticacao(true);
 
 $metodo = $_SERVER['REQUEST_METHOD'];
 $conexao = conectar_banco();
 
-// Verificar permissão de admin para todas as operações
-verificarPermissao('admin');
+// Leitura: gerente ou superior | Escrita: somente admin
+if ($metodo !== 'GET') {
+    verificarPermissao('admin');
+} else {
+    verificarPermissao('gerente');
+}
 
 // ========== LISTAR USUÁRIOS ==========
 if ($metodo === 'GET') {

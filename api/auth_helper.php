@@ -41,27 +41,28 @@ function verificarAutenticacao($exigir_autenticacao = true, $permissao_minima = 
         return false;
     }
     
-    // Verificar timeout da sessão (2 horas)
-    if (isset($_SESSION['login_timestamp'])) {
+    // Verificar timeout da sessão
+    // Se sessao_inativa = 1, a sessão NUNCA expira (portaria, monitoramento 24h)
+    $sessao_inativa = (int)($_SESSION['sessao_inativa'] ?? 0);
+    if ($sessao_inativa !== 1 && isset($_SESSION['login_timestamp'])) {
         $tempo_decorrido = time() - $_SESSION['login_timestamp'];
-        
-        if ($tempo_decorrido > 7200) {
+        // Timeout de 8 horas (jornada de trabalho completa)
+        if ($tempo_decorrido > 28800) {
             if ($exigir_autenticacao) {
+                session_unset();
+                session_destroy();
                 http_response_code(401);
                 echo json_encode([
-                    'sucesso' => false,
-                    'mensagem' => 'Sessão expirada. Faça login novamente.',
-                    'codigo' => 'SESSION_EXPIRED'
+                    'sucesso'  => false,
+                    'mensagem' => 'Sessão expirada após 8 horas. Faça login novamente.',
+                    'codigo'   => 'SESSION_EXPIRED'
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
             return false;
         }
-        
-        // Atualizar timestamp se passou mais de 5 minutos
-        if ($tempo_decorrido > 300) {
-            $_SESSION['login_timestamp'] = time();
-        }
+        // Renovar timestamp a cada requisição autenticada (sliding session)
+        $_SESSION['login_timestamp'] = time();
     }
     
     // Verificar permissão se necessário

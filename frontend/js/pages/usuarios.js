@@ -1,6 +1,6 @@
 /**
  * Controlador da página de Usuários
- * v3.1 — Suporte a sessao_inativa (nunca expira)
+ * v3.2 — Correção sessão expirada + tratamento 401/403 + logs de diagnóstico
  */
 
 const state = {
@@ -73,17 +73,33 @@ function mostrarAlerta(mensagem, tipo = 'success') {
 
 function carregarUsuarios() {
     if (state.dom.loading) state.dom.loading.style.display = 'block';
+    console.log('[Usuarios] Carregando lista de usuários...');
     fetch(`${state.apiBase}api_usuarios.php`)
-        .then(r => r.json())
+        .then(r => {
+            console.log('[Usuarios] HTTP status:', r.status);
+            if (r.status === 401) {
+                mostrarAlerta('Sessão expirada. Redirecionando para o login...', 'error');
+                setTimeout(() => { window.location.href = '/frontend/login.html'; }, 2000);
+                throw new Error('SESSION_EXPIRED');
+            }
+            if (r.status === 403) {
+                mostrarAlerta('Permissão insuficiente. Esta página requer perfil Gerente ou superior.', 'error');
+                throw new Error('PERMISSION_DENIED');
+            }
+            return r.json();
+        })
         .then(data => {
             if (state.dom.loading) state.dom.loading.style.display = 'none';
+            console.log('[Usuarios] Resposta API:', data.sucesso, '| Qtd:', data.dados?.length ?? 0);
             if (data.sucesso) renderizarTabela(data.dados);
             else mostrarAlerta('Erro ao carregar usuários: ' + data.mensagem, 'error');
         })
         .catch(err => {
             if (state.dom.loading) state.dom.loading.style.display = 'none';
-            console.error('[Usuarios] Erro ao carregar:', err);
-            mostrarAlerta('Erro ao carregar usuários', 'error');
+            if (err.message !== 'SESSION_EXPIRED' && err.message !== 'PERMISSION_DENIED') {
+                console.error('[Usuarios] Erro ao carregar:', err);
+                mostrarAlerta('Erro de conexão ao carregar usuários. Verifique o console.', 'error');
+            }
         });
 }
 

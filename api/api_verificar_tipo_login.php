@@ -93,7 +93,7 @@ try {
 
     // ─── 1. Verificar tabela USUARIOS (ERP) ───────────────────────────
     $stmt = $conexao->prepare(
-        "SELECT id, nome, email, senha, funcao, departamento, permissao, ativo
+        "SELECT id, nome, email, senha, funcao, departamento, permissao, ativo, COALESCE(sessao_inativa,0) AS sessao_inativa
          FROM usuarios WHERE email = ? LIMIT 1"
     );
     $stmt->bind_param('s', $email);
@@ -109,12 +109,13 @@ try {
             if ($senha_valida) {
                 $encontrou_erp = true;
                 $dados_erp = [
-                    'id'         => $usuario['id'],
-                    'nome'       => $usuario['nome'],
-                    'email'      => $usuario['email'],
-                    'funcao'     => $usuario['funcao'],
+                    'id'           => $usuario['id'],
+                    'nome'         => $usuario['nome'],
+                    'email'        => $usuario['email'],
+                    'funcao'       => $usuario['funcao'],
                     'departamento' => $usuario['departamento'],
-                    'permissao'  => $usuario['permissao']
+                    'permissao'    => $usuario['permissao'],
+                    'sessao_inativa' => (int)($usuario['sessao_inativa'] ?? 0)
                 ];
             }
         }
@@ -226,6 +227,7 @@ try {
         $_SESSION['usuario_permissao']    = $dados_erp['permissao'];
         $_SESSION['usuario_logado']       = true;
         $_SESSION['login_timestamp']      = time();
+        $_SESSION['sessao_inativa']       = (int)($dados_erp['sessao_inativa'] ?? 0);
         $_SESSION['tipo_usuario']         = 'erp';
         session_regenerate_id(true);
 
