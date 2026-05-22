@@ -2,12 +2,13 @@
 // =====================================================
 // API: RH — RELATÓRIOS
 // =====================================================
-// GET ?acao=totais_horas       &mes=N&ano=N[&departamento=X]
-// GET ?acao=espelho_ponto      &colaborador_id=N&mes=N&ano=N
-// GET ?acao=faltas             &mes=N&ano=N[&departamento=X]
-// GET ?acao=horas_extras       &mes=N&ano=N[&departamento=X]
-// GET ?acao=atrasos            &mes=N&ano=N[&departamento=X]
-// GET ?acao=banco_horas        &colaborador_id=N[&ate_mes=N&ate_ano=N]
+// Todos os endpoints aceitam TANTO mes/ano QUANTO data_inicio/data_fim (YYYY-MM-DD)
+// GET ?acao=totais_horas       &mes=N&ano=N  OU  &data_inicio=X&data_fim=X  [&departamento=X]
+// GET ?acao=espelho_ponto      &colaborador_id=N  &mes=N&ano=N  OU  &data_inicio=X&data_fim=X
+// GET ?acao=faltas             &mes=N&ano=N  OU  &data_inicio=X&data_fim=X  [&departamento=X]
+// GET ?acao=horas_extras       &mes=N&ano=N  OU  &data_inicio=X&data_fim=X  [&departamento=X]
+// GET ?acao=atrasos            &mes=N&ano=N  OU  &data_inicio=X&data_fim=X  [&departamento=X]
+// GET ?acao=banco_horas        &colaborador_id=N  [&ate_mes=N&ate_ano=N  OU  &data_inicio=X&data_fim=X]
 // GET ?acao=aniversariantes    &mes=N
 
 ob_start();
@@ -41,32 +42,70 @@ catch (Exception $e) { retornar_json(false, 'Não autenticado'); }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') retornar_json(false, 'Apenas GET permitido');
 
-$acao  = $_GET['acao'] ?? '';
-$conn  = conectar_banco();
+$acao = $_GET['acao'] ?? '';
+$conn = conectar_banco();
 if (!$conn) retornar_json(false, 'Erro ao conectar ao banco');
 
-// ── Totais de horas (para contabilidade) ────────────────────────────────────
-if ($acao === 'totais_horas') {
-    $mes  = intval($_GET['mes'] ?? 0);
-    $ano  = intval($_GET['ano'] ?? 0);
-    $dept = trim($_GET['departamento'] ?? '');
+// ── Helper: resolve período (mes/ano OU data_inicio/data_fim) ────────────────
+function _get_periodo_params() {
+    $data_inicio = trim($_GET['data_inicio'] ?? '');
+    $data_fim    = trim($_GET['data_fim']    ?? '');
+    if ($data_inicio !== '' && $data_fim !== '') {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim))
+            retornar_json(false, 'Formato de data inválido. Use YYYY-MM-DD');
+        if ($data_inicio > $data_fim)
+            retornar_json(false, 'Data início não pode ser maior que data fim');
+        return ['tipo' => 'personalizado', 'data_inicio' => $data_inicio, 'data_fim' => $data_fim,
+                'label' => "$data_inicio a $data_fim"];
+    }
+    $mes = intval($_GET['mes'] ?? 0);
+    $ano = intval($_GET['ano'] ?? 0);
     if ($mes < 1 || $mes > 12 || $ano < 2000) retornar_json(false, 'Mês/Ano inválido');
+    $data_inicio = sprintf('%04d-%02d-01', $ano, $mes);
+    $data_fim    = date('Y-m-t', strtotime($data_inicio));
+    $meses_nome  = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    return ['tipo' => 'mes', 'mes' => $mes, 'ano' => $ano,
+            'data_inicio' => $data_inicio, 'data_fim' => $data_fim,
+            'label' => "{$meses_nome[$mes]}/$ano"];
+}
 
-    $sql = "SELECT c.id, c.nome, c.cargo, c.departamento, c.tipo_contrato,
-                   p.total_horas_trabalhadas_min,
-                   p.total_horas_extras_min,
-                   p.total_atraso_min,
-                   p.total_faltas,
-                   p.total_folgas,
-                   p.status as periodo_status
-            FROM rh_colaboradores c
-            LEFT JOIN rh_ponto_periodo p ON p.colaborador_id = c.id AND p.mes = ? AND p.ano = ?
-            WHERE c.ativo = 1";
-    $params = [$mes, $ano];
-    $types  = 'ii';
+// ── Totais de horas ──────────────────────────────────────────────────────────
+if ($acao === 'totais_horas') {
+    $periodo = _get_periodo_params();
+    $dept    = trim($_GET['departamento'] ?? '');
 
-    if ($dept !== '') { $sql .= ' AND c.departamento = ?'; $params[] = $dept; $types .= 's'; }
-    $sql .= ' ORDER BY c.departamento, c.nome';
+    if ($periodo['tipo'] === 'personalizado') {
+        // Agrega lançamentos no intervalo de datas
+        $sql = "SELECT c.id, c.nome, c.cargo, c.departamento, c.tipo_contrato,
+                       COALESCE(SUM(l.horas_trabalhadas_min),0)  as total_horas_trabalhadas_min,
+                       COALESCE(SUM(l.horas_extras_min),0)        as total_horas_extras_min,
+                       COALESCE(SUM(l.atraso_min),0)              as total_atraso_min,
+                       COALESCE(SUM(l.tipo_dia='falta'),0)        as total_faltas,
+                       COALESCE(SUM(l.tipo_dia='folga'),0)        as total_folgas,
+                       'personalizado' as periodo_status
+                FROM rh_colaboradores c
+                LEFT JOIN rh_ponto_lancamento l ON l.colaborador_id = c.id
+                    AND l.data BETWEEN ? AND ?
+                WHERE c.ativo = 1";
+        $params = [$periodo['data_inicio'], $periodo['data_fim']];
+        $types  = 'ss';
+        if ($dept !== '') { $sql .= ' AND c.departamento = ?'; $params[] = $dept; $types .= 's'; }
+        $sql .= ' GROUP BY c.id ORDER BY c.departamento, c.nome';
+    } else {
+        $sql = "SELECT c.id, c.nome, c.cargo, c.departamento, c.tipo_contrato,
+                       p.total_horas_trabalhadas_min,
+                       p.total_horas_extras_min,
+                       p.total_atraso_min,
+                       p.total_faltas,
+                       p.total_folgas,
+                       p.status as periodo_status
+                FROM rh_colaboradores c
+                LEFT JOIN rh_ponto_periodo p ON p.colaborador_id = c.id AND p.mes = ? AND p.ano = ?
+                WHERE c.ativo = 1";
+        $params = [$periodo['mes'], $periodo['ano']]; $types = 'ii';
+        if ($dept !== '') { $sql .= ' AND c.departamento = ?'; $params[] = $dept; $types .= 's'; }
+        $sql .= ' ORDER BY c.departamento, c.nome';
+    }
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param($types, ...$params);
@@ -74,9 +113,9 @@ if ($acao === 'totais_horas') {
     $list = [];
     $res  = $stmt->get_result();
     while ($r = $res->fetch_assoc()) {
-        $r['total_horas_trabalhadas_fmt'] = _min_para_horas($r['total_horas_trabalhadas_min']);
-        $r['total_horas_extras_fmt']      = _min_para_horas($r['total_horas_extras_min']);
-        $r['total_atraso_fmt']            = _min_para_horas($r['total_atraso_min']);
+        $r['total_horas_trabalhadas_fmt'] = _min_para_horas((int)$r['total_horas_trabalhadas_min']);
+        $r['total_horas_extras_fmt']      = _min_para_horas((int)$r['total_horas_extras_min']);
+        $r['total_atraso_fmt']            = _min_para_horas((int)$r['total_atraso_min']);
         $list[] = $r;
     }
     $stmt->close(); fechar_conexao($conn);
@@ -86,62 +125,59 @@ if ($acao === 'totais_horas') {
 // ── Espelho de ponto ──────────────────────────────────────────────────────────
 if ($acao === 'espelho_ponto') {
     $colab_id = intval($_GET['colaborador_id'] ?? 0);
-    $mes      = intval($_GET['mes'] ?? 0);
-    $ano      = intval($_GET['ano'] ?? 0);
-    if ($colab_id <= 0 || $mes < 1 || $ano < 2000) retornar_json(false, 'Parâmetros inválidos');
+    if ($colab_id <= 0) retornar_json(false, 'colaborador_id obrigatório');
 
+    $periodo = _get_periodo_params();
+
+    // Busca dados do colaborador
     $stmt = $conn->prepare(
-        "SELECT c.nome, c.cargo, c.departamento, c.cpf,
-                p.mes, p.ano, p.status,
-                p.total_horas_trabalhadas_min, p.total_horas_extras_min,
-                p.total_atraso_min, p.total_faltas, p.total_folgas
-         FROM rh_colaboradores c
-         LEFT JOIN rh_ponto_periodo p ON p.colaborador_id = c.id AND p.mes=? AND p.ano=?
-         WHERE c.id=?"
+        "SELECT c.nome, c.cargo, c.departamento, c.cpf FROM rh_colaboradores c WHERE c.id=?"
     );
-    $stmt->bind_param('iii', $mes, $ano, $colab_id);
+    $stmt->bind_param('i', $colab_id);
     $stmt->execute();
     $header = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-
     if (!$header) { fechar_conexao($conn); retornar_json(false, 'Colaborador não encontrado'); }
 
-    $periodo_id = null;
-    if ($header['status']) {
-        $p2 = $conn->prepare("SELECT id FROM rh_ponto_periodo WHERE colaborador_id=? AND mes=? AND ano=?");
-        $p2->bind_param('iii', $colab_id, $mes, $ano); $p2->execute();
-        $row = $p2->get_result()->fetch_assoc(); $p2->close();
-        $periodo_id = $row['id'] ?? null;
-    }
-
+    // Busca lançamentos no intervalo
+    $stmt2 = $conn->prepare(
+        "SELECT DATE_FORMAT(l.data,'%d/%m/%Y') as data_fmt,
+                l.data,
+                DAYNAME(l.data) as dia_semana,
+                TIME_FORMAT(l.hora_entrada,'%H:%i')        as hora_entrada,
+                TIME_FORMAT(l.hora_almoco_saida,'%H:%i')   as hora_almoco_saida,
+                TIME_FORMAT(l.hora_almoco_retorno,'%H:%i') as hora_almoco_retorno,
+                TIME_FORMAT(l.hora_saida,'%H:%i')          as hora_saida,
+                l.tipo_dia, l.horas_trabalhadas_min, l.horas_extras_min, l.atraso_min, l.observacoes
+         FROM rh_ponto_lancamento l
+         WHERE l.colaborador_id = ? AND l.data BETWEEN ? AND ?
+         ORDER BY l.data"
+    );
+    $stmt2->bind_param('iss', $colab_id, $periodo['data_inicio'], $periodo['data_fim']);
+    $stmt2->execute();
     $lancamentos = [];
-    if ($periodo_id) {
-        $stmt2 = $conn->prepare(
-            "SELECT DATE_FORMAT(data,'%d/%m/%Y') as data_fmt,
-                    DAYNAME(data) as dia_semana,
-                    TIME_FORMAT(hora_entrada,'%H:%i')        as he,
-                    TIME_FORMAT(hora_almoco_saida,'%H:%i')   as has,
-                    TIME_FORMAT(hora_almoco_retorno,'%H:%i') as har,
-                    TIME_FORMAT(hora_saida,'%H:%i')          as hs,
-                    tipo_dia, horas_trabalhadas_min, horas_extras_min, atraso_min, observacoes
-             FROM rh_ponto_lancamento WHERE periodo_id=? ORDER BY data"
-        );
-        $stmt2->bind_param('i', $periodo_id); $stmt2->execute();
-        $res2 = $stmt2->get_result();
-        while ($r = $res2->fetch_assoc()) {
-            $r['horas_trab_fmt']  = _min_para_horas($r['horas_trabalhadas_min']);
-            $r['horas_extra_fmt'] = _min_para_horas($r['horas_extras_min']);
-            $r['atraso_fmt']      = _min_para_horas($r['atraso_min']);
-            $lancamentos[] = $r;
-        }
-        $stmt2->close();
+    $tot_trab = $tot_extra = $tot_atraso = $tot_faltas = 0;
+    $res2 = $stmt2->get_result();
+    while ($r = $res2->fetch_assoc()) {
+        $r['horas_trabalhadas_fmt'] = _min_para_horas((int)$r['horas_trabalhadas_min']);
+        $r['horas_extras_fmt']      = _min_para_horas((int)$r['horas_extras_min']);
+        $r['atraso_fmt']            = _min_para_horas((int)$r['atraso_min']);
+        $tot_trab   += (int)$r['horas_trabalhadas_min'];
+        $tot_extra  += (int)$r['horas_extras_min'];
+        $tot_atraso += (int)$r['atraso_min'];
+        if ($r['tipo_dia'] === 'falta') $tot_faltas++;
+        $lancamentos[] = $r;
     }
+    $stmt2->close();
 
-    if ($header) {
-        $header['total_horas_trabalhadas_fmt'] = _min_para_horas($header['total_horas_trabalhadas_min']);
-        $header['total_horas_extras_fmt']      = _min_para_horas($header['total_horas_extras_min']);
-        $header['total_atraso_fmt']            = _min_para_horas($header['total_atraso_min']);
-    }
+    $header['total_horas_trabalhadas_min'] = $tot_trab;
+    $header['total_horas_extras_min']      = $tot_extra;
+    $header['total_atraso_min']            = $tot_atraso;
+    $header['total_faltas']                = $tot_faltas;
+    $header['total_horas_trabalhadas_fmt'] = _min_para_horas($tot_trab);
+    $header['total_horas_extras_fmt']      = _min_para_horas($tot_extra);
+    $header['total_atraso_fmt']            = _min_para_horas($tot_atraso);
+    $header['periodo_label']               = $periodo['label'];
 
     fechar_conexao($conn);
     retornar_json(true, 'OK', ['cabecalho' => $header, 'lancamentos' => $lancamentos]);
@@ -149,19 +185,16 @@ if ($acao === 'espelho_ponto') {
 
 // ── Faltas ────────────────────────────────────────────────────────────────────
 if ($acao === 'faltas') {
-    $mes  = intval($_GET['mes'] ?? 0);
-    $ano  = intval($_GET['ano'] ?? 0);
-    $dept = trim($_GET['departamento'] ?? '');
-    if ($mes < 1 || $mes > 12 || $ano < 2000) retornar_json(false, 'Mês/Ano inválido');
+    $periodo = _get_periodo_params();
+    $dept    = trim($_GET['departamento'] ?? '');
 
     $sql = "SELECT c.nome, c.cargo, c.departamento,
                    l.data, DATE_FORMAT(l.data,'%d/%m/%Y') as data_fmt,
                    l.tipo_dia, l.observacoes
             FROM rh_ponto_lancamento l
-            JOIN rh_ponto_periodo p ON p.id = l.periodo_id
             JOIN rh_colaboradores c ON c.id = l.colaborador_id
-            WHERE p.mes=? AND p.ano=? AND l.tipo_dia IN ('falta','afastamento') AND c.ativo=1";
-    $params = [$mes, $ano]; $types = 'ii';
+            WHERE l.data BETWEEN ? AND ? AND l.tipo_dia IN ('falta','afastamento') AND c.ativo=1";
+    $params = [$periodo['data_inicio'], $periodo['data_fim']]; $types = 'ss';
     if ($dept !== '') { $sql .= ' AND c.departamento=?'; $params[] = $dept; $types .= 's'; }
     $sql .= ' ORDER BY c.nome, l.data';
 
@@ -177,20 +210,18 @@ if ($acao === 'faltas') {
 
 // ── Horas extras ─────────────────────────────────────────────────────────────
 if ($acao === 'horas_extras') {
-    $mes  = intval($_GET['mes'] ?? 0);
-    $ano  = intval($_GET['ano'] ?? 0);
-    $dept = trim($_GET['departamento'] ?? '');
-    if ($mes < 1 || $mes > 12 || $ano < 2000) retornar_json(false, 'Mês/Ano inválido');
+    $periodo = _get_periodo_params();
+    $dept    = trim($_GET['departamento'] ?? '');
 
     $sql = "SELECT c.nome, c.cargo, c.departamento,
-                   p.total_horas_extras_min,
-                   p.total_horas_trabalhadas_min
-            FROM rh_ponto_periodo p
-            JOIN rh_colaboradores c ON c.id = p.colaborador_id
-            WHERE p.mes=? AND p.ano=? AND p.total_horas_extras_min > 0 AND c.ativo=1";
-    $params = [$mes, $ano]; $types = 'ii';
+                   SUM(l.horas_extras_min)       as total_horas_extras_min,
+                   SUM(l.horas_trabalhadas_min)   as total_horas_trabalhadas_min
+            FROM rh_ponto_lancamento l
+            JOIN rh_colaboradores c ON c.id = l.colaborador_id
+            WHERE l.data BETWEEN ? AND ? AND l.horas_extras_min > 0 AND c.ativo=1";
+    $params = [$periodo['data_inicio'], $periodo['data_fim']]; $types = 'ss';
     if ($dept !== '') { $sql .= ' AND c.departamento=?'; $params[] = $dept; $types .= 's'; }
-    $sql .= ' ORDER BY p.total_horas_extras_min DESC';
+    $sql .= ' GROUP BY c.id ORDER BY total_horas_extras_min DESC';
 
     $stmt = $conn->prepare($sql);
     $stmt->bind_param($types, ...$params);
@@ -198,8 +229,8 @@ if ($acao === 'horas_extras') {
     $list = [];
     $res  = $stmt->get_result();
     while ($r = $res->fetch_assoc()) {
-        $r['extras_fmt']     = _min_para_horas($r['total_horas_extras_min']);
-        $r['trabalhadas_fmt'] = _min_para_horas($r['total_horas_trabalhadas_min']);
+        $r['extras_fmt']      = _min_para_horas((int)$r['total_horas_extras_min']);
+        $r['trabalhadas_fmt'] = _min_para_horas((int)$r['total_horas_trabalhadas_min']);
         $list[] = $r;
     }
     $stmt->close(); fechar_conexao($conn);
@@ -208,20 +239,17 @@ if ($acao === 'horas_extras') {
 
 // ── Atrasos ───────────────────────────────────────────────────────────────────
 if ($acao === 'atrasos') {
-    $mes  = intval($_GET['mes'] ?? 0);
-    $ano  = intval($_GET['ano'] ?? 0);
-    $dept = trim($_GET['departamento'] ?? '');
-    if ($mes < 1 || $mes > 12 || $ano < 2000) retornar_json(false, 'Mês/Ano inválido');
+    $periodo = _get_periodo_params();
+    $dept    = trim($_GET['departamento'] ?? '');
 
     $sql = "SELECT c.nome, c.cargo, c.departamento,
                    l.data, DATE_FORMAT(l.data,'%d/%m/%Y') as data_fmt,
                    l.atraso_min,
                    TIME_FORMAT(l.hora_entrada,'%H:%i') as hora_entrada
             FROM rh_ponto_lancamento l
-            JOIN rh_ponto_periodo p ON p.id = l.periodo_id
             JOIN rh_colaboradores c ON c.id = l.colaborador_id
-            WHERE p.mes=? AND p.ano=? AND l.atraso_min > 0 AND c.ativo=1";
-    $params = [$mes, $ano]; $types = 'ii';
+            WHERE l.data BETWEEN ? AND ? AND l.atraso_min > 0 AND c.ativo=1";
+    $params = [$periodo['data_inicio'], $periodo['data_fim']]; $types = 'ss';
     if ($dept !== '') { $sql .= ' AND c.departamento=?'; $params[] = $dept; $types .= 's'; }
     $sql .= ' ORDER BY c.nome, l.data';
 
@@ -231,7 +259,7 @@ if ($acao === 'atrasos') {
     $list = [];
     $res  = $stmt->get_result();
     while ($r = $res->fetch_assoc()) {
-        $r['atraso_fmt'] = _min_para_horas($r['atraso_min']);
+        $r['atraso_fmt'] = _min_para_horas((int)$r['atraso_min']);
         $list[] = $r;
     }
     $stmt->close(); fechar_conexao($conn);
@@ -243,32 +271,55 @@ if ($acao === 'banco_horas') {
     $colab_id = intval($_GET['colaborador_id'] ?? 0);
     if ($colab_id <= 0) retornar_json(false, 'colaborador_id obrigatório');
 
-    $ate_mes = intval($_GET['ate_mes'] ?? date('m'));
-    $ate_ano = intval($_GET['ate_ano'] ?? date('Y'));
+    // Suporta data_inicio/data_fim OU ate_mes/ate_ano
+    $data_inicio = trim($_GET['data_inicio'] ?? '');
+    $data_fim    = trim($_GET['data_fim']    ?? '');
 
-    $stmt = $conn->prepare(
-        "SELECT mes, ano, total_horas_trabalhadas_min, total_horas_extras_min, total_atraso_min
-         FROM rh_ponto_periodo
-         WHERE colaborador_id=?
-           AND (ano < ? OR (ano=? AND mes <= ?))
-         ORDER BY ano ASC, mes ASC"
-    );
-    $stmt->bind_param('iiii', $colab_id, $ate_ano, $ate_ano, $ate_mes);
+    if ($data_inicio !== '' && $data_fim !== '') {
+        // Busca por intervalo de datas nos lançamentos
+        $stmt = $conn->prepare(
+            "SELECT YEAR(l.data) as ano, MONTH(l.data) as mes,
+                    SUM(l.horas_trabalhadas_min) as total_horas_trabalhadas_min,
+                    SUM(l.horas_extras_min)       as total_horas_extras_min,
+                    SUM(l.atraso_min)             as total_atraso_min
+             FROM rh_ponto_lancamento l
+             WHERE l.colaborador_id = ? AND l.data BETWEEN ? AND ?
+             GROUP BY YEAR(l.data), MONTH(l.data)
+             ORDER BY ano ASC, mes ASC"
+        );
+        $stmt->bind_param('iss', $colab_id, $data_inicio, $data_fim);
+    } else {
+        $ate_mes = intval($_GET['ate_mes'] ?? date('m'));
+        $ate_ano = intval($_GET['ate_ano'] ?? date('Y'));
+        $stmt = $conn->prepare(
+            "SELECT mes, ano, total_horas_trabalhadas_min, total_horas_extras_min, total_atraso_min
+             FROM rh_ponto_periodo
+             WHERE colaborador_id=?
+               AND (ano < ? OR (ano=? AND mes <= ?))
+             ORDER BY ano ASC, mes ASC"
+        );
+        $stmt->bind_param('iiii', $colab_id, $ate_ano, $ate_ano, $ate_mes);
+    }
+
     $stmt->execute();
     $list  = [];
     $total = 0;
     $res   = $stmt->get_result();
     while ($r = $res->fetch_assoc()) {
-        $saldo = $r['total_horas_extras_min'] - $r['total_atraso_min'];
+        $saldo = (int)$r['total_horas_extras_min'] - (int)$r['total_atraso_min'];
         $total += $saldo;
-        $r['saldo_min']   = $saldo;
-        $r['saldo_fmt']   = ($saldo < 0 ? '-' : '') . _min_para_horas(abs($saldo));
+        $r['saldo_min']     = $saldo;
+        $r['saldo_fmt']     = ($saldo < 0 ? '-' : '') . _min_para_horas(abs($saldo));
         $r['acumulado_min'] = $total;
         $r['acumulado_fmt'] = ($total < 0 ? '-' : '') . _min_para_horas(abs($total));
         $list[] = $r;
     }
     $stmt->close(); fechar_conexao($conn);
-    retornar_json(true, 'OK', ['meses' => $list, 'total_acumulado_min' => $total, 'total_acumulado_fmt' => ($total < 0 ? '-' : '') . _min_para_horas(abs($total))]);
+    retornar_json(true, 'OK', [
+        'meses'                => $list,
+        'total_acumulado_min'  => $total,
+        'total_acumulado_fmt'  => ($total < 0 ? '-' : '') . _min_para_horas(abs($total))
+    ]);
 }
 
 // ── Aniversariantes ───────────────────────────────────────────────────────────
@@ -299,4 +350,3 @@ function _min_para_horas(?int $min): string {
     $m = $min % 60;
     return sprintf('%02d:%02d', $h, $m);
 }
-?>

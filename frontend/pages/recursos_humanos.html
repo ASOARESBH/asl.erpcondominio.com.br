@@ -266,6 +266,24 @@
       <div class="card-header-row">
         <h2><i class="fas fa-clock"></i> Folha de Ponto</h2>
       </div>
+
+      <!-- Seletor de tipo de período -->
+      <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;padding:12px 14px;background:#f0f4ff;border-radius:10px;border:1px solid #c7d7fd;">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;color:#1e3a8a;font-size:14px;">
+          <input type="radio" name="ponto-tipo-periodo" id="ponto-tipo-mes" value="mes" checked
+            style="accent-color:#2563eb;width:17px;height:17px;">
+          <i class="fas fa-calendar-alt" style="color:#2563eb;"></i> Por Mês
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;color:#7c3aed;font-size:14px;">
+          <input type="radio" name="ponto-tipo-periodo" id="ponto-tipo-personalizado" value="personalizado"
+            style="accent-color:#7c3aed;width:17px;height:17px;">
+          <i class="fas fa-calendar-week" style="color:#7c3aed;"></i> Período Personalizado
+        </label>
+        <span id="ponto-aviso-personalizado" style="display:none;font-size:12px;color:#dc2626;align-self:center;">
+          <i class="fas fa-exclamation-triangle"></i> Data início e fim são obrigatórias
+        </span>
+      </div>
+
       <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));">
         <div>
           <label>Colaborador *</label>
@@ -273,7 +291,8 @@
             <option value="">Selecione o colaborador</option>
           </select>
         </div>
-        <div>
+        <!-- Campos modo MÊS -->
+        <div id="ponto-campo-mes">
           <label>Mês *</label>
           <select id="ponto-mes">
             <option value="1">Janeiro</option><option value="2">Fevereiro</option>
@@ -284,9 +303,18 @@
             <option value="11">Novembro</option><option value="12">Dezembro</option>
           </select>
         </div>
-        <div>
+        <div id="ponto-campo-ano">
           <label>Ano *</label>
           <input type="number" id="ponto-ano" min="2020" max="2099" value="">
+        </div>
+        <!-- Campos modo PERSONALIZADO (ocultos por padrão) -->
+        <div id="ponto-campo-data-inicio" style="display:none;">
+          <label>Data Início * <span style="color:#dc2626;font-size:11px;font-weight:700;">●</span></label>
+          <input type="date" id="ponto-data-inicio">
+        </div>
+        <div id="ponto-campo-data-fim" style="display:none;">
+          <label>Data Fim * <span style="color:#dc2626;font-size:11px;font-weight:700;">●</span></label>
+          <input type="date" id="ponto-data-fim">
         </div>
         <div style="display:flex;align-items:flex-end;gap:8px;">
           <button class="btn-primary-modern" id="btnPontoAbrir" style="flex:1;">
@@ -566,10 +594,29 @@
     <!-- Filtros globais -->
     <div class="page-card">
       <div class="card-header-row">
-        <h2><i class="fas fa-filter"></i> Filtros</h2>
+        <h2><i class="fas fa-filter"></i> Filtros do Relatório</h2>
       </div>
+
+      <!-- Seletor de tipo de período -->
+      <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;padding:12px 14px;background:#f0f4ff;border-radius:10px;border:1px solid #c7d7fd;">
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;color:#1e3a8a;font-size:14px;">
+          <input type="radio" name="rel-tipo-periodo" id="rel-tipo-mes" value="mes" checked
+            style="accent-color:#2563eb;width:17px;height:17px;">
+          <i class="fas fa-calendar-alt" style="color:#2563eb;"></i> Por Mês
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;color:#7c3aed;font-size:14px;">
+          <input type="radio" name="rel-tipo-periodo" id="rel-tipo-personalizado" value="personalizado"
+            style="accent-color:#7c3aed;width:17px;height:17px;">
+          <i class="fas fa-calendar-week" style="color:#7c3aed;"></i> Período Personalizado
+        </label>
+        <span id="rel-aviso-personalizado" style="display:none;font-size:12px;color:#dc2626;align-self:center;">
+          <i class="fas fa-exclamation-triangle"></i> Data início e fim são obrigatórias
+        </span>
+      </div>
+
       <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));">
-        <div>
+        <!-- Campos modo MÊS -->
+        <div id="rel-campo-mes">
           <label>Mês</label>
           <select id="rel-mes">
             <option value="1">Janeiro</option><option value="2">Fevereiro</option>
@@ -580,10 +627,20 @@
             <option value="11">Novembro</option><option value="12">Dezembro</option>
           </select>
         </div>
-        <div>
+        <div id="rel-campo-ano">
           <label>Ano</label>
           <input type="number" id="rel-ano" min="2020" max="2099" value="">
         </div>
+        <!-- Campos modo PERSONALIZADO (ocultos por padrão) -->
+        <div id="rel-campo-data-inicio" style="display:none;">
+          <label>Data Início * <span style="color:#dc2626;font-size:11px;font-weight:700;">●</span></label>
+          <input type="date" id="rel-data-inicio">
+        </div>
+        <div id="rel-campo-data-fim" style="display:none;">
+          <label>Data Fim * <span style="color:#dc2626;font-size:11px;font-weight:700;">●</span></label>
+          <input type="date" id="rel-data-fim">
+        </div>
+        <!-- Filtros comuns -->
         <div>
           <label>Departamento</label>
           <select id="rel-departamento">
@@ -591,7 +648,7 @@
           </select>
         </div>
         <div>
-          <label>Colaborador (espelho)</label>
+          <label>Colaborador (espelho / banco)</label>
           <select id="rel-colaborador-id">
             <option value="">Selecione para espelho</option>
           </select>
@@ -634,9 +691,13 @@
     <!-- Resultado do relatório -->
     <div id="relatorio-resultado" class="relatorio-resultado" style="display:none;">
       <div class="relatorio-titulo" id="relatorio-titulo">—</div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-        <button class="btn-secondary-modern" onclick="window.ModuleRH.imprimirRelatorio()">
-          <i class="fas fa-print"></i> Imprimir
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <button class="btn-secondary-modern" id="btnRelExportarCSV" onclick="window.ModuleRH.exportarRelatorioCSV()">
+          <i class="fas fa-file-csv"></i> Exportar CSV
+        </button>
+        <button class="btn-primary-modern" id="btnRelGerarPDF" onclick="window.ModuleRH.gerarRelatorioPDF()"
+          style="background:linear-gradient(135deg,#1e3a8a,#2563eb);">
+          <i class="fas fa-file-pdf"></i> Gerar PDF
         </button>
       </div>
       <div id="relatorio-conteudo"></div>

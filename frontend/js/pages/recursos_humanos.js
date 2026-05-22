@@ -28,8 +28,9 @@ export async function init() {
         excluirColaborador: _excluirColaborador,
         abrirPontoColab   : _abrirPontoColab,
         salvarLinhaPonto  : _salvarLinhaPonto,
-        gerarRelatorio    : _gerarRelatorio,
-        imprimirRelatorio : _imprimirRelatorio,
+        gerarRelatorio        : _gerarRelatorio,
+        gerarRelatorioPDF     : _gerarRelatorioPDF,
+        exportarRelatorioCSV  : _exportarRelatorioCSV,
         editarEscala      : _editarEscala,
         excluirEscala     : _excluirEscala,
     };
@@ -339,11 +340,57 @@ function _setupPonto() {
     document.getElementById('ponto-mes').value = String(hoje.getMonth() + 1);
     document.getElementById('ponto-ano').value = String(hoje.getFullYear());
 
+    // Alternar campos ao mudar tipo de período
+    document.querySelectorAll('input[name="ponto-tipo-periodo"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const personalizado = document.getElementById('ponto-tipo-personalizado').checked;
+            document.getElementById('ponto-campo-mes').style.display          = personalizado ? 'none' : '';
+            document.getElementById('ponto-campo-ano').style.display          = personalizado ? 'none' : '';
+            document.getElementById('ponto-campo-data-inicio').style.display  = personalizado ? '' : 'none';
+            document.getElementById('ponto-campo-data-fim').style.display     = personalizado ? '' : 'none';
+            document.getElementById('ponto-aviso-personalizado').style.display = personalizado ? '' : 'none';
+            // Pré-preencher datas com o mês atual se vazio
+            if (personalizado) {
+                const y = hoje.getFullYear(), m = String(hoje.getMonth()+1).padStart(2,'0');
+                if (!document.getElementById('ponto-data-inicio').value)
+                    document.getElementById('ponto-data-inicio').value = `${y}-${m}-01`;
+                if (!document.getElementById('ponto-data-fim').value) {
+                    const ultimo = new Date(y, hoje.getMonth()+1, 0).getDate();
+                    document.getElementById('ponto-data-fim').value = `${y}-${m}-${String(ultimo).padStart(2,'0')}`;
+                }
+            }
+        });
+    });
+
     document.getElementById('btnPontoAbrir')?.addEventListener('click', _abrirPeriodo);
     document.getElementById('btnPontoCriar')?.addEventListener('click', _criarPeriodo);
     document.getElementById('btnPontoVoltar')?.addEventListener('click', _fecharFolha);
     document.getElementById('btnPontoFechar')?.addEventListener('click', _fecharPeriodo);
     document.getElementById('btnPontoReabrir')?.addEventListener('click', _reabrirPeriodo);
+}
+
+// Retorna os parâmetros de período do ponto (mes/ano ou data_inicio/data_fim)
+function _getPontoPeriodoParams() {
+    const personalizado = document.getElementById('ponto-tipo-personalizado').checked;
+    if (personalizado) {
+        const inicio = document.getElementById('ponto-data-inicio').value;
+        const fim    = document.getElementById('ponto-data-fim').value;
+        if (!inicio || !fim) {
+            _toast('Período personalizado: informe a Data Início e a Data Fim', 'error');
+            document.getElementById('ponto-aviso-personalizado').style.display = '';
+            return null;
+        }
+        if (inicio > fim) {
+            _toast('A Data Início não pode ser maior que a Data Fim', 'error');
+            return null;
+        }
+        return { tipo: 'personalizado', data_inicio: inicio, data_fim: fim };
+    }
+    return {
+        tipo: 'mes',
+        mes:  document.getElementById('ponto-mes').value,
+        ano:  document.getElementById('ponto-ano').value
+    };
 }
 
 function _abrirPontoColab(id, nome) {
@@ -358,16 +405,34 @@ function _abrirPontoColab(id, nome) {
 
 async function _abrirPeriodo() {
     const colab_id = document.getElementById('ponto-colaborador-id').value;
-    const mes      = document.getElementById('ponto-mes').value;
-    const ano      = document.getElementById('ponto-ano').value;
     if (!colab_id) return _toast('Selecione um colaborador', 'error');
+
+    const params = _getPontoPeriodoParams();
+    if (!params) return; // validação já exibiu o erro
 
     try {
         const r = await fetch(`../api/api_rh_ponto.php?acao=listar_periodos&colaborador_id=${colab_id}`, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
-        const periodo = (d.dados ?? []).find(p => p.mes == mes && p.ano == ano);
-        if (!periodo) return _toast('Período não encontrado. Use o botão + para criar.', 'info');
+
+        let periodo;
+        if (params.tipo === 'personalizado') {
+            // Para período personalizado: busca período que contenha a data de início
+            const inicioDate = new Date(params.data_inicio + 'T00:00:00');
+            periodo = (d.dados ?? []).find(p => {
+                const pInicio = new Date(p.ano, p.mes - 1, 1);
+                const pFim    = new Date(p.ano, p.mes, 0);
+                return inicioDate >= pInicio && inicioDate <= pFim;
+            });
+            if (!periodo) return _toast('Nenhum período encontrado para o intervalo informado. Use o botão + para criar.', 'info');
+            // Salva o filtro personalizado no estado para uso nos lançamentos
+            _state.filtroPersonalizado = { data_inicio: params.data_inicio, data_fim: params.data_fim };
+        } else {
+            _state.filtroPersonalizado = null;
+            periodo = (d.dados ?? []).find(p => p.mes == params.mes && p.ano == params.ano);
+            if (!periodo) return _toast('Período não encontrado. Use o botão + para criar.', 'info');
+        }
+
         _state.periodoAtual = periodo;
         _exibirFolha(periodo);
     } catch (err) { _toast(err.message, 'error'); }
@@ -375,9 +440,21 @@ async function _abrirPeriodo() {
 
 async function _criarPeriodo() {
     const colab_id = document.getElementById('ponto-colaborador-id').value;
-    const mes      = parseInt(document.getElementById('ponto-mes').value);
-    const ano      = parseInt(document.getElementById('ponto-ano').value);
     if (!colab_id) return _toast('Selecione um colaborador', 'error');
+
+    const params = _getPontoPeriodoParams();
+    if (!params) return;
+
+    let mes, ano;
+    if (params.tipo === 'personalizado') {
+        // Deriva mês/ano a partir da data de início
+        const d = new Date(params.data_inicio + 'T00:00:00');
+        mes = d.getMonth() + 1;
+        ano = d.getFullYear();
+    } else {
+        mes = parseInt(params.mes);
+        ano = parseInt(params.ano);
+    }
 
     try {
         const r = await fetch(`../api/api_rh_ponto.php?acao=criar_periodo`, {
@@ -792,11 +869,67 @@ function _setupRelatorios() {
     const hoje = new Date();
     document.getElementById('rel-mes').value = String(hoje.getMonth() + 1);
     document.getElementById('rel-ano').value = String(hoje.getFullYear());
+
+    // Alternar campos ao mudar tipo de período nos relatórios
+    document.querySelectorAll('input[name="rel-tipo-periodo"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const personalizado = document.getElementById('rel-tipo-personalizado').checked;
+            document.getElementById('rel-campo-mes').style.display          = personalizado ? 'none' : '';
+            document.getElementById('rel-campo-ano').style.display          = personalizado ? 'none' : '';
+            document.getElementById('rel-campo-data-inicio').style.display  = personalizado ? '' : 'none';
+            document.getElementById('rel-campo-data-fim').style.display     = personalizado ? '' : 'none';
+            document.getElementById('rel-aviso-personalizado').style.display = personalizado ? '' : 'none';
+            if (personalizado) {
+                const y = hoje.getFullYear(), m = String(hoje.getMonth()+1).padStart(2,'0');
+                if (!document.getElementById('rel-data-inicio').value)
+                    document.getElementById('rel-data-inicio').value = `${y}-${m}-01`;
+                if (!document.getElementById('rel-data-fim').value) {
+                    const ultimo = new Date(y, hoje.getMonth()+1, 0).getDate();
+                    document.getElementById('rel-data-fim').value = `${y}-${m}-${String(ultimo).padStart(2,'0')}`;
+                }
+            }
+        });
+    });
 }
 
+// Retorna parâmetros de período para relatórios (mes/ano ou data_inicio/data_fim)
+function _getRelPeriodoParams() {
+    const personalizado = document.getElementById('rel-tipo-personalizado').checked;
+    if (personalizado) {
+        const inicio = document.getElementById('rel-data-inicio').value;
+        const fim    = document.getElementById('rel-data-fim').value;
+        if (!inicio || !fim) {
+            _toast('Período personalizado: informe a Data Início e a Data Fim', 'error');
+            document.getElementById('rel-aviso-personalizado').style.display = '';
+            return null;
+        }
+        if (inicio > fim) {
+            _toast('A Data Início não pode ser maior que a Data Fim', 'error');
+            return null;
+        }
+        return { tipo: 'personalizado', data_inicio: inicio, data_fim: fim,
+                 label: `${inicio} a ${fim}` };
+    }
+    const mes = document.getElementById('rel-mes').value;
+    const ano = document.getElementById('rel-ano').value;
+    return { tipo: 'mes', mes, ano, label: `${_nomeMes(mes)}/${ano}` };
+}
+
+function _buildRelUrl(acao, params, extra = '') {
+    if (params.tipo === 'personalizado') {
+        return `../api/api_rh_relatorios.php?acao=${acao}&data_inicio=${params.data_inicio}&data_fim=${params.data_fim}${extra}`;
+    }
+    return `../api/api_rh_relatorios.php?acao=${acao}&mes=${params.mes}&ano=${params.ano}${extra}`;
+}
+
+// Guarda o último tipo de relatório gerado para PDF/CSV
+let _ultimoRelTipo = null;
+let _ultimoRelDados = null;
+let _ultimoRelTitulo = null;
+
 async function _gerarRelatorio(tipo) {
-    const mes       = document.getElementById('rel-mes').value;
-    const ano       = document.getElementById('rel-ano').value;
+    const params    = _getRelPeriodoParams();
+    if (!params) return;
     const dept      = document.getElementById('rel-departamento').value;
     const colab_id  = document.getElementById('rel-colaborador-id').value;
 
@@ -807,47 +940,60 @@ async function _gerarRelatorio(tipo) {
     body.innerHTML = '<div class="loading-msg"><i class="fas fa-spinner fa-spin"></i> Gerando relatório...</div>';
 
     let url, tituloText;
+    const deptParam = `&departamento=${encodeURIComponent(dept)}`;
 
     switch (tipo) {
         case 'totais_horas':
-            url = `../api/api_rh_relatorios.php?acao=totais_horas&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
-            tituloText = `Totais de Horas — ${_nomeMes(mes)}/${ano}`;
+            url = _buildRelUrl('totais_horas', params, deptParam);
+            tituloText = `Totais de Horas — ${params.label}`;
             break;
         case 'espelho_ponto':
             if (!colab_id) { _toast('Selecione um colaborador para o espelho', 'error'); return; }
-            url = `../api/api_rh_relatorios.php?acao=espelho_ponto&colaborador_id=${colab_id}&mes=${mes}&ano=${ano}`;
-            tituloText = `Espelho de Ponto — ${_nomeMes(mes)}/${ano}`;
+            url = _buildRelUrl('espelho_ponto', params, `&colaborador_id=${colab_id}`);
+            tituloText = `Espelho de Ponto — ${params.label}`;
             break;
         case 'faltas':
-            url = `../api/api_rh_relatorios.php?acao=faltas&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
-            tituloText = `Faltas e Afastamentos — ${_nomeMes(mes)}/${ano}`;
+            url = _buildRelUrl('faltas', params, deptParam);
+            tituloText = `Faltas e Afastamentos — ${params.label}`;
             break;
         case 'horas_extras':
-            url = `../api/api_rh_relatorios.php?acao=horas_extras&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
-            tituloText = `Horas Extras — ${_nomeMes(mes)}/${ano}`;
+            url = _buildRelUrl('horas_extras', params, deptParam);
+            tituloText = `Horas Extras — ${params.label}`;
             break;
         case 'atrasos':
-            url = `../api/api_rh_relatorios.php?acao=atrasos&mes=${mes}&ano=${ano}&departamento=${encodeURIComponent(dept)}`;
-            tituloText = `Atrasos — ${_nomeMes(mes)}/${ano}`;
+            url = _buildRelUrl('atrasos', params, deptParam);
+            tituloText = `Atrasos — ${params.label}`;
             break;
         case 'banco_horas':
             if (!colab_id) { _toast('Selecione um colaborador para o banco de horas', 'error'); return; }
-            url = `../api/api_rh_relatorios.php?acao=banco_horas&colaborador_id=${colab_id}&ate_mes=${mes}&ate_ano=${ano}`;
-            tituloText = 'Banco de Horas';
+            if (params.tipo === 'personalizado') {
+                url = `../api/api_rh_relatorios.php?acao=banco_horas&colaborador_id=${colab_id}&data_inicio=${params.data_inicio}&data_fim=${params.data_fim}`;
+            } else {
+                url = `../api/api_rh_relatorios.php?acao=banco_horas&colaborador_id=${colab_id}&ate_mes=${params.mes}&ate_ano=${params.ano}`;
+            }
+            tituloText = `Banco de Horas — ${params.label}`;
             break;
         case 'aniversariantes':
-            url = `../api/api_rh_relatorios.php?acao=aniversariantes&mes=${mes}`;
-            tituloText = `Aniversariantes de ${_nomeMes(mes)}`;
+            // Aniversariantes: usa mês (personalizado usa mês da data_inicio)
+            const mesAniv = params.tipo === 'personalizado'
+                ? new Date(params.data_inicio + 'T00:00:00').getMonth() + 1
+                : params.mes;
+            url = `../api/api_rh_relatorios.php?acao=aniversariantes&mes=${mesAniv}`;
+            tituloText = `Aniversariantes de ${_nomeMes(String(mesAniv))}`;
             break;
         default: return;
     }
 
     titulo.textContent = tituloText;
+    _ultimoRelTipo   = tipo;
+    _ultimoRelTitulo = tituloText;
+    _ultimoRelDados  = null;
 
     try {
         const r = await fetch(url, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
+        _ultimoRelDados = d.dados;
         body.innerHTML = _renderRelatorio(tipo, d.dados);
         wrap.scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
@@ -934,17 +1080,64 @@ function _renderRelatorio(tipo, dados) {
         </table></div>`;
 }
 
-function _imprimirRelatorio() {
-    const titulo  = document.getElementById('relatorio-titulo').textContent;
-    const conteudo = document.getElementById('relatorio-conteudo').innerHTML;
-    const win = window.open('', '_blank');
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${titulo}</title>
-        <style>body{font-family:sans-serif;font-size:12px;padding:20px;}table{width:100%;border-collapse:collapse;}
-        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;}th{background:#f0f0f0;font-weight:600;}
-        h2{margin-bottom:12px;}</style></head><body>
-        <h2>${titulo}</h2>${conteudo}</body></html>`);
-    win.document.close();
-    win.print();
+function _gerarRelatorioPDF() {
+    if (!_ultimoRelTipo || !_ultimoRelDados) {
+        return _toast('Gere um relatório primeiro antes de exportar para PDF', 'info');
+    }
+    const params   = _getRelPeriodoParams();
+    if (!params) return;
+    const dept     = document.getElementById('rel-departamento').value;
+    const colab_id = document.getElementById('rel-colaborador-id').value;
+
+    let url = `../api/api_rh_relatorio_pdf.php?tipo=${_ultimoRelTipo}`;
+    if (params.tipo === 'personalizado') {
+        url += `&data_inicio=${params.data_inicio}&data_fim=${params.data_fim}`;
+    } else {
+        url += `&mes=${params.mes}&ano=${params.ano}`;
+    }
+    if (dept)     url += `&departamento=${encodeURIComponent(dept)}`;
+    if (colab_id) url += `&colaborador_id=${colab_id}`;
+
+    window.open(url, '_blank');
+}
+
+function _exportarRelatorioCSV() {
+    if (!_ultimoRelTipo || !_ultimoRelDados) {
+        return _toast('Gere um relatório primeiro antes de exportar CSV', 'info');
+    }
+    const dados = _ultimoRelDados;
+    const titulo = _ultimoRelTitulo || 'relatorio_rh';
+    let csv = '';
+
+    if (_ultimoRelTipo === 'totais_horas') {
+        csv = 'Nome;Cargo;Departamento;Contrato;Trabalhado;Extra;Atraso;Faltas;Folgas;Status\n';
+        csv += (Array.isArray(dados) ? dados : []).map(r =>
+            `"${r.nome||''}";"${r.cargo||''}";"${r.departamento||''}";"${r.tipo_contrato||''}";"${r.total_horas_trabalhadas_fmt||''}";"${r.total_horas_extras_fmt||''}";"${r.total_atraso_fmt||''}";${r.total_faltas||0};${r.total_folgas||0};"${r.periodo_status||''}"`
+        ).join('\n');
+    } else if (_ultimoRelTipo === 'espelho_ponto') {
+        const l = dados?.lancamentos || [];
+        csv = 'Data;Tipo;Entrada;Saída Almoço;Retorno;Saída;Trabalhado;Extra;Atraso;Obs\n';
+        csv += l.map(r =>
+            `${r.data};"${r.tipo_dia||''}";${r.hora_entrada||''};${r.hora_almoco_saida||''};${r.hora_almoco_retorno||''};${r.hora_saida||''};"${r.horas_trabalhadas_fmt||''}";"${r.horas_extras_fmt||''}";"${r.atraso_fmt||''}";"${(r.observacoes||'').replace(/"/g,"'")}"` 
+        ).join('\n');
+    } else if (['faltas','horas_extras','atrasos'].includes(_ultimoRelTipo)) {
+        csv = 'Nome;Cargo;Departamento;Data;Tipo;Horas;Obs\n';
+        csv += (Array.isArray(dados) ? dados : []).map(r =>
+            `"${r.nome||''}";"${r.cargo||''}";"${r.departamento||''}";${r.data||''};"${r.tipo_dia||''}";"${r.horas_fmt||r.horas_extras_fmt||r.atraso_fmt||''}";"${(r.observacoes||'').replace(/"/g,"'")}"` 
+        ).join('\n');
+    } else {
+        csv = Object.keys(dados?.[0] || dados?.lancamentos?.[0] || {}).join(';') + '\n';
+        const arr = Array.isArray(dados) ? dados : (dados?.lancamentos || []);
+        csv += arr.map(r => Object.values(r).map(v => `"${String(v||'').replace(/"/g,"'")}"`).join(';')).join('\n');
+    }
+
+    const bom  = '\uFEFF';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href  = URL.createObjectURL(blob);
+    link.download = `${titulo.replace(/[^a-z0-9]/gi,'_').toLowerCase()}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
