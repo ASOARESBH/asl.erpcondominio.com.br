@@ -104,6 +104,12 @@ try {
         $usuario = $res->fetch_assoc();
         $stmt->close();
 
+        // Verificar se conta está inativa ANTES de verificar senha
+        if ((int)$usuario['ativo'] === 0) {
+            registrar_log('LOGIN_BLOQUEADO', "Tentativa de login em conta inativa: {$email} | IP: " . ($_SERVER['REMOTE_ADDR'] ?? ''), $usuario['nome']);
+            retornar_json(false, 'Sua conta está desativada. Entre em contato com o administrador do sistema.');
+        }
+
         if ($usuario['ativo'] == 1) {
             $senha_valida = password_verify($senha, $usuario['senha']);
             if ($senha_valida) {

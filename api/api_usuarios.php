@@ -26,7 +26,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-cache, must-revalidate');
 header('Access-Control-Allow-Origin: http://erp.asserradaliberdade.ong.br');
 header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 // Tratar OPTIONS (preflight)
@@ -46,6 +46,68 @@ if ($metodo !== 'GET') {
     verificarPermissao('admin');
 } else {
     verificarPermissao('gerente');
+}
+
+// ========== TOGGLE STATUS (ATIVAR / INATIVAR) ==========
+if ($metodo === 'PATCH') {
+    $dados = json_decode(file_get_contents('php://input'), true);
+    $id    = intval($dados['id'] ?? 0);
+    $acao  = trim($dados['acao'] ?? '');
+
+    if ($id <= 0 || !in_array($acao, ['ativar', 'inativar'])) {
+        retornar_json(false, 'Parâmetros inválidos. Informe id e acao (ativar|inativar)');
+    }
+
+    // Não permitir inativar o administrador principal (ID 1)
+    if ($id == 1 && $acao === 'inativar') {
+        retornar_json(false, 'Não é possível inativar o administrador principal do sistema');
+    }
+
+    // Buscar dados atuais do usuário
+    $stmt = $conexao->prepare('SELECT nome, ativo, permissao FROM usuarios WHERE id = ? LIMIT 1');
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $usuario = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$usuario) {
+        retornar_json(false, 'Usuário não encontrado');
+    }
+
+    // Verificar se já está no estado desejado
+    $novo_ativo = ($acao === 'ativar') ? 1 : 0;
+    if ((int)$usuario['ativo'] === $novo_ativo) {
+        $estado = $novo_ativo ? 'ativo' : 'inativo';
+        retornar_json(true, "Usuário já está {$estado}", ['ativo' => $novo_ativo]);
+    }
+
+    // Aplicar alteração
+    $stmt = $conexao->prepare('UPDATE usuarios SET ativo = ? WHERE id = ?');
+    $stmt->bind_param('ii', $novo_ativo, $id);
+
+    if ($stmt->execute()) {
+        $stmt->close();
+
+        // Encerrar sessões ativas do usuário ao inativar
+        if ($novo_ativo === 0) {
+            // Invalidar sessão PHP ativa do usuário (tabela sessoes_usuarios se existir)
+            $conexao->query("DELETE FROM sessoes_usuarios WHERE usuario_id = {$id}");
+        }
+
+        $acao_log = $novo_ativo ? 'USUARIO_ATIVADO' : 'USUARIO_INATIVADO';
+        $msg_log  = $novo_ativo
+            ? "Usuário ATIVADO: {$usuario['nome']} (ID: {$id})"
+            : "Usuário INATIVADO: {$usuario['nome']} (ID: {$id}) — acesso ao sistema bloqueado";
+        registrar_log($acao_log, $msg_log, $usuario['nome']);
+
+        $msg_ret = $novo_ativo
+            ? "Usuário {$usuario['nome']} ativado com sucesso. O acesso ao sistema foi restaurado."
+            : "Usuário {$usuario['nome']} inativado. O acesso ao sistema foi bloqueado. Todo o histórico foi preservado.";
+
+        retornar_json(true, $msg_ret, ['ativo' => $novo_ativo, 'nome' => $usuario['nome']]);
+    } else {
+        retornar_json(false, 'Erro ao alterar status: ' . $stmt->error);
+    }
 }
 
 // ========== LISTAR USUÁRIOS ==========

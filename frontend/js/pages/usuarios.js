@@ -90,9 +90,11 @@ function bindEvents() {
             const btnEdit    = e.target.closest('.btn-edit');
             const btnDelete  = e.target.closest('.btn-delete');
             const btnModulos = e.target.closest('.btn-modulos');
-            if (btnEdit)    editarUsuario(btnEdit.dataset.id);
+            const btnToggle  = e.target.closest('.btn-toggle-status');
+            if (btnEdit)         editarUsuario(btnEdit.dataset.id);
             else if (btnDelete)  excluirUsuario(btnDelete.dataset.id, btnDelete.dataset.nome);
             else if (btnModulos) abrirModulosUsuario(btnModulos.dataset.id);
+            else if (btnToggle)  toggleStatusUsuario(btnToggle.dataset.id, btnToggle.dataset.nome, btnToggle.dataset.ativo);
         });
     }
 }
@@ -222,7 +224,13 @@ function renderizarTabela(usuarios) {
                     style="background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:0.35rem 0.75rem;font-size:0.82rem;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:4px;">
                     <i class="fas fa-th-large"></i> Módulos
                 </button>
-                ${u.id != 1 ? `<button class="btn-delete" data-id="${u.id}" data-nome="${u.nome}"
+                ${u.id != 1 ? `
+                <button class="btn-toggle-status" data-id="${u.id}" data-nome="${u.nome}" data-ativo="${u.ativo}"
+                    title="${u.ativo == 1 ? 'Inativar usuário — bloquear acesso ao sistema' : 'Ativar usuário — restaurar acesso ao sistema'}"
+                    style="background:${u.ativo == 1 ? 'linear-gradient(135deg,#f97316,#ea580c)' : 'linear-gradient(135deg,#16a34a,#15803d)'};padding:0.35rem 0.75rem;font-size:0.82rem;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:4px;">
+                    <i class="fas fa-${u.ativo == 1 ? 'ban' : 'check-circle'}"></i> ${u.ativo == 1 ? 'Inativar' : 'Ativar'}
+                </button>
+                <button class="btn-delete" data-id="${u.id}" data-nome="${u.nome}"
                     style="background:linear-gradient(135deg,#ef4444,#dc2626);padding:0.35rem 0.75rem;font-size:0.82rem;color:white;border:none;border-radius:4px;cursor:pointer;">
                     <i class="fas fa-trash"></i>
                 </button>` : ''}
@@ -670,6 +678,49 @@ function limparFormulario() {
     state.usuarioEditando = null;
     if (state.dom.formTitle)      state.dom.formTitle.textContent     = 'Novo Usuário';
     if (state.dom.btnSalvarTexto) state.dom.btnSalvarTexto.textContent = 'Salvar Usuário';
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// TOGGLE STATUS — ATIVAR / INATIVAR USUÁRIO
+// ─────────────────────────────────────────────────────────────────────
+function toggleStatusUsuario(id, nome, ativoAtual) {
+    const estaAtivo  = ativoAtual == 1 || ativoAtual === '1';
+    const novaAcao   = estaAtivo ? 'inativar' : 'ativar';
+    const verbo      = estaAtivo ? 'inativar' : 'ativar';
+    const aviso      = estaAtivo
+        ? `Deseja INATIVAR o usuário "${nome}"?\n\nO acesso ao sistema será bloqueado imediatamente.\nTodo o histórico e dados do usuário serão preservados.`
+        : `Deseja ATIVAR o usuário "${nome}"?\n\nO acesso ao sistema será restaurado.`;
+
+    if (!confirm(aviso)) return;
+
+    // Feedback visual imediato — desabilitar botão
+    const btnEl = document.querySelector(`.btn-toggle-status[data-id="${id}"]`);
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Aguarde...`;
+    }
+
+    fetch(`${state.apiBase}api_usuarios.php`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ id: parseInt(id), acao: novaAcao })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.sucesso) {
+            mostrarAlerta(data.mensagem, estaAtivo ? 'warning' : 'success');
+            carregarUsuarios(); // Recarregar tabela para refletir novo status
+        } else {
+            mostrarAlerta('Erro: ' + data.mensagem, 'error');
+            if (btnEl) { btnEl.disabled = false; }
+            carregarUsuarios();
+        }
+    })
+    .catch(err => {
+        console.error('[Usuarios] Erro ao alterar status:', err);
+        mostrarAlerta('Erro de conexão ao alterar status do usuário.', 'error');
+        if (btnEl) { btnEl.disabled = false; }
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────
