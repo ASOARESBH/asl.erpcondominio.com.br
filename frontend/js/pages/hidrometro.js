@@ -1384,7 +1384,15 @@ function _leituraRenderizarColetiva() {
     const tbody = document.getElementById('listaColetiva');
     if (!tbody) return;
 
-    const lista = _state.hidrometrosAtivos;
+    // Ordenar por unidade crescente (numérica quando possível)
+    const lista = [..._state.hidrometrosAtivos].sort((a, b) => {
+        const uA = String(a.unidade || '').trim();
+        const uB = String(b.unidade || '').trim();
+        const nA = parseInt(uA, 10);
+        const nB = parseInt(uB, 10);
+        if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
+        return uA.localeCompare(uB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+    });
 
     if (lista.length === 0) {
         tbody.innerHTML = '<tr class="empty-row"><td colspan="6"><i class="fas fa-tint-slash"></i><p>Nenhum hidrômetro ativo encontrado.</p></td></tr>';
