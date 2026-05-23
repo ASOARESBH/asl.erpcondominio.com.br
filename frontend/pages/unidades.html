@@ -1,0 +1,142 @@
+<div id="page-metadata" data-title="Unidades" data-icon="fa-home" style="display:none;"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PAGE WRAPPER
+═══════════════════════════════════════════════════════════ -->
+<div class="page-wrapper page-unidades">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h1><i class="fas fa-home"></i> Unidades</h1>
+        <p>Gerenciamento das unidades (Glebas) da Associação Serra da Liberdade</p>
+    </div>
+
+    <!-- Toast -->
+    <div id="uni-toast" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;
+         padding:14px 20px;border-radius:8px;font-size:.9rem;min-width:260px;
+         box-shadow:0 4px 16px rgba(0,0,0,.15);transition:opacity .3s;"></div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;">
+        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #1e3a8a;">
+            <div style="font-size:2rem;font-weight:700;color:#1e3a8a;" id="kpi-total">—</div>
+            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Total de Unidades</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #16a34a;">
+            <div style="font-size:2rem;font-weight:700;color:#16a34a;" id="kpi-ativas">—</div>
+            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Ativas</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #2563eb;">
+            <div style="font-size:2rem;font-weight:700;color:#2563eb;" id="kpi-moradores">—</div>
+            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Com Moradores</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #7c3aed;">
+            <div style="font-size:2rem;font-weight:700;color:#7c3aed;" id="kpi-hidrometros">—</div>
+            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Com Hidrômetros</div>
+        </div>
+    </div>
+
+    <!-- Formulário de cadastro -->
+    <div class="page-card">
+        <h2><i class="fas fa-plus-circle"></i> <span id="uni-form-titulo">Cadastrar Unidade</span></h2>
+        <form id="unidadeForm">
+            <input type="hidden" id="uni-id">
+            <div class="form-grid">
+                <div>
+                    <label>Nome da Unidade *</label>
+                    <input type="text" id="uni-nome" required placeholder="Ex: Gleba 1">
+                </div>
+                <div>
+                    <label>Bloco / Tipo</label>
+                    <select id="uni-bloco">
+                        <option value="Gleba">Gleba</option>
+                        <option value="ADMIN">ADMINISTRATIVO</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Descrição</label>
+                    <input type="text" id="uni-descricao" placeholder="Ex: Serra da Liberdade">
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+                <button type="submit" class="btn-primary-modern">
+                    <i class="fas fa-save"></i> Salvar Unidade
+                </button>
+                <button type="button" class="btn-secondary-modern" onclick="window.UnidadesPage && window.UnidadesPage.cancelarEdicao()">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.9rem;" onclick="window.UnidadesPage && window.UnidadesPage.popularGlebas()" id="btn-popular">
+                    <i class="fas fa-magic"></i> Auto-popular Gleba 1–187
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Lista de unidades -->
+    <div class="page-card">
+        <h2><i class="fas fa-list"></i> Lista de Unidades</h2>
+
+        <!-- Filtros -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+            <input type="text" id="uni-busca" placeholder="Pesquisar por nome ou bloco..." style="flex:1;min-width:200px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+            <select id="uni-filtro-bloco" style="min-width:140px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+                <option value="">Todos os blocos</option>
+                <option value="Gleba">Gleba</option>
+                <option value="ADMIN">ADMIN</option>
+            </select>
+            <select id="uni-filtro-ativo" style="min-width:130px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+                <option value="-1">Todos os status</option>
+                <option value="1">Ativas</option>
+                <option value="0">Inativas</option>
+            </select>
+            <button class="btn-primary-modern" onclick="window.UnidadesPage && window.UnidadesPage.buscar()">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div id="uni-loading" style="display:none;text-align:center;padding:40px;color:#64748b;">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+            <p>Carregando unidades...</p>
+        </div>
+
+        <!-- Tabela -->
+        <div class="table-container">
+            <table id="tabelaUnidades">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Bloco</th>
+                        <th>Descrição</th>
+                        <th>Moradores</th>
+                        <th>Hidrômetros</th>
+                        <th>Status</th>
+                        <th>Cadastro</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="uni-tbody"></tbody>
+            </table>
+        </div>
+
+        <!-- Paginação -->
+        <div id="uni-paginacao" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center;justify-content:center;"></div>
+    </div>
+
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div id="uni-modal-excluir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 12px;color:#1e3a8a;"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Confirmar Exclusão</h3>
+        <p id="uni-modal-msg" style="color:#374151;margin-bottom:24px;"></p>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="btn-secondary-modern" onclick="window.UnidadesPage && window.UnidadesPage.fecharModal()">Cancelar</button>
+            <button style="background:#ef4444;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.9rem;" onclick="window.UnidadesPage && window.UnidadesPage.confirmarExclusao()">
+                <i class="fas fa-trash"></i> Excluir
+            </button>
+        </div>
+    </div>
+</div>

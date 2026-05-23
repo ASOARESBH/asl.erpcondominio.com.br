@@ -14,9 +14,10 @@
 const DEBUG = true;
 const log = (...args) => DEBUG && console.log('[Moradores]', ...args);
 
-const API_MORADORES = '../api/api_moradores.php';
+const API_MORADORES   = '../api/api_moradores.php';
 const API_DEPENDENTES = '../api/api_dependentes.php';
-const API_ANEXOS = '../api/api_moradores_anexos.php';
+const API_ANEXOS      = '../api/api_moradores_anexos.php';
+const API_UNIDADES    = '../api/api_unidades.php';
 
 // ── Estado interno ─────────────────────────────────────────────────────────────
 let _currentTab = 'moradores';
@@ -38,6 +39,7 @@ export function init() {
     _setupTabs();
     _setupForms();
     _setupFileDrop();
+    _carregarUnidades();
     _carregarMoradores();
     _carregarDependentes();
 
@@ -145,6 +147,41 @@ function _toast(msg, tipo = 'success') {
 
     clearTimeout(el._timer);
     el._timer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UNIDADES — Popular selects de unidade
+// ══════════════════════════════════════════════════════════════════════════════
+
+function _carregarUnidades() {
+    log('Carregando lista de unidades para selects...');
+    fetch(`${API_UNIDADES}?acao=select`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.sucesso) return;
+            const unidades = data.dados || [];
+            log('Unidades carregadas:', unidades.length);
+            _popularSelectUnidades(unidades);
+        })
+        .catch(err => log('Erro ao carregar unidades:', err));
+}
+
+function _popularSelectUnidades(unidades) {
+    const ids = ['unidade', 'edit-morador-unidade'];
+    ids.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const valorAtual = sel.value;
+        sel.innerHTML = '<option value="">Selecione a unidade</option>';
+        unidades.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.nome;
+            opt.textContent = u.nome;
+            sel.appendChild(opt);
+        });
+        // Restaurar valor se estava editando
+        if (valorAtual) sel.value = valorAtual;
+    });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -419,7 +456,22 @@ function _abrirModalEditarMorador(id) {
             document.getElementById('edit-morador-id').value         = m.id;
             document.getElementById('edit-morador-nome').value       = m.nome || '';
             document.getElementById('edit-morador-cpf').value        = m.cpf || '';
-            document.getElementById('edit-morador-unidade').value    = m.unidade || '';
+            // Setar valor no select de unidade (popular se necessário)
+            const selUni = document.getElementById('edit-morador-unidade');
+            if (selUni) {
+                // Se o select ainda está vazio (só tem a opção padrão), popular primeiro
+                if (selUni.options.length <= 1) {
+                    fetch(`${API_UNIDADES}?acao=select`)
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.sucesso) _popularSelectUnidades(d.dados || []);
+                            selUni.value = m.unidade || '';
+                        })
+                        .catch(() => {});
+                } else {
+                    selUni.value = m.unidade || '';
+                }
+            }
             document.getElementById('edit-morador-email').value      = m.email || '';
             document.getElementById('edit-morador-telefone').value   = m.telefone || '';
             document.getElementById('edit-morador-celular').value    = m.celular || '';
