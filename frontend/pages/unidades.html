@@ -5,38 +5,50 @@
 ═══════════════════════════════════════════════════════════ -->
 <div class="page-wrapper page-unidades">
 
-    <!-- Header -->
+    <!-- ── Header ───────────────────────────────────────────── -->
     <div class="page-header">
         <h1><i class="fas fa-home"></i> Unidades</h1>
         <p>Gerenciamento das unidades (Glebas) da Associação Serra da Liberdade</p>
     </div>
 
-    <!-- Toast -->
+    <!-- ── Toast ────────────────────────────────────────────── -->
     <div id="uni-toast" style="display:none;position:fixed;top:20px;right:20px;z-index:9999;
          padding:14px 20px;border-radius:8px;font-size:.9rem;min-width:260px;
          box-shadow:0 4px 16px rgba(0,0,0,.15);transition:opacity .3s;"></div>
 
-    <!-- KPIs -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;">
-        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #1e3a8a;">
-            <div style="font-size:2rem;font-weight:700;color:#1e3a8a;" id="kpi-total">—</div>
-            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Total de Unidades</div>
+    <!-- ── KPIs ─────────────────────────────────────────────── -->
+    <div class="uni-stats-grid">
+        <div class="page-card kpi-card">
+            <div class="kpi-icon blue"><i class="fas fa-home"></i></div>
+            <div class="kpi-content">
+                <h3>Total de Unidades</h3>
+                <div class="value" id="kpi-total">—</div>
+            </div>
         </div>
-        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #16a34a;">
-            <div style="font-size:2rem;font-weight:700;color:#16a34a;" id="kpi-ativas">—</div>
-            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Ativas</div>
+        <div class="page-card kpi-card">
+            <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+            <div class="kpi-content">
+                <h3>Ativas</h3>
+                <div class="value" id="kpi-ativas">—</div>
+            </div>
         </div>
-        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #2563eb;">
-            <div style="font-size:2rem;font-weight:700;color:#2563eb;" id="kpi-moradores">—</div>
-            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Com Moradores</div>
+        <div class="page-card kpi-card">
+            <div class="kpi-icon amber"><i class="fas fa-users"></i></div>
+            <div class="kpi-content">
+                <h3>Com Moradores</h3>
+                <div class="value" id="kpi-moradores">—</div>
+            </div>
         </div>
-        <div style="background:#fff;border-radius:10px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08);border-top:4px solid #7c3aed;">
-            <div style="font-size:2rem;font-weight:700;color:#7c3aed;" id="kpi-hidrometros">—</div>
-            <div style="font-size:.85rem;color:#64748b;margin-top:4px;">Com Hidrômetros</div>
+        <div class="page-card kpi-card">
+            <div class="kpi-icon purple"><i class="fas fa-tachometer-alt"></i></div>
+            <div class="kpi-content">
+                <h3>Com Hidrômetros</h3>
+                <div class="value" id="kpi-hidrometros">—</div>
+            </div>
         </div>
     </div>
 
-    <!-- Formulário de cadastro -->
+    <!-- ── Formulário de cadastro / edição ──────────────────── -->
     <div class="page-card">
         <h2><i class="fas fa-plus-circle"></i> <span id="uni-form-titulo">Cadastrar Unidade</span></h2>
         <form id="unidadeForm">
@@ -59,45 +71,45 @@
                     <input type="text" id="uni-descricao" placeholder="Ex: Serra da Liberdade">
                 </div>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+            <div class="uni-form-actions">
                 <button type="submit" class="btn-primary-modern">
                     <i class="fas fa-save"></i> Salvar Unidade
                 </button>
-                <button type="button" class="btn-secondary-modern" onclick="window.UnidadesPage && window.UnidadesPage.cancelarEdicao()">
+                <button type="button" class="btn-secondary-modern" onclick="window.UnidadesPage?.cancelarEdicao()">
                     <i class="fas fa-times"></i> Cancelar
                 </button>
-                <button type="button" style="background:#f59e0b;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.9rem;" onclick="window.UnidadesPage && window.UnidadesPage.popularGlebas()" id="btn-popular">
+                <button type="button" class="btn-popular" id="btn-popular" onclick="window.UnidadesPage?.popularGlebas()">
                     <i class="fas fa-magic"></i> Auto-popular Gleba 1–187
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Lista de unidades -->
+    <!-- ── Lista de unidades ────────────────────────────────── -->
     <div class="page-card">
         <h2><i class="fas fa-list"></i> Lista de Unidades</h2>
 
         <!-- Filtros -->
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
-            <input type="text" id="uni-busca" placeholder="Pesquisar por nome ou bloco..." style="flex:1;min-width:200px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;">
-            <select id="uni-filtro-bloco" style="min-width:140px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+        <div class="search-box">
+            <input type="text" id="uni-busca" placeholder="Pesquisar por nome ou bloco...">
+            <select id="uni-filtro-bloco">
                 <option value="">Todos os blocos</option>
                 <option value="Gleba">Gleba</option>
                 <option value="ADMIN">ADMIN</option>
             </select>
-            <select id="uni-filtro-ativo" style="min-width:130px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+            <select id="uni-filtro-ativo">
                 <option value="-1">Todos os status</option>
                 <option value="1">Ativas</option>
                 <option value="0">Inativas</option>
             </select>
-            <button class="btn-primary-modern" onclick="window.UnidadesPage && window.UnidadesPage.buscar()">
+            <button class="btn-primary-modern" onclick="window.UnidadesPage?.buscar()">
                 <i class="fas fa-search"></i> Buscar
             </button>
         </div>
 
         <!-- Loading -->
-        <div id="uni-loading" style="display:none;text-align:center;padding:40px;color:#64748b;">
-            <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i>
+        <div id="uni-loading" class="loading" style="display:none;">
+            <i class="fas fa-spinner fa-spin"></i>
             <p>Carregando unidades...</p>
         </div>
 
@@ -122,19 +134,27 @@
         </div>
 
         <!-- Paginação -->
-        <div id="uni-paginacao" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center;justify-content:center;"></div>
+        <div id="uni-paginacao" class="paginacao-unidades"></div>
     </div>
 
-</div>
+</div><!-- /.page-wrapper -->
 
-<!-- Modal de confirmação de exclusão -->
-<div id="uni-modal-excluir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:12px;padding:32px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
-        <h3 style="margin:0 0 12px;color:#1e3a8a;"><i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> Confirmar Exclusão</h3>
-        <p id="uni-modal-msg" style="color:#374151;margin-bottom:24px;"></p>
-        <div style="display:flex;gap:10px;justify-content:flex-end;">
-            <button class="btn-secondary-modern" onclick="window.UnidadesPage && window.UnidadesPage.fecharModal()">Cancelar</button>
-            <button style="background:#ef4444;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:.9rem;" onclick="window.UnidadesPage && window.UnidadesPage.confirmarExclusao()">
+<!-- ══════════════════════════════════════════════════════
+     MODAL: Confirmar Exclusão
+══════════════════════════════════════════════════════ -->
+<div id="uni-modal-excluir" class="uni-modal-overlay" style="display:none;">
+    <div class="uni-modal">
+        <div class="uni-modal-header">
+            <h3><i class="fas fa-exclamation-triangle" style="color:#ef4444;margin-right:8px;"></i> Confirmar Exclusão</h3>
+        </div>
+        <div class="uni-modal-body">
+            <p id="uni-modal-msg"></p>
+        </div>
+        <div class="uni-modal-footer">
+            <button class="btn-secondary-modern" onclick="window.UnidadesPage?.fecharModal()">
+                <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button class="btn-danger-modern" onclick="window.UnidadesPage?.confirmarExclusao()">
                 <i class="fas fa-trash"></i> Excluir
             </button>
         </div>

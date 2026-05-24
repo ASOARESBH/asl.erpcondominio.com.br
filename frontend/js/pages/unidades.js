@@ -88,37 +88,43 @@
             return;
         }
         tbody.innerHTML = itens.map(u => {
-            const ativo = parseInt(u.ativo) === 1;
-            const badgeAtivo = ativo
-                ? '<span style="background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:20px;font-size:.8rem;font-weight:600;">Ativa</span>'
-                : '<span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:.8rem;font-weight:600;">Inativa</span>';
+            const ativo       = parseInt(u.ativo) === 1;
             const moradores   = parseInt(u.total_moradores)   || 0;
             const hidrometros = parseInt(u.total_hidrometros) || 0;
+            const temVinculos = moradores > 0 || hidrometros > 0;
+            const nomeEsc     = u.nome.replace(/'/g, "\'");
+            const isAdmin     = (u.bloco || '').toUpperCase() === 'ADMIN' || (u.bloco || '').toUpperCase() === 'ADMINISTRATIVO';
+
             return `<tr>
                 <td>${u.id}</td>
                 <td><strong>${u.nome}</strong></td>
-                <td><span style="background:#e0e7ff;color:#3730a3;padding:2px 8px;border-radius:12px;font-size:.8rem;">${u.bloco || '—'}</span></td>
+                <td><span class="badge-bloco${isAdmin ? ' admin' : ''}">${u.bloco || '—'}</span></td>
                 <td>${u.descricao || '—'}</td>
                 <td style="text-align:center;">
-                    ${moradores > 0 ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:12px;font-size:.8rem;font-weight:600;">${moradores}</span>` : '<span style="color:#94a3b8;">0</span>'}
+                    <span class="badge-count${moradores === 0 ? ' zero' : ''}">${moradores}</span>
                 </td>
                 <td style="text-align:center;">
-                    ${hidrometros > 0 ? `<span style="background:#ede9fe;color:#6d28d9;padding:2px 8px;border-radius:12px;font-size:.8rem;font-weight:600;">${hidrometros}</span>` : '<span style="color:#94a3b8;">0</span>'}
+                    <span class="badge-count${hidrometros === 0 ? ' zero' : ''}">${hidrometros}</span>
                 </td>
-                <td>${badgeAtivo}</td>
-                <td style="font-size:.8rem;color:#64748b;">${u.data_cadastro_fmt || '—'}</td>
                 <td>
-                    <button onclick="window.UnidadesPage.editar(${u.id})" title="Editar"
-                        style="background:#2563eb;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;margin-right:4px;">
+                    <span class="status-badge ${ativo ? 'ativa' : 'inativa'}">${ativo ? 'Ativa' : 'Inativa'}</span>
+                </td>
+                <td style="font-size:.8rem;color:#64748b;white-space:nowrap;">${u.data_cadastro_fmt || '—'}</td>
+                <td style="white-space:nowrap;">
+                    <button class="action-btn edit"
+                        onclick="window.UnidadesPage.editar(${u.id})"
+                        title="Editar unidade">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="window.UnidadesPage.toggleAtivo(${u.id}, ${ativo ? 0 : 1}, '${u.nome.replace(/'/g, "\\'")}')" title="${ativo ? 'Inativar' : 'Ativar'}"
-                        style="background:${ativo ? '#f59e0b' : '#16a34a'};color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;margin-right:4px;">
-                        <i class="fas fa-${ativo ? 'ban' : 'check'}"></i>
+                    <button class="action-btn toggle${ativo ? '' : ' active-btn'}"
+                        onclick="window.UnidadesPage.toggleAtivo(${u.id}, ${ativo ? 0 : 1}, '${nomeEsc}')"
+                        title="${ativo ? 'Inativar' : 'Ativar'} unidade">
+                        <i class="fas fa-${ativo ? 'ban' : 'check-circle'}"></i>
                     </button>
-                    <button onclick="window.UnidadesPage.excluir(${u.id}, '${u.nome.replace(/'/g, "\\'")}')" title="Excluir"
-                        style="background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;"
-                        ${moradores > 0 || hidrometros > 0 ? 'disabled title="Unidade com vínculos — não pode ser excluída"' : ''}>
+                    <button class="action-btn delete"
+                        onclick="window.UnidadesPage.excluir(${u.id}, '${nomeEsc}')"
+                        title="${temVinculos ? 'Unidade com vínculos — não pode ser excluída' : 'Excluir unidade'}"
+                        ${temVinculos ? 'disabled style="opacity:.35;cursor:not-allowed;pointer-events:none;"' : ''}>
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -130,17 +136,50 @@
     function renderPaginacao() {
         const el = document.getElementById('uni-paginacao');
         if (!el) return;
-        if (state.paginas <= 1) { el.innerHTML = ''; return; }
-        let html = '';
-        const btnStyle = (ativo) => `style="padding:6px 12px;border:1px solid ${ativo ? '#1e3a8a' : '#d1d5db'};background:${ativo ? '#1e3a8a' : '#fff'};color:${ativo ? '#fff' : '#374151'};border-radius:6px;cursor:pointer;font-size:.85rem;"`;
-        if (state.pagina > 1) html += `<button ${btnStyle(false)} onclick="window.UnidadesPage.irPagina(${state.pagina - 1})"><i class="fas fa-chevron-left"></i></button>`;
-        const inicio = Math.max(1, state.pagina - 2);
-        const fim    = Math.min(state.paginas, state.pagina + 2);
-        for (let i = inicio; i <= fim; i++) {
-            html += `<button ${btnStyle(i === state.pagina)} onclick="window.UnidadesPage.irPagina(${i})">${i}</button>`;
+
+        if (state.paginas <= 1) {
+            el.innerHTML = state.total > 0
+                ? `<span class="pag-info">${state.total} unidade${state.total !== 1 ? 's' : ''}</span>`
+                : '';
+            return;
         }
-        if (state.pagina < state.paginas) html += `<button ${btnStyle(false)} onclick="window.UnidadesPage.irPagina(${state.pagina + 1})"><i class="fas fa-chevron-right"></i></button>`;
-        html += `<span style="font-size:.85rem;color:#64748b;margin-left:8px;">Total: ${state.total} unidades</span>`;
+
+        const inicio = (state.pagina - 1) * state.por_pagina + 1;
+        const fim    = Math.min(state.pagina * state.por_pagina, state.total);
+        let html = `<span class="pag-info">${inicio}–${fim} de ${state.total}</span>`;
+        html += `<div class="pag-btns">`;
+
+        html += `<button class="pag-btn${state.pagina === 1 ? ' disabled' : ''}"
+            onclick="window.UnidadesPage.irPagina(${state.pagina - 1})"
+            ${state.pagina === 1 ? 'disabled' : ''} title="Página anterior">
+            <i class="fas fa-chevron-left"></i>
+        </button>`;
+
+        const MAX_BTNS = 7;
+        let ini_pg = Math.max(1, state.pagina - Math.floor(MAX_BTNS / 2));
+        let fim_pg = Math.min(state.paginas, ini_pg + MAX_BTNS - 1);
+        if (fim_pg - ini_pg < MAX_BTNS - 1) ini_pg = Math.max(1, fim_pg - MAX_BTNS + 1);
+
+        if (ini_pg > 1) {
+            html += `<button class="pag-btn" onclick="window.UnidadesPage.irPagina(1)">1</button>`;
+            if (ini_pg > 2) html += `<span class="pag-ellipsis">…</span>`;
+        }
+        for (let p = ini_pg; p <= fim_pg; p++) {
+            html += `<button class="pag-btn${p === state.pagina ? ' active' : ''}"
+                onclick="window.UnidadesPage.irPagina(${p})">${p}</button>`;
+        }
+        if (fim_pg < state.paginas) {
+            if (fim_pg < state.paginas - 1) html += `<span class="pag-ellipsis">…</span>`;
+            html += `<button class="pag-btn" onclick="window.UnidadesPage.irPagina(${state.paginas})">${state.paginas}</button>`;
+        }
+
+        html += `<button class="pag-btn${state.pagina === state.paginas ? ' disabled' : ''}"
+            onclick="window.UnidadesPage.irPagina(${state.pagina + 1})"
+            ${state.pagina === state.paginas ? 'disabled' : ''} title="Próxima página">
+            <i class="fas fa-chevron-right"></i>
+        </button>`;
+
+        html += `</div>`;
         el.innerHTML = html;
     }
 
