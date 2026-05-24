@@ -152,12 +152,24 @@ if ($acao === 'excluir_periodo' && $metodo === 'DELETE') {
 
 // ── LANÇAMENTOS ───────────────────────────────────────────────────────────────
 
-if ($acao === 'listar_lancamentos') {
-    $periodo_id = intval($_GET['periodo_id'] ?? 0);
-    if ($periodo_id <= 0) retornar_json(false, 'periodo_id obrigatório');
+// Endpoint para período personalizado que pode cruzar múltiplos meses:
+// GET ?acao=listar_lancamentos_por_colaborador&colaborador_id=N&data_inicio=YYYY-MM-DD&data_fim=YYYY-MM-DD
+if ($acao === 'listar_lancamentos_por_colaborador') {
+    $colab_id    = intval($_GET['colaborador_id'] ?? 0);
+    $data_inicio = trim($_GET['data_inicio'] ?? '');
+    $data_fim    = trim($_GET['data_fim']    ?? '');
+
+    if ($colab_id <= 0)  retornar_json(false, 'colaborador_id obrigatório');
+    if (!$data_inicio || !$data_fim) retornar_json(false, 'data_inicio e data_fim são obrigatórios');
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio) ||
+        !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim)) {
+        retornar_json(false, 'Formato de data inválido (esperado YYYY-MM-DD)');
+    }
+    if ($data_inicio > $data_fim) retornar_json(false, 'data_inicio não pode ser maior que data_fim');
 
     $stmt = $conn->prepare(
         "SELECT l.*,
+                p.status as periodo_status,
                 TIME_FORMAT(l.hora_entrada, '%H:%i')        as he,
                 TIME_FORMAT(l.hora_almoco_saida, '%H:%i')   as has,
                 TIME_FORMAT(l.hora_almoco_retorno, '%H:%i') as har,
@@ -165,10 +177,71 @@ if ($acao === 'listar_lancamentos') {
                 DATE_FORMAT(l.data, '%d/%m/%Y')             as data_fmt,
                 DAYNAME(l.data)                             as dia_semana
          FROM rh_ponto_lancamento l
-         WHERE l.periodo_id = ?
+         JOIN rh_ponto_periodo p ON p.id = l.periodo_id
+         WHERE l.colaborador_id = ?
+           AND l.data BETWEEN ? AND ?
          ORDER BY l.data ASC"
     );
-    $stmt->bind_param('i', $periodo_id);
+    $stmt->bind_param('iss', $colab_id, $data_inicio, $data_fim);
+    $stmt->execute();
+    $list = [];
+    $res  = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) $list[] = $r;
+    $stmt->close(); fechar_conexao($conn);
+    retornar_json(true, 'OK', $list);
+}
+
+if ($acao === 'listar_lancamentos') {
+    $periodo_id  = intval($_GET['periodo_id'] ?? 0);
+    if ($periodo_id <= 0) retornar_json(false, 'periodo_id obrigatório');
+
+    // Filtro opcional de período personalizado (data_inicio / data_fim)
+    $data_inicio = trim($_GET['data_inicio'] ?? '');
+    $data_fim    = trim($_GET['data_fim']    ?? '');
+
+    // Valida formato YYYY-MM-DD quando informado
+    $usar_filtro_data = false;
+    if ($data_inicio !== '' && $data_fim !== '') {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_inicio) &&
+            preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim)   &&
+            $data_inicio <= $data_fim) {
+            $usar_filtro_data = true;
+        }
+    }
+
+    if ($usar_filtro_data) {
+        // Período personalizado: filtra lançamentos dentro do intervalo de datas
+        $stmt = $conn->prepare(
+            "SELECT l.*,
+                    TIME_FORMAT(l.hora_entrada, '%H:%i')        as he,
+                    TIME_FORMAT(l.hora_almoco_saida, '%H:%i')   as has,
+                    TIME_FORMAT(l.hora_almoco_retorno, '%H:%i') as har,
+                    TIME_FORMAT(l.hora_saida, '%H:%i')          as hs,
+                    DATE_FORMAT(l.data, '%d/%m/%Y')             as data_fmt,
+                    DAYNAME(l.data)                             as dia_semana
+             FROM rh_ponto_lancamento l
+             WHERE l.periodo_id = ?
+               AND l.data BETWEEN ? AND ?
+             ORDER BY l.data ASC"
+        );
+        $stmt->bind_param('iss', $periodo_id, $data_inicio, $data_fim);
+    } else {
+        // Período mensal: retorna todos os lançamentos do período
+        $stmt = $conn->prepare(
+            "SELECT l.*,
+                    TIME_FORMAT(l.hora_entrada, '%H:%i')        as he,
+                    TIME_FORMAT(l.hora_almoco_saida, '%H:%i')   as has,
+                    TIME_FORMAT(l.hora_almoco_retorno, '%H:%i') as har,
+                    TIME_FORMAT(l.hora_saida, '%H:%i')          as hs,
+                    DATE_FORMAT(l.data, '%d/%m/%Y')             as data_fmt,
+                    DAYNAME(l.data)                             as dia_semana
+             FROM rh_ponto_lancamento l
+             WHERE l.periodo_id = ?
+             ORDER BY l.data ASC"
+        );
+        $stmt->bind_param('i', $periodo_id);
+    }
+
     $stmt->execute();
     $list = [];
     $res  = $stmt->get_result();

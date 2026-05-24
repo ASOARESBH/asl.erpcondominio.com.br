@@ -411,30 +411,108 @@ async function _abrirPeriodo() {
     if (!params) return; // validação já exibiu o erro
 
     try {
-        const r = await fetch(`../api/api_rh_ponto.php?acao=listar_periodos&colaborador_id=${colab_id}`, { credentials: 'include' });
-        const d = await r.json();
-        if (!d.sucesso) throw new Error(d.mensagem);
-
-        let periodo;
         if (params.tipo === 'personalizado') {
-            // Para período personalizado: busca período que contenha a data de início
-            const inicioDate = new Date(params.data_inicio + 'T00:00:00');
-            periodo = (d.dados ?? []).find(p => {
+            // ── Período personalizado ─────────────────────────────────────────────
+            // Verifica se o intervalo cruza múltiplos meses
+            const dtInicio = new Date(params.data_inicio + 'T00:00:00');
+            const dtFim    = new Date(params.data_fim    + 'T00:00:00');
+            const mesmoMes = dtInicio.getFullYear() === dtFim.getFullYear() &&
+                             dtInicio.getMonth()    === dtFim.getMonth();
+
+            console.log('[RH-Ponto] Período personalizado:', params.data_inicio, '–', params.data_fim,
+                        '| Mesmo mês:', mesmoMes);
+
+            // Salva o filtro no estado (usado em _carregarLancamentos e _exibirFolha)
+            _state.filtroPersonalizado = { data_inicio: params.data_inicio, data_fim: params.data_fim };
+
+            if (!mesmoMes) {
+                // Filtro cruza múltiplos meses: usa endpoint por colaborador + intervalo de datas
+                // Não precisa de periodo_id — usa um objeto virtual de período
+                const r2 = await fetch(
+                    `../api/api_rh_ponto.php?acao=listar_lancamentos_por_colaborador` +
+                    `&colaborador_id=${colab_id}` +
+                    `&data_inicio=${encodeURIComponent(params.data_inicio)}` +
+                    `&data_fim=${encodeURIComponent(params.data_fim)}`,
+                    { credentials: 'include' }
+                );
+                const d2 = await r2.json();
+                if (!d2.sucesso) throw new Error(d2.mensagem);
+
+                if (!d2.dados || d2.dados.length === 0) {
+                    return _toast('Nenhum lançamento encontrado no intervalo informado. Verifique se os períodos mensais foram criados.', 'info');
+                }
+
+                // Monta período virtual para exibir a folha
+                const colaboradorNome = document.getElementById('ponto-colaborador-id')
+                    .options[document.getElementById('ponto-colaborador-id').selectedIndex]?.text ?? '';
+                _state.periodoAtual = {
+                    id: null, // sem periodo_id único (multi-mês)
+                    colaborador_id: parseInt(colab_id),
+                    colaborador_nome: colaboradorNome,
+                    mes: dtInicio.getMonth() + 1,
+                    ano: dtInicio.getFullYear(),
+                    status: 'aberto',
+                    total_horas_trabalhadas_min: 0,
+                    total_horas_extras_min: 0,
+                    total_atraso_min: 0,
+                    total_faltas: 0,
+                    total_folgas: 0,
+                };
+
+                // Calcula totais a partir dos lançamentos retornados
+                d2.dados.forEach(l => {
+                    _state.periodoAtual.total_horas_trabalhadas_min += parseInt(l.horas_trabalhadas_min) || 0;
+                    _state.periodoAtual.total_horas_extras_min     += parseInt(l.horas_extras_min)     || 0;
+                    _state.periodoAtual.total_atraso_min           += parseInt(l.atraso_min)           || 0;
+                    if (l.tipo_dia === 'falta')  _state.periodoAtual.total_faltas++;
+                    if (l.tipo_dia === 'folga')  _state.periodoAtual.total_folgas++;
+                });
+
+                // Exibe a folha com os lançamentos já carregados
+                document.getElementById('ponto-seletor-card').style.display = 'none';
+                document.getElementById('ponto-folha-wrap').style.display   = '';
+
+                const fmtDate = (iso) => { const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; };
+                document.getElementById('ponto-header-nome').textContent = colaboradorNome;
+                document.getElementById('ponto-header-meta').innerHTML   =
+                    `${fmtDate(params.data_inicio)} – ${fmtDate(params.data_fim)} &nbsp;|&nbsp; <span class="status-aberto">Multi-mês</span>`;
+                document.getElementById('btnPontoFechar').style.display  = 'none'; // não aplica a multi-mês
+                document.getElementById('btnPontoReabrir').style.display = 'none';
+
+                _atualizarTotais(_state.periodoAtual);
+                _state.lancamentos = d2.dados;
+                _renderLancamentos(true); // somente leitura para multi-mês
+                return;
+            }
+
+            // Mesmo mês: busca o período mensal normalmente
+            const r = await fetch(`../api/api_rh_ponto.php?acao=listar_periodos&colaborador_id=${colab_id}`, { credentials: 'include' });
+            const d = await r.json();
+            if (!d.sucesso) throw new Error(d.mensagem);
+
+            const periodo = (d.dados ?? []).find(p => {
                 const pInicio = new Date(p.ano, p.mes - 1, 1);
                 const pFim    = new Date(p.ano, p.mes, 0);
-                return inicioDate >= pInicio && inicioDate <= pFim;
+                return dtInicio >= pInicio && dtInicio <= pFim;
             });
-            if (!periodo) return _toast('Nenhum período encontrado para o intervalo informado. Use o botão + para criar.', 'info');
-            // Salva o filtro personalizado no estado para uso nos lançamentos
-            _state.filtroPersonalizado = { data_inicio: params.data_inicio, data_fim: params.data_fim };
-        } else {
-            _state.filtroPersonalizado = null;
-            periodo = (d.dados ?? []).find(p => p.mes == params.mes && p.ano == params.ano);
-            if (!periodo) return _toast('Período não encontrado. Use o botão + para criar.', 'info');
-        }
+            if (!periodo) return _toast('Período não encontrado para o intervalo informado. Use o botão + para criar.', 'info');
 
-        _state.periodoAtual = periodo;
-        _exibirFolha(periodo);
+            _state.periodoAtual = periodo;
+            _exibirFolha(periodo);
+
+        } else {
+            // ── Período mensal ────────────────────────────────────────────────────
+            _state.filtroPersonalizado = null;
+            const r = await fetch(`../api/api_rh_ponto.php?acao=listar_periodos&colaborador_id=${colab_id}`, { credentials: 'include' });
+            const d = await r.json();
+            if (!d.sucesso) throw new Error(d.mensagem);
+
+            const periodo = (d.dados ?? []).find(p => p.mes == params.mes && p.ano == params.ano);
+            if (!periodo) return _toast('Período não encontrado. Use o botão + para criar.', 'info');
+
+            _state.periodoAtual = periodo;
+            _exibirFolha(periodo);
+        }
     } catch (err) { _toast(err.message, 'error'); }
 }
 
@@ -475,8 +553,21 @@ async function _exibirFolha(periodo) {
 
     const meses = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     document.getElementById('ponto-header-nome').textContent = periodo.colaborador_nome ?? '—';
+
+    // Exibe intervalo personalizado no header quando filtro personalizado está ativo
+    let periodoLabel;
+    if (_state.filtroPersonalizado?.data_inicio && _state.filtroPersonalizado?.data_fim) {
+        const fmtDate = (iso) => {
+            const [y, m, d] = iso.split('-');
+            return `${d}/${m}/${y}`;
+        };
+        periodoLabel = `${fmtDate(_state.filtroPersonalizado.data_inicio)} – ${fmtDate(_state.filtroPersonalizado.data_fim)}`;
+        console.log('[RH-Ponto] Exibindo folha com período personalizado:', periodoLabel);
+    } else {
+        periodoLabel = `${meses[periodo.mes]}/${periodo.ano}`;
+    }
     document.getElementById('ponto-header-meta').innerHTML  =
-        `${meses[periodo.mes]}/${periodo.ano} &nbsp;|&nbsp; <span class="status-${periodo.status}">${periodo.status === 'fechado' ? 'Fechado' : 'Em aberto'}</span>`;
+        `${periodoLabel} &nbsp;|&nbsp; <span class="status-${periodo.status}">${periodo.status === 'fechado' ? 'Fechado' : 'Em aberto'}</span>`;
 
     document.getElementById('btnPontoFechar').style.display  = periodo.status === 'aberto'  ? '' : 'none';
     document.getElementById('btnPontoReabrir').style.display = periodo.status === 'fechado' ? '' : 'none';
@@ -495,10 +586,20 @@ function _atualizarTotais(p) {
 
 async function _carregarLancamentos(periodo_id, readonly = false) {
     try {
-        const r = await fetch(`../api/api_rh_ponto.php?acao=listar_lancamentos&periodo_id=${periodo_id}`, { credentials: 'include' });
+        // Monta URL: se houver filtro personalizado ativo, passa data_inicio e data_fim
+        let url = `../api/api_rh_ponto.php?acao=listar_lancamentos&periodo_id=${periodo_id}`;
+        if (_state.filtroPersonalizado?.data_inicio && _state.filtroPersonalizado?.data_fim) {
+            url += `&data_inicio=${encodeURIComponent(_state.filtroPersonalizado.data_inicio)}`;
+            url += `&data_fim=${encodeURIComponent(_state.filtroPersonalizado.data_fim)}`;
+            console.log('[RH-Ponto] Filtro personalizado ativo:', _state.filtroPersonalizado);
+        } else {
+            console.log('[RH-Ponto] Filtro mensal — carregando período completo:', periodo_id);
+        }
+        const r = await fetch(url, { credentials: 'include' });
         const d = await r.json();
         if (!d.sucesso) throw new Error(d.mensagem);
         _state.lancamentos = d.dados ?? [];
+        console.log('[RH-Ponto] Lançamentos carregados:', _state.lancamentos.length);
         _renderLancamentos(readonly);
     } catch (err) { _toast(err.message, 'error'); }
 }
