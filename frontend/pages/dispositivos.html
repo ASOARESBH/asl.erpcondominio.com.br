@@ -6,7 +6,7 @@
   <div class="page-header">
     <div class="page-header-content">
       <h1><i class="fas fa-microchip" style="color:#2563eb;margin-right:10px;"></i>Dispositivos Control iD</h1>
-      <p>Gerenciamento de leitores UHF em Modo Push — o dispositivo inicia todas as conexões</p>
+      <p>Gerenciamento de leitores UHF — cadastre múltiplos dispositivos com configurações de comunicação individuais</p>
     </div>
   </div>
 
@@ -17,18 +17,18 @@
     </button>
     <button class="tab-btn" data-tab="eventos">
       <i class="fas fa-history"></i> Eventos
-      <span id="badge-eventos" style="display:none;background:#ef4444;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;"></span>
+      <span id="badge-eventos" class="tab-badge" style="display:none;"></span>
     </button>
     <button class="tab-btn" data-tab="fila">
       <i class="fas fa-terminal"></i> Fila de Comandos
-      <span id="badge-fila" style="display:none;background:#f59e0b;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px;"></span>
+      <span id="badge-fila" class="tab-badge tab-badge-amber" style="display:none;"></span>
     </button>
   </div>
 
   <!-- ═══════════════════════════════ ABA: DISPOSITIVOS ═══════════════════════════════ -->
   <div id="tab-dispositivos" class="tab-content active">
 
-    <!-- Formulário -->
+    <!-- Formulário completo de cadastro/edição -->
     <div class="page-card" id="disp-form-card">
       <div class="card-header-row">
         <h2 id="disp-form-titulo"><i class="fas fa-plus-circle"></i> Novo Dispositivo</h2>
@@ -37,22 +37,128 @@
         </button>
       </div>
 
-      <div class="form-grid">
+      <!-- Seção 1: Identificação -->
+      <div class="form-section-title"><i class="fas fa-id-card"></i> Identificação</div>
+      <div class="form-grid form-grid-3">
         <div>
           <label>Nome do Dispositivo *</label>
           <input type="text" id="disp-nome" placeholder="Ex: Cancela Moradores — Entrada">
         </div>
         <div>
           <label>Serial Number (Device ID) *</label>
-          <input type="text" id="disp-serial" placeholder="Ex: CID-UHFA1B2C3">
+          <input type="text" id="disp-serial" placeholder="Ex: 0N8100/002D07">
+        </div>
+        <div>
+          <label>Modelo do Equipamento</label>
+          <input type="text" id="disp-modelo" placeholder="Ex: IDUHF, iDAccess Nano, iDFlex">
+        </div>
+        <div>
+          <label>Tipo de Leitor</label>
+          <select id="disp-tipo-leitor">
+            <option value="uhf">UHF (TAG RFID longa distância)</option>
+            <option value="rfid">RFID (cartão de proximidade)</option>
+            <option value="facial">Reconhecimento Facial</option>
+            <option value="biometria">Biometria Digital</option>
+            <option value="qrcode">QR Code</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div>
+          <label>Área de Instalação</label>
+          <input type="text" id="disp-area" placeholder="Ex: Portaria Principal — Entrada">
+        </div>
+        <div>
+          <label>Sentido de Acesso</label>
+          <select id="disp-sentido">
+            <option value="ambos">Entrada e Saída</option>
+            <option value="entrada">Apenas Entrada</option>
+            <option value="saida">Apenas Saída</option>
+          </select>
         </div>
         <div style="grid-column: 1 / -1;">
-          <label>Descrição</label>
-          <input type="text" id="disp-descricao" placeholder="Localização, modelo, observações...">
+          <label>Descrição / Observações</label>
+          <input type="text" id="disp-descricao" placeholder="Observações adicionais sobre o dispositivo...">
         </div>
       </div>
 
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <!-- Seção 2: Comunicação -->
+      <div class="form-section-title" style="margin-top:20px;"><i class="fas fa-network-wired"></i> Comunicação e Integração</div>
+
+      <div class="form-grid form-grid-3">
+        <div style="grid-column: 1 / -1;">
+          <label>Tipo de Integração *</label>
+          <div class="integracao-radio-group">
+            <label class="radio-card" id="radio-bridge">
+              <input type="radio" name="tipo_integracao" value="bridge_local" checked>
+              <div class="radio-card-content">
+                <i class="fas fa-laptop-code"></i>
+                <strong>Bridge Local</strong>
+                <span>Script Python no PC da portaria consulta o equipamento e envia para o servidor</span>
+                <span class="radio-badge radio-badge-green">Recomendado</span>
+              </div>
+            </label>
+            <label class="radio-card" id="radio-monitor">
+              <input type="radio" name="tipo_integracao" value="monitor_nativo">
+              <div class="radio-card-content">
+                <i class="fas fa-satellite-dish"></i>
+                <strong>Monitor Nativo</strong>
+                <span>O próprio equipamento envia eventos diretamente para o servidor (requer internet estável)</span>
+              </div>
+            </label>
+            <label class="radio-card" id="radio-manual">
+              <input type="radio" name="tipo_integracao" value="manual">
+              <div class="radio-card-content">
+                <i class="fas fa-hand-paper"></i>
+                <strong>Apenas Manual</strong>
+                <span>Sem integração automática — registros feitos manualmente no sistema</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Campos de rede (visíveis para bridge_local e monitor_nativo) -->
+      <div id="bloco-rede" class="form-grid form-grid-3" style="margin-top:12px;">
+        <div>
+          <label>IP do Equipamento na Rede Local</label>
+          <input type="text" id="disp-ip" placeholder="Ex: 192.168.3.150">
+        </div>
+        <div>
+          <label>Porta HTTP</label>
+          <input type="number" id="disp-porta" placeholder="80" value="80" min="1" max="65535">
+        </div>
+        <div>
+          <label>Usuário da API Control iD</label>
+          <input type="text" id="disp-usuario" placeholder="admin" value="admin">
+        </div>
+        <div>
+          <label>Senha da API Control iD</label>
+          <div style="position:relative;">
+            <input type="password" id="disp-senha" placeholder="Senha do equipamento" style="padding-right:40px;">
+            <button type="button" onclick="window.DispModule?.toggleSenha()" title="Mostrar/ocultar senha"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;font-size:14px;">
+              <i class="fas fa-eye" id="disp-senha-icon"></i>
+            </button>
+          </div>
+        </div>
+        <div>
+          <label>Device ID Numérico (Control iD)</label>
+          <input type="number" id="disp-device-id" placeholder="Ex: 1 (veja em Info. Sistema no equipamento)">
+        </div>
+        <div>
+          <label>Bridge API Key <small style="color:#64748b;">(gerada automaticamente)</small></label>
+          <div style="display:flex;gap:6px;">
+            <input type="text" id="disp-bridge-key" placeholder="Será gerada ao salvar" readonly style="flex:1;background:#f1f5f9;">
+            <button type="button" class="btn-secondary-modern" onclick="window.DispModule?.gerarBridgeKey()" title="Gerar nova chave">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="disp-id" value="">
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
         <button class="btn-primary-modern" id="btnDispSalvar" type="button">
           <i class="fas fa-save"></i> Salvar Dispositivo
         </button>
@@ -64,7 +170,8 @@
       <div class="card-header-row">
         <h2><i class="fas fa-list"></i> Dispositivos Cadastrados</h2>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" id="disp-busca" placeholder="Buscar por nome ou serial..." style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;width:240px;">
+          <input type="text" id="disp-busca" placeholder="Buscar por nome ou serial..."
+            style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;width:240px;">
           <button class="btn-secondary-modern" id="btnDispBuscar" type="button">
             <i class="fas fa-search"></i>
           </button>
@@ -92,30 +199,29 @@
         </button>
       </div>
 
-      <!-- Filtros -->
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-end;">
+      <div class="search-box" style="margin-bottom:18px;">
         <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">Dispositivo</label>
-          <select id="ev-filtro-serial" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+          <label>Dispositivo</label>
+          <select id="ev-filtro-serial">
             <option value="">Todos</option>
           </select>
         </div>
         <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">Tipo de Evento</label>
-          <select id="ev-filtro-tipo" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+          <label>Tipo de Evento</label>
+          <select id="ev-filtro-tipo">
             <option value="">Todos</option>
-            <option value="7">7 — Acesso Liberado</option>
-            <option value="4">4 — Acesso Negado</option>
-            <option value="1">1 — Saída</option>
+            <option value="7">Acesso Liberado</option>
+            <option value="4">Acesso Negado</option>
+            <option value="1">Saída</option>
           </select>
         </div>
         <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">De</label>
-          <input type="date" id="ev-filtro-de" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+          <label>De</label>
+          <input type="date" id="ev-filtro-de">
         </div>
         <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:#64748b;margin-bottom:4px;">Até</label>
-          <input type="date" id="ev-filtro-ate" style="padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;">
+          <label>Até</label>
+          <input type="date" id="ev-filtro-ate">
         </div>
         <button class="btn-primary-modern" id="btnEventosBuscar" type="button" style="align-self:flex-end;">
           <i class="fas fa-search"></i> Buscar
@@ -127,21 +233,23 @@
           <thead>
             <tr>
               <th>#</th>
-              <th>Dispositivo (Serial)</th>
-              <th>User ID</th>
+              <th>Dispositivo</th>
+              <th>TAG / User ID</th>
+              <th>Veículo / Morador</th>
               <th>Tipo Evento</th>
               <th>Data / Hora</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="ev-tbody">
-            <tr><td colspan="5" style="text-align:center;padding:30px;color:#94a3b8;">
+            <tr><td colspan="7" style="text-align:center;padding:30px;color:#94a3b8;">
               <i class="fas fa-spinner fa-spin"></i> Carregando...
             </td></tr>
           </tbody>
         </table>
       </div>
 
-      <div id="ev-paginacao" style="display:flex;justify-content:center;gap:8px;margin-top:14px;flex-wrap:wrap;"></div>
+      <div id="ev-paginacao" class="paginacao-container"></div>
     </div>
 
   </div><!-- /tab-eventos -->
@@ -149,12 +257,11 @@
   <!-- ═══════════════════════════════ ABA: FILA DE COMANDOS ═══════════════════════════════ -->
   <div id="tab-fila" class="tab-content">
 
-    <!-- Formulário de novo comando -->
     <div class="page-card" style="margin-bottom:20px;">
       <div class="card-header-row">
         <h2><i class="fas fa-plus-circle"></i> Novo Comando</h2>
       </div>
-      <div class="form-grid">
+      <div class="form-grid form-grid-3">
         <div>
           <label>Dispositivo (Serial) *</label>
           <select id="fila-serial">
@@ -170,7 +277,7 @@
             <option value="DELETE">DELETE</option>
           </select>
         </div>
-        <div style="grid-column: 1 / -1;">
+        <div>
           <label>Endpoint *</label>
           <input type="text" id="fila-endpoint" placeholder="Ex: /access/v1/grant_access">
         </div>
@@ -187,7 +294,6 @@
       </div>
     </div>
 
-    <!-- Listagem da fila -->
     <div class="page-card">
       <div class="card-header-row">
         <h2><i class="fas fa-list-ul"></i> Comandos na Fila</h2>
@@ -231,35 +337,52 @@
 </div><!-- /.page-dispositivos -->
 
 <!-- ══════════════════════════════════════════════════
-     MODAL: TOKEN
+     MODAL: TOKEN / BRIDGE KEY
 ══════════════════════════════════════════════════════ -->
-<div id="disp-token-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-      <h3 style="margin:0;font-size:1rem;color:#1e293b;display:flex;align-items:center;gap:8px;">
-        <i class="fas fa-key" style="color:#2563eb;"></i> Token de Autenticação
-      </h3>
-      <button onclick="document.getElementById('disp-token-overlay').style.display='none'"
-        style="background:none;border:none;cursor:pointer;color:#64748b;font-size:1.1rem;padding:4px 8px;border-radius:6px;">
+<div id="disp-token-overlay" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fas fa-key"></i> Token de Autenticação</h3>
+      <button class="modal-close" onclick="document.getElementById('disp-token-overlay').classList.remove('open')">
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
-      Para equipamentos antigos sem campo de token, deixe o cadastro sem token e use apenas o endpoint Push configurado.
-      <br>
-      Configure este token no dispositivo Control iD como <strong>X-ControlID-Token</strong> no header das requisições Push.
-    </p>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input type="text" id="token-display" readonly
-        style="flex:1;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:13px;background:#f8fafc;color:#1e293b;">
-      <button onclick="window.DispModule?.copiarToken()" class="btn-secondary-modern" type="button">
-        <i class="fas fa-copy"></i> Copiar
+    <div class="modal-body">
+      <p style="font-size:13px;color:#64748b;margin-bottom:14px;">
+        Configure este token no bridge local como <code>BRIDGE_API_KEY</code> no arquivo <code>controlid_bridge.py</code>.
+        <br>Para o Monitor Nativo, use como header <strong>X-ControlID-Token</strong>.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="token-display" readonly
+          style="flex:1;padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px;font-family:monospace;font-size:13px;background:#f8fafc;color:#1e293b;">
+        <button onclick="window.DispModule?.copiarToken()" class="btn-secondary-modern" type="button">
+          <i class="fas fa-copy"></i> Copiar
+        </button>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button onclick="window.DispModule?.regenerarToken()" class="btn-primary-modern" type="button">
+          <i class="fas fa-sync-alt"></i> Gerar Novo Token
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL: GUIA DE CONFIGURAÇÃO DO BRIDGE
+══════════════════════════════════════════════════════ -->
+<div id="disp-guia-overlay" class="modal-overlay">
+  <div class="modal-box" style="max-width:640px;">
+    <div class="modal-header">
+      <h3><i class="fas fa-book"></i> Guia de Configuração do Bridge</h3>
+      <button class="modal-close" onclick="document.getElementById('disp-guia-overlay').classList.remove('open')">
+        <i class="fas fa-times"></i>
       </button>
     </div>
-    <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
-      <button onclick="window.DispModule?.regenerarToken()" class="btn-primary-modern" type="button">
-        <i class="fas fa-sync-alt"></i> Gerar Novo Token
-      </button>
+    <div class="modal-body">
+      <div id="guia-conteudo" style="font-size:13px;line-height:1.7;color:#374151;">
+        <!-- Preenchido pelo JS -->
+      </div>
     </div>
   </div>
 </div>

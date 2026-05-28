@@ -37,6 +37,9 @@ if (!($conn instanceof mysqli)) {
     exit;
 }
 
+// Migration automática: adiciona colunas de comunicação se não existirem
+_migration_comunicacao($conn);
+
 $raw  = (string) file_get_contents('php://input');
 $body = json_decode($raw, true) ?? [];
 $acao = trim((string) ($_GET['acao'] ?? $body['acao'] ?? ''));
@@ -76,6 +79,9 @@ function responder_listar(mysqli $conn): void
     $like  = '%' . $busca . '%';
 
     $sql = 'SELECT id, nome_dispositivo, serial_number, descricao,
+                   modelo, tipo_leitor, area_instalacao, sentido_acesso,
+                   tipo_integracao, ip_local, porta_local, usuario_api,
+                   device_id_controlid, bridge_api_key,
                    ultimo_keep_alive, ativo, criado_em
             FROM controlid_dispositivos
             WHERE ativo = 1';
@@ -113,6 +119,9 @@ function responder_obter(mysqli $conn): void
 
     $stmt = $conn->prepare(
         'SELECT id, nome_dispositivo, serial_number, descricao,
+                modelo, tipo_leitor, area_instalacao, sentido_acesso,
+                tipo_integracao, ip_local, porta_local, usuario_api,
+                device_id_controlid, bridge_api_key,
                 ultimo_keep_alive, token_autenticacao, ativo, criado_em
          FROM controlid_dispositivos
          WHERE id = ? LIMIT 1'
@@ -140,12 +149,28 @@ function responder_obter(mysqli $conn): void
 
 function responder_criar(mysqli $conn, array $body): void
 {
-    $nome   = trim((string) ($body['nome_dispositivo'] ?? ''));
-    $serial = trim((string) ($body['serial_number']    ?? ''));
-    $desc   = trim((string) ($body['descricao']        ?? ''));
+    $nome        = trim((string) ($body['nome_dispositivo']    ?? ''));
+    $serial      = trim((string) ($body['serial_number']       ?? ''));
+    $desc        = trim((string) ($body['descricao']           ?? ''));
+    $modelo      = trim((string) ($body['modelo']              ?? ''));
+    $tipo_leitor = trim((string) ($body['tipo_leitor']         ?? 'uhf'));
+    $area        = trim((string) ($body['area_instalacao']     ?? ''));
+    $sentido     = trim((string) ($body['sentido_acesso']      ?? 'ambos'));
+    $tipo_int    = trim((string) ($body['tipo_integracao']     ?? 'bridge_local'));
+    $ip          = trim((string) ($body['ip_local']            ?? ''));
+    $porta       = max(1, min(65535, (int) ($body['porta_local'] ?? 80)));
+    $usuario     = trim((string) ($body['usuario_api']         ?? 'admin'));
+    $senha       = trim((string) ($body['senha_api']           ?? ''));
+    $device_id   = (int) ($body['device_id_controlid']         ?? 0);
+    $bridge_key  = trim((string) ($body['bridge_api_key']      ?? ''));
 
     if ($nome === '' || $serial === '') {
         _erro($conn, 'nome_dispositivo e serial_number são obrigatórios', 400);
+    }
+
+    // Gera bridge_api_key se não informada
+    if ($bridge_key === '') {
+        $bridge_key = 'bk_' . bin2hex(random_bytes(16));
     }
 
     $existente = _buscar_dispositivo_por_serial($conn, $serial);
@@ -160,21 +185,25 @@ function responder_criar(mysqli $conn, array $body): void
         exit;
     }
 
-    // Firmware antigo do Control iD nao permite configurar token. Por isso o
-    // cadastro novo nasce sem token; a autenticacao fica pelo identificador.
     $token = '';
 
     if ($existente) {
         $stmt = $conn->prepare(
             'UPDATE controlid_dispositivos
-             SET nome_dispositivo = ?, descricao = ?, token_autenticacao = ?, ativo = 1
-             WHERE id = ?'
+             SET nome_dispositivo=?, descricao=?, token_autenticacao=?, ativo=1,
+                 modelo=?, tipo_leitor=?, area_instalacao=?, sentido_acesso=?,
+                 tipo_integracao=?, ip_local=?, porta_local=?, usuario_api=?,
+                 device_id_controlid=?, bridge_api_key=?
+             WHERE id=?'
         );
         if (!$stmt) {
             _erro($conn, 'Prepare reativar: ' . $conn->error);
         }
         $id = (int) $existente['id'];
-        $stmt->bind_param('sssi', $nome, $desc, $token, $id);
+        $stmt->bind_param('sssssssssiisii',
+            $nome, $desc, $token, $modelo, $tipo_leitor, $area, $sentido,
+            $tipo_int, $ip, $porta, $usuario, $device_id, $bridge_key, $id
+        );
         if (!$stmt->execute()) {
             $err = $stmt->error;
             $stmt->close();
@@ -182,18 +211,24 @@ function responder_criar(mysqli $conn, array $body): void
         }
         $stmt->close();
         fechar_conexao($conn);
-        _ok(['id' => $id, 'token_autenticacao' => $token, 'reativado' => true]);
+        _ok(['id' => $id, 'token_autenticacao' => $token, 'bridge_api_key' => $bridge_key, 'reativado' => true]);
     }
 
     $stmt = $conn->prepare(
         'INSERT INTO controlid_dispositivos
-         (nome_dispositivo, serial_number, descricao, token_autenticacao)
-         VALUES (?, ?, ?, ?)'
+         (nome_dispositivo, serial_number, descricao, token_autenticacao,
+          modelo, tipo_leitor, area_instalacao, sentido_acesso,
+          tipo_integracao, ip_local, porta_local, usuario_api,
+          device_id_controlid, bridge_api_key)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
         _erro($conn, 'Prepare criar: ' . $conn->error);
     }
-    $stmt->bind_param('ssss', $nome, $serial, $desc, $token);
+    $stmt->bind_param('sssssssssisisi',
+        $nome, $serial, $desc, $token, $modelo, $tipo_leitor, $area, $sentido,
+        $tipo_int, $ip, $porta, $usuario, $device_id, $bridge_key
+    );
 
     if (!$stmt->execute()) {
         $err = $stmt->error;
@@ -210,28 +245,58 @@ function responder_criar(mysqli $conn, array $body): void
     $id = $conn->insert_id;
     $stmt->close();
     fechar_conexao($conn);
-    _ok(['id' => $id, 'token_autenticacao' => $token]);
+    _ok(['id' => $id, 'token_autenticacao' => $token, 'bridge_api_key' => $bridge_key]);
 }
 
 function responder_atualizar(mysqli $conn, array $body): void
 {
-    $id   = (int) ($body['id'] ?? 0);
-    $nome = trim((string) ($body['nome_dispositivo'] ?? ''));
-    $desc = trim((string) ($body['descricao']        ?? ''));
+    $id          = (int) ($body['id']                  ?? 0);
+    $nome        = trim((string) ($body['nome_dispositivo']    ?? ''));
+    $desc        = trim((string) ($body['descricao']           ?? ''));
+    $modelo      = trim((string) ($body['modelo']              ?? ''));
+    $tipo_leitor = trim((string) ($body['tipo_leitor']         ?? 'uhf'));
+    $area        = trim((string) ($body['area_instalacao']     ?? ''));
+    $sentido     = trim((string) ($body['sentido_acesso']      ?? 'ambos'));
+    $tipo_int    = trim((string) ($body['tipo_integracao']     ?? 'bridge_local'));
+    $ip          = trim((string) ($body['ip_local']            ?? ''));
+    $porta       = max(1, min(65535, (int) ($body['porta_local'] ?? 80)));
+    $usuario     = trim((string) ($body['usuario_api']         ?? 'admin'));
+    $senha       = trim((string) ($body['senha_api']           ?? ''));
+    $device_id   = (int) ($body['device_id_controlid']         ?? 0);
+    $bridge_key  = trim((string) ($body['bridge_api_key']      ?? ''));
 
     if ($id <= 0 || $nome === '') {
         _erro($conn, 'id e nome_dispositivo são obrigatórios', 400);
     }
 
+    // Monta SET dinâmico para senha (só atualiza se informada)
+    $set_senha = '';
+    $params = [$nome, $desc, $modelo, $tipo_leitor, $area, $sentido,
+               $tipo_int, $ip, $porta, $usuario, $device_id, $bridge_key];
+    $types  = 'ssssssssiisi';
+
+    if ($senha !== '') {
+        $set_senha = ', senha_api = ?';
+        $params[]  = $senha;
+        $types    .= 's';
+    }
+
+    $params[] = $id;
+    $types   .= 'i';
+
     $stmt = $conn->prepare(
-        'UPDATE controlid_dispositivos
-         SET nome_dispositivo = ?, descricao = ?
-         WHERE id = ?'
+        "UPDATE controlid_dispositivos
+         SET nome_dispositivo=?, descricao=?, modelo=?, tipo_leitor=?,
+             area_instalacao=?, sentido_acesso=?, tipo_integracao=?,
+             ip_local=?, porta_local=?, usuario_api=?,
+             device_id_controlid=?, bridge_api_key=?
+             {$set_senha}
+         WHERE id=?"
     );
     if (!$stmt) {
         _erro($conn, 'Prepare atualizar: ' . $conn->error);
     }
-    $stmt->bind_param('ssi', $nome, $desc, $id);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $stmt->close();
     fechar_conexao($conn);
@@ -532,4 +597,28 @@ function _esta_online(?string $ultimo_keep_alive): bool
         return false;
     }
     return (time() - (int) strtotime($ultimo_keep_alive)) < 300;
+}
+
+/**
+ * Adiciona colunas de comunicação à tabela controlid_dispositivos se não existirem.
+ * Executado uma vez por request — o MySQL ignora silenciosamente se a coluna já existe.
+ */
+function _migration_comunicacao(mysqli $conn): void
+{
+    $cols = [
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS tipo_integracao    ENUM('bridge_local','monitor_nativo','manual') NOT NULL DEFAULT 'bridge_local'",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS modelo             VARCHAR(100) NOT NULL DEFAULT ''",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS tipo_leitor        ENUM('uhf','rfid','facial','biometria','qrcode','outro') NOT NULL DEFAULT 'uhf'",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS area_instalacao    VARCHAR(150) NOT NULL DEFAULT ''",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS sentido_acesso     ENUM('ambos','entrada','saida') NOT NULL DEFAULT 'ambos'",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS ip_local           VARCHAR(45)  NOT NULL DEFAULT ''",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS porta_local        SMALLINT UNSIGNED NOT NULL DEFAULT 80",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS usuario_api        VARCHAR(80)  NOT NULL DEFAULT 'admin'",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS senha_api          VARCHAR(255) NOT NULL DEFAULT ''",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS device_id_controlid INT UNSIGNED NOT NULL DEFAULT 0",
+        "ALTER TABLE controlid_dispositivos ADD COLUMN IF NOT EXISTS bridge_api_key     VARCHAR(100) NOT NULL DEFAULT ''",
+    ];
+    foreach ($cols as $sql) {
+        $conn->query($sql); // ignora erro silenciosamente (coluna já existe)
+    }
 }

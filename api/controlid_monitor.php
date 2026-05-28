@@ -233,9 +233,9 @@ function inserir_evento_monitor(mysqli $conn, $device_id, $log_id_ext, $user_id,
 }
 
 function obter_dispositivo_interno(mysqli $conn, $device_id_controlid) {
-    // Tenta encontrar o dispositivo pelo device_id da Control iD
+    // Tenta encontrar o dispositivo pelo device_id_controlid na tabela nova
     $stmt = $conn->prepare(
-        'SELECT id FROM dispositivos_controlid WHERE device_id_controlid = ? LIMIT 1'
+        'SELECT id FROM controlid_dispositivos WHERE device_id_controlid = ? AND ativo = 1 LIMIT 1'
     );
     if ($stmt) {
         $stmt->bind_param('i', $device_id_controlid);
@@ -245,8 +245,8 @@ function obter_dispositivo_interno(mysqli $conn, $device_id_controlid) {
         $stmt->close();
         if ($row) return (int)$row['id'];
     }
-    // Fallback: retorna o primeiro dispositivo cadastrado
-    $res = $conn->query('SELECT id FROM dispositivos_controlid ORDER BY id LIMIT 1');
+    // Fallback: retorna o primeiro dispositivo ativo cadastrado
+    $res = $conn->query('SELECT id FROM controlid_dispositivos WHERE ativo = 1 ORDER BY id LIMIT 1');
     if ($res) {
         $row = $res->fetch_assoc();
         if ($row) return (int)$row['id'];
@@ -283,9 +283,10 @@ function registrar_acesso_monitor(mysqli $conn, $veiculo, $event_time, $tag, $de
 }
 
 function atualizar_dispositivo_por_device_id(mysqli $conn, $device_id) {
+    // Atualiza ultimo_keep_alive na tabela nova controlid_dispositivos
     $stmt = $conn->prepare(
-        'UPDATE dispositivos_controlid SET ultimo_ping = NOW(), online = 1
-         WHERE device_id_controlid = ?'
+        'UPDATE controlid_dispositivos SET ultimo_keep_alive = NOW()
+         WHERE device_id_controlid = ? AND ativo = 1'
     );
     if ($stmt) {
         $stmt->bind_param('i', $device_id);
