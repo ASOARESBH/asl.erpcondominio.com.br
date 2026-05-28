@@ -15,18 +15,16 @@ Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-R
 Header always set Access-Control-Allow-Credentials "true"
 Header always set Vary "Origin"
 
-# Não mostrar erros PHP para o usuário
+# Não mostrar erros PHP para o usuário (log apenas)
 php_flag display_errors off
 php_value error_reporting E_ALL
 php_flag log_errors on
 
-# Configurações de sessão PHP — garantir que o cookie
-# seja válido para todo o domínio (path=/) e seguro
-php_value session.cookie_path /
-php_value session.cookie_httponly 1
-php_value session.cookie_samesite Lax
-php_value session.use_strict_mode 1
-php_value session.gc_maxlifetime 7200
+# NOTA: Configurações de sessão PHP (session.cookie_*) foram
+# REMOVIDAS deste arquivo intencionalmente.
+# Cada API define suas próprias configurações via ini_set()
+# ANTES de chamar session_start(). Definir aqui via php_value
+# causava conflito com o validar_login.php e quebrava o login.
 
 # Tratar requisições OPTIONS para CORS preflight
 RewriteEngine On
@@ -41,7 +39,6 @@ RewriteRule ^ - [L,R=200]
 # de requisição APENAS para o bridge_receiver.php.
 # =====================================================
 <Files "bridge_receiver.php">
-    # Desativa inspeção de corpo de requisição POST (regras OWASP CRS)
     <IfModule mod_security2.c>
         SecRuleRemoveById 200001
         SecRuleRemoveById 200002
