@@ -2,29 +2,16 @@
 Options -Indexes
 
 # =====================================================
-# CORS — OBRIGATÓRIO usar domínio específico quando
-# credentials: 'include' está ativo no frontend.
-# O uso de "*" com credentials é inválido pelo padrão
-# CORS e faz o browser rejeitar os cookies de sessão.
+# CORS: NÃO definido aqui.
+# Cada arquivo PHP define seus próprios headers CORS
+# via header() antes de qualquer output. Definir aqui
+# causaria headers duplicados e quebraria o login.
 # =====================================================
-SetEnvIf Origin "^https?://(asl\.erpcondominios\.com\.br|localhost(:[0-9]+)?)$" CORS_ORIGIN=$0
-
-Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
-Header always set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
-Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-API-KEY, X-Bridge-Key, X-Bridge-ID"
-Header always set Access-Control-Allow-Credentials "true"
-Header always set Vary "Origin"
 
 # Não mostrar erros PHP para o usuário (log apenas)
 php_flag display_errors off
 php_value error_reporting E_ALL
 php_flag log_errors on
-
-# NOTA: Configurações de sessão PHP (session.cookie_*) foram
-# REMOVIDAS deste arquivo intencionalmente.
-# Cada API define suas próprias configurações via ini_set()
-# ANTES de chamar session_start(). Definir aqui via php_value
-# causava conflito com o validar_login.php e quebrava o login.
 
 # Tratar requisições OPTIONS para CORS preflight
 RewriteEngine On
