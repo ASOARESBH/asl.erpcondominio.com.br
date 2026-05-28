@@ -298,7 +298,7 @@ tbody td { padding: 6px 6px; vertical-align: middle; }
                     <th>Placa</th>
                     <th>Modelo</th>
                     <th>Cor</th>
-                    <th>TAG</th>
+                    <th>TAG RFID</th>
                     <th>Tipo</th>
                     <th>Nome</th>
                     <th>Unidade</th>

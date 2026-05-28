@@ -533,7 +533,7 @@ function registrar_acesso_principal(mysqli $conn, $veiculo, $event_time, $tag, $
     $status = 'Acesso liberado via Control iD - ' . $morador_nome;
     $liberado = 1;
     $sentido = ((int)$event_type === 1) ? 'saida' : 'entrada';
-    $observacao = 'TAG UHF: ' . $tag . ' | Dispositivo ID: ' . $disp_id . ' | Sentido: ' . $sentido;
+    $observacao = 'TAG RFID: ' . $tag . ' | Dispositivo ID: ' . $disp_id . ' | Sentido: ' . $sentido;
 
     if (table_has_column($conn, 'registros_acesso', 'origem')) {
         $origem = 'controlid';

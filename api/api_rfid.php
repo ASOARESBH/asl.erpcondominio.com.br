@@ -30,7 +30,7 @@ if ($metodo === 'POST' && isset($_GET['acao']) && $_GET['acao'] === 'verificar_t
     $tag = sanitizar($conexao, $dados['tag'] ?? '');
     
     if (empty($tag)) {
-        retornar_json(false, "TAG não informada");
+        retornar_json(false, "TAG RFID não informada");
     }
     
     // Buscar veículo pela TAG com dados de dependente
@@ -83,7 +83,7 @@ if ($metodo === 'POST' && isset($_GET['acao']) && $_GET['acao'] === 'verificar_t
         $stmt_registro->close();
         
         $nome_acesso = $veiculo['dependente_nome'] ?? $veiculo['morador_nome'];
-        registrar_log('ACESSO_RFID', "Acesso via RFID: $placa (TAG: $tag) - " . $nome_acesso);
+        registrar_log('ACESSO_RFID', "Acesso via RFID: $placa (TAG RFID: $tag) - " . $nome_acesso);
         
         retornar_json(true, "Acesso liberado", array(
             'liberado' => true,
@@ -97,11 +97,11 @@ if ($metodo === 'POST' && isset($_GET['acao']) && $_GET['acao'] === 'verificar_t
         ));
         
     } else {
-        registrar_log('ACESSO_NEGADO_RFID', "Acesso negado via RFID: TAG $tag não cadastrada ou inativa");
+        registrar_log('ACESSO_NEGADO_RFID', "Acesso negado via RFID: TAG RFID $tag não cadastrada ou inativa");
         
         retornar_json(false, "Acesso negado", array(
             'liberado' => false,
-            'mensagem' => "❌ ACESSO NEGADO - TAG NÃO CADASTRADA"
+            'mensagem' => "❌ ACESSO NEGADO - TAG RFID NÃO CADASTRADA"
         ));
     }
     
@@ -116,8 +116,8 @@ if ($metodo === 'POST' && isset($_GET['acao']) && $_GET['acao'] === 'webhook') {
     $timestamp = $dados['timestamp'] ?? date('Y-m-d H:i:s');
     
     if (empty($tag)) {
-        registrar_log('WEBHOOK_RFID_ERRO', "Webhook RFID recebido sem TAG válida");
-        retornar_json(false, "TAG não identificada no webhook");
+        registrar_log('WEBHOOK_RFID_ERRO', "Webhook RFID recebido sem TAG RFID válida");
+        retornar_json(false, "TAG RFID não identificada no webhook");
     }
     
     $stmt = $conexao->prepare("SELECT v.id, v.placa, v.modelo, v.cor, v.tag, v.ativo, v.dependente_id,
@@ -165,7 +165,7 @@ if ($metodo === 'POST' && isset($_GET['acao']) && $_GET['acao'] === 'webhook') {
         $stmt_registro->close();
         
         $nome_acesso = $veiculo['dependente_nome'] ?? $veiculo['morador_nome'];
-        registrar_log('WEBHOOK_RFID_SUCESSO', "Webhook RFID: $placa (TAG: $tag) - " . $nome_acesso);
+        registrar_log('WEBHOOK_RFID_SUCESSO', "Webhook RFID: $placa (TAG RFID: $tag) - " . $nome_acesso);
         
         retornar_json(true, "Acesso liberado", array(
             'action' => 'open_gate',
@@ -174,7 +174,7 @@ if ($metodo === 'POST' && isset($_GET['acao']) && $_GET['acao'] === 'webhook') {
         ));
         
     } else {
-        registrar_log('WEBHOOK_RFID_NEGADO', "Webhook RFID negado: TAG $tag");
+        registrar_log('WEBHOOK_RFID_NEGADO', "Webhook RFID negado: TAG RFID $tag");
         
         retornar_json(false, "Acesso negado", array(
             'action' => 'deny',

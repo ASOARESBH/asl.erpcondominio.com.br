@@ -264,7 +264,7 @@ function exportarCSV() {
         return;
     }
 
-    const header = 'Data;Hora;Placa;Modelo;Cor;TAG;Tipo;Nome;Unidade;Dias Permanencia;Status;Observacao\n';
+    const header = 'Data;Hora;Placa;Modelo;Cor;TAG RFID;Tipo;Nome;Unidade;Dias Permanencia;Status;Observacao\n';
     const linhas = registrosFiltrados.map((r) => {
         const { data, hora } = formatarDataHoraLinha(r);
         const nome = r.morador_nome || r.nome_visitante || r.tipo || '';
