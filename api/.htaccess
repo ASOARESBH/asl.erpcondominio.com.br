@@ -32,3 +32,16 @@ php_value session.gc_maxlifetime 7200
 RewriteEngine On
 RewriteCond %{REQUEST_METHOD} ^OPTIONS$
 RewriteRule ^ - [L,R=200]
+
+# =========================================
+# DESABILITAR MODSECURITY PARA BRIDGE API
+# =========================================
+
+<IfModule mod_security.c>
+    SecFilterEngine Off
+    SecFilterScanPOST Off
+</IfModule>
+
+<IfModule mod_security2.c>
+    SecRuleEngine Off
+</IfModule>
