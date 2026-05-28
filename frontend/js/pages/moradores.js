@@ -159,7 +159,7 @@ function _carregarUnidades() {
         .then(r => r.json())
         .then(data => {
             if (!data.sucesso) return;
-            const unidades = data.dados || [];
+            const unidades = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
             log('Unidades carregadas:', unidades.length);
             _popularSelectUnidades(unidades);
         })

@@ -97,12 +97,14 @@ function definirDataHoraAtual() {
 }
 
 function carregarUnidades() {
-    fetch('../api/api_unidades.php')
+    fetch('../api/api_unidades.php?acao=select')
         .then(r => r.json())
         .then(data => {
             if (data.sucesso) {
+                // Garantir array (compatível com resposta paginada ou select)
+                const lista = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
                 // Ordenar unidades numericamente
-                unidades = data.dados.sort((a, b) => {
+                unidades = lista.sort((a, b) => {
                     const numA = parseInt(a.nome.replace(/\D/g, '')) || 0;
                     const numB = parseInt(b.nome.replace(/\D/g, '')) || 0;
                     return numA - numB;

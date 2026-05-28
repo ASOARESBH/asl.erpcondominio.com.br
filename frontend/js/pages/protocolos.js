@@ -251,11 +251,12 @@ function _setupBotoesExtra() {
 
 function _carregarUnidades() {
     console.log('[Protocolos] Carregando unidades...');
-    fetch(`${API_BASE}/api_unidades.php`, { credentials: 'include' })
+    fetch(`${API_BASE}/api_unidades.php?acao=select`, { credentials: 'include' })
         .then(r => r.json())
         .then(data => {
             if (!data.sucesso) throw new Error(data.mensagem || 'Erro ao carregar unidades');
-            _state.unidades = data.dados.sort((a, b) => {
+            const lista = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
+            _state.unidades = lista.sort((a, b) => {
                 const nA = parseInt(a.nome.replace(/\D/g, '')) || 0;
                 const nB = parseInt(b.nome.replace(/\D/g, '')) || 0;
                 return nA - nB;

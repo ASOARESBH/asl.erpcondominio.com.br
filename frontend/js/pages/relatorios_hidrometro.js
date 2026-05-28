@@ -76,13 +76,14 @@ function _setFiltrosPadrao() {
 
 async function _carregarUnidades() {
     try {
-        const data = await _apiCall(API_UNIDADES);
+        const data = await _apiCall(API_UNIDADES + '?acao=select');
         if (!data.sucesso) return;
 
+        const lista = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
         const sel = document.getElementById('filtro_unidade');
         if (!sel) return;
         sel.innerHTML = '<option value="">Todas as unidades</option>';
-        (data.dados || []).forEach(u => {
+        lista.forEach(u => {
             const val = u.unidade || u.nome || u;
             sel.add(new Option(val, val));
         });

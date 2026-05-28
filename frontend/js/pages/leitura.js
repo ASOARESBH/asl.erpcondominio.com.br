@@ -164,10 +164,10 @@ function _setDataAtual(campoId) {
 async function _carregarUnidades() {
     console.log('[Leitura] Carregando unidades...');
     try {
-        const data = await _apiCall(API_UNIDADES);
+        const data = await _apiCall(API_UNIDADES + '?acao=select');
         if (!data.sucesso) throw new Error(data.mensagem);
 
-        _state.unidades = data.dados || [];
+        _state.unidades = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
 
         // Ordenação numérica: ADMINISTRATIVO primeiro, depois Gleba 1, 2, 3...
         const _extrairNumero = (str) => {

@@ -314,10 +314,10 @@ function _setDataAtual(campoId = 'cad_data') {
 async function _carregarUnidades() {
     console.log('[Hidrometro] Carregando unidades...');
     try {
-        const data = await _apiCall(API_UNIDADES);
+        const data = await _apiCall(API_UNIDADES + '?acao=select');
         if (!data.sucesso) throw new Error(data.mensagem);
 
-        _state.unidades = data.dados || [];
+        _state.unidades = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
         _popularSelectUnidades('cad_unidade');
         _popularSelectUnidades('edit_unidade');
         console.log(`[Hidrometro] ${_state.unidades.length} unidades carregadas.`);

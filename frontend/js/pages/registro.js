@@ -139,9 +139,9 @@ async function _carregarUnidades() {
     const sel = document.getElementById('unidadeDestinoRegistro');
     if (!sel) return;
     try {
-        const resp = await fetch(API_UNIDADES);
+        const resp = await fetch(API_UNIDADES + '?acao=select');
         const data = await resp.json();
-        const unidades = data.dados?.itens || data.dados || [];
+        const unidades = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
         sel.innerHTML = '<option value="">Selecione a unidade...</option>';
         unidades.forEach(u => {
             const opt = document.createElement('option');
