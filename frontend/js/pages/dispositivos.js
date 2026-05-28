@@ -546,17 +546,21 @@ async function _excluirDispositivo(id, nome) {
 async function _verToken(id) {
     try {
         const data = await _fetchJson(`${API}?acao=obter&id=${id}`);
-        if (!data?.sucesso) { _toast('Erro ao obter token.', 'erro'); return; }
-        _mostrarToken(id, data.dispositivo.token_autenticacao);
+        if (!data?.sucesso || !data.dispositivo) { _toast('Erro ao obter token.', 'erro'); return; }
+        const d = data.dispositivo;
+        _mostrarToken(id, d.token_autenticacao, d.bridge_api_key);
     } catch (e) {
         _toast('Erro: ' + e.message, 'erro');
     }
 }
 
-function _mostrarToken(id, token) {
+function _mostrarToken(id, token, bridgeKey) {
     _state.tokenDispositivoId = id;
     _state.tokenAtual         = token ?? '';
-    _setVal('token-display', token ?? '(sem token)');
+    _setVal('token-display', token ?? '(sem token — clique em Gerar Novo)');
+    // Exibe bridge_api_key se o campo existir no modal
+    const bkEl = _el('bridge-key-display');
+    if (bkEl) bkEl.value = bridgeKey ?? '';
     _el('disp-token-overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
 }
@@ -571,7 +575,7 @@ async function _copiarToken() {
 }
 
 async function _regenerarToken() {
-    if (!confirm('Gerar um novo token?\n\nO token atual deixará de funcionar imediatamente. Atualize o bridge antes de confirmar.')) return;
+    if (!confirm('Gerar um novo token e nova Bridge Key?\n\nO token e a chave atuais deixarão de funcionar imediatamente. Atualize o arquivo de configuração do bridge antes de confirmar.')) return;
     try {
         const data = await _fetchJson(`${API}?acao=gerar_token`, {
             method: 'POST',
@@ -581,7 +585,9 @@ async function _regenerarToken() {
         if (!data?.sucesso) { _toast(data?.erro ?? 'Erro ao gerar token.', 'erro'); return; }
         _state.tokenAtual = data.token_autenticacao;
         _setVal('token-display', data.token_autenticacao);
-        _toast('Novo token gerado! Atualize o bridge.', 'sucesso');
+        const bkEl = _el('bridge-key-display');
+        if (bkEl && data.bridge_api_key) bkEl.value = data.bridge_api_key;
+        _toast('Novo token e Bridge Key gerados! Atualize o bridge.', 'sucesso');
     } catch (e) {
         _toast('Erro: ' + e.message, 'erro');
     }
@@ -722,7 +728,8 @@ function _setupEventosTab() {
 }
 
 async function _carregarEventos() {
-    const serial = _getSelect('ev-filtro-serial');
+    // Filtros alinhados com schema real: dispositivo_id, event_type, event_time
+    const dispId = _getSelect('ev-filtro-disp');
     const tipo   = _getSelect('ev-filtro-tipo');
     const de     = _get('ev-filtro-de');
     const ate    = _get('ev-filtro-ate');
@@ -730,10 +737,10 @@ async function _carregarEventos() {
     tbody.innerHTML = `<tr><td colspan="7" class="empty-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>`;
 
     const params = new URLSearchParams({ acao: 'listar_eventos', pagina: String(_state.evPagina) });
-    if (serial) params.set('serial_number', serial);
-    if (tipo)   params.set('tipo_evento',   tipo);
-    if (de)     params.set('data_de',       de);
-    if (ate)    params.set('data_ate',      ate);
+    if (dispId) params.set('dispositivo_id', dispId);
+    if (tipo)   params.set('tipo_evento',    tipo);
+    if (de)     params.set('data_de',        de);
+    if (ate)    params.set('data_ate',       ate);
 
     try {
         const data = await _fetchJson(`${API}?${params}`);
@@ -745,19 +752,27 @@ async function _carregarEventos() {
         const evs = data.eventos ?? [];
         if (evs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">Nenhum evento encontrado.</td></tr>`;
-            _el('ev-paginacao').innerHTML = '';
+            const pag = _el('ev-paginacao');
+            if (pag) pag.innerHTML = '';
             return;
         }
 
+        // Campos reais: event_type, event_time, card_value, user_id, veiculo_id, morador_id
         tbody.innerHTML = evs.map(e => `
           <tr>
             <td class="cell-mono">${e.id}</td>
-            <td class="cell-mono cell-sm">${_esc(e.serial_number)}</td>
+            <td class="cell-mono cell-sm">${_esc(e.nome_dispositivo ?? e.serial_number ?? '—')}</td>
             <td class="cell-mono cell-sm">${_esc(e.card_value ?? e.user_id ?? '—')}</td>
-            <td class="cell-sm">${_esc(e.veiculo_placa ?? '—')}${e.morador_nome ? `<br><small class="text-muted">${_esc(e.morador_nome)}</small>` : ''}</td>
-            <td>${_labelTipoEvento(e.tipo_evento)}</td>
-            <td class="cell-sm">${_fmtDatetime(e.data_hora)}</td>
-            <td>${e.acesso_liberado ? '<span class="badge badge-active">Liberado</span>' : '<span class="badge badge-inactive">Negado</span>'}</td>
+            <td class="cell-sm">
+              ${e.veiculo_id ? `<span class="badge badge-info">Veículo #${e.veiculo_id}</span>` : ''}
+              ${e.morador_id ? `<span class="badge badge-info">Morador #${e.morador_id}</span>` : ''}
+              ${!e.veiculo_id && !e.morador_id ? '—' : ''}
+            </td>
+            <td>${_labelTipoEvento(e.event_type)}</td>
+            <td class="cell-sm">${_fmtDatetime(e.event_time)}</td>
+            <td>${e.processado
+              ? '<span class="badge badge-active">Processado</span>'
+              : '<span class="badge badge-warning">Pendente</span>'}</td>
           </tr>`).join('');
 
         _renderPaginacao('ev-paginacao', data.pagina, data.paginas, p => {
@@ -774,26 +789,30 @@ function _setupFilaTab() {
     _on(_el('btnFilaEnfileirar'),  'click', _enfileirarComando);
     _on(_el('btnFilaRefresh'),     'click', _carregarFila);
     _on(_el('fila-filtro-status'), 'change', _carregarFila);
+    _on(_el('fila-filtro-disp'),   'change', _carregarFila);
 }
 
 async function _carregarFila() {
+    // Filtros alinhados com schema real: dispositivo_id, status
+    const dispId = _getSelect('fila-filtro-disp');
     const status = _getSelect('fila-filtro-status');
     const tbody  = _el('fila-tbody');
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>`;
 
     const params = new URLSearchParams({ acao: 'listar_fila' });
+    if (dispId) params.set('dispositivo_id', dispId);
     if (status) params.set('status', status);
 
     try {
         const data = await _fetchJson(`${API}?${params}`);
         if (!data?.sucesso) {
-            tbody.innerHTML = `<tr><td colspan="7" class="empty-cell error">Erro ao carregar fila.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell error">Erro ao carregar fila.</td></tr>`;
             return;
         }
 
         const cmds = data.comandos ?? [];
         if (cmds.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="empty-cell">Nenhum comando na fila.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">Nenhum comando na fila.</td></tr>`;
             return;
         }
 
@@ -804,12 +823,17 @@ async function _carregarFila() {
             badge.style.display = pendentes > 0 ? 'inline' : 'none';
         }
 
-        tbody.innerHTML = cmds.map(c => `
+        // Campos reais: tipo_comando, payload (em vez de verbo, endpoint, corpo_json)
+        tbody.innerHTML = cmds.map(c => {
+            const payloadStr = c.payload
+                ? (typeof c.payload === 'string' ? c.payload : JSON.stringify(c.payload)).slice(0, 60)
+                : '—';
+            return `
           <tr>
             <td class="cell-mono">${c.id}</td>
-            <td class="cell-mono cell-sm">${_esc(c.serial_number)}</td>
-            <td><span class="badge badge-info">${_esc(c.verbo)}</span></td>
-            <td class="cell-mono cell-sm cell-truncate" title="${_esc(c.endpoint)}">${_esc(c.endpoint)}</td>
+            <td class="cell-mono cell-sm">${_esc(c.nome_dispositivo ?? c.serial_number ?? '—')}</td>
+            <td><span class="badge badge-info">${_esc(c.tipo_comando)}</span></td>
+            <td class="cell-mono cell-sm cell-truncate" title="${_esc(JSON.stringify(c.payload ?? {}))}">${_esc(payloadStr)}</td>
             <td>${_labelStatus(c.status)}</td>
             <td class="cell-sm">${_fmtDatetime(c.criado_em)}</td>
             <td>
@@ -819,25 +843,26 @@ async function _carregarFila() {
                    </button>`
                 : '—'}
             </td>
-          </tr>`).join('');
+          </tr>`;
+        }).join('');
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-cell error">Erro: ${_esc(e.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-cell error">Erro: ${_esc(e.message)}</td></tr>`;
     }
 }
 
 async function _enfileirarComando() {
-    const serial   = _getSelect('fila-serial');
-    const verbo    = _getSelect('fila-verbo');
-    const endpoint = _get('fila-endpoint');
-    const corpoTxt = _get('fila-corpo');
+    // Schema real: dispositivo_id, tipo_comando, payload
+    const dispId       = _getSelect('fila-disp');
+    const tipoComando  = _get('fila-tipo-comando');
+    const payloadTxt   = _get('fila-payload');
 
-    if (!serial)   { _toast('Selecione o dispositivo.', 'erro'); return; }
-    if (!endpoint) { _toast('Endpoint é obrigatório.', 'erro'); return; }
+    if (!dispId)      { _toast('Selecione o dispositivo.', 'erro'); return; }
+    if (!tipoComando) { _toast('Tipo de comando é obrigatório.', 'erro'); return; }
 
-    let corpo = {};
-    if (corpoTxt) {
-        try { corpo = JSON.parse(corpoTxt); }
-        catch { _toast('Corpo JSON inválido. Verifique a sintaxe.', 'erro'); return; }
+    let payload = {};
+    if (payloadTxt) {
+        try { payload = JSON.parse(payloadTxt); }
+        catch { _toast('Payload JSON inválido. Verifique a sintaxe.', 'erro'); return; }
     }
 
     const btn = _el('btnFilaEnfileirar');
@@ -848,13 +873,17 @@ async function _enfileirarComando() {
         const data = await _fetchJson(`${API}?acao=enfileirar_comando`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ serial_number: serial, verbo, endpoint, corpo_json: corpo }),
+            body: JSON.stringify({
+                dispositivo_id: parseInt(dispId, 10),
+                tipo_comando:   tipoComando,
+                payload,
+            }),
         });
 
         if (!data?.sucesso) { _toast(data?.erro ?? 'Erro ao enfileirar.', 'erro'); return; }
         _toast(`Comando #${data.id} enfileirado com sucesso.`, 'sucesso');
-        _setVal('fila-endpoint', '');
-        _setVal('fila-corpo',    '');
+        _setVal('fila-tipo-comando', '');
+        _setVal('fila-payload',      '');
         _carregarFila();
     } catch (e) {
         _toast('Erro: ' + e.message, 'erro');
@@ -885,15 +914,16 @@ async function _cancelarComando(id) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function _popularSelectDispositivos(devs) {
-    ['ev-filtro-serial', 'fila-serial'].forEach(id => {
-        const sel = _el(id);
+    // Usa id do dispositivo como valor (alinhado com schema: dispositivo_id)
+    ['ev-filtro-disp', 'fila-disp'].forEach(selId => {
+        const sel = _el(selId);
         if (!sel) return;
         const atual = sel.value;
-        const ph = id === 'fila-serial'
+        const ph = selId === 'fila-disp'
             ? '<option value="">Selecione o dispositivo...</option>'
-            : '<option value="">Todos</option>';
+            : '<option value="">Todos os dispositivos</option>';
         sel.innerHTML = ph + devs.map(d =>
-            `<option value="${_esc(d.serial_number)}">${_esc(d.nome_dispositivo)} — ${_esc(d.serial_number)}</option>`
+            `<option value="${d.id}">${_esc(d.nome_dispositivo)} — ${_esc(d.serial_number)}</option>`
         ).join('');
         if (atual) sel.value = atual;
     });

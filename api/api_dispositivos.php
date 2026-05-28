@@ -322,26 +322,56 @@ function responder_excluir(mysqli $conn, array $body): void
 
 function responder_gerar_token(mysqli $conn, array $body): void
 {
-    $id = (int) ($body['id'] ?? 0);
+    // Aceita id tanto via body (POST) quanto via GET
+    $id = (int) ($body['id'] ?? $_GET['id'] ?? 0);
     if ($id <= 0) {
         _erro($conn, 'id obrigatório', 400);
     }
 
-    $token = _gerar_token();
+    // Verifica se o dispositivo existe
+    $chk = $conn->prepare(
+        'SELECT id, bridge_api_key FROM controlid_dispositivos WHERE id = ? AND ativo = 1 LIMIT 1'
+    );
+    if (!$chk) {
+        _erro($conn, 'Prepare check gerar_token: ' . $conn->error);
+    }
+    $chk->bind_param('i', $id);
+    $chk->execute();
+    $res = $chk->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $chk->close();
+
+    if (!$row) {
+        fechar_conexao($conn);
+        http_response_code(404);
+        echo json_encode(['sucesso' => false, 'erro' => 'Dispositivo não encontrado']);
+        exit;
+    }
+
+    // Gera novo token e nova bridge_api_key
+    $token      = _gerar_token();
+    $bridge_key = 'bk_' . bin2hex(random_bytes(16));
 
     $stmt = $conn->prepare(
         'UPDATE controlid_dispositivos
-         SET token_autenticacao = ?
+         SET token_autenticacao = ?, bridge_api_key = ?
          WHERE id = ?'
     );
     if (!$stmt) {
         _erro($conn, 'Prepare gerar_token: ' . $conn->error);
     }
-    $stmt->bind_param('si', $token, $id);
-    $stmt->execute();
+    $stmt->bind_param('ssi', $token, $bridge_key, $id);
+    if (!$stmt->execute()) {
+        $err = $stmt->error;
+        $stmt->close();
+        _erro($conn, 'Erro ao salvar token: ' . $err);
+    }
     $stmt->close();
     fechar_conexao($conn);
-    _ok(['token_autenticacao' => $token]);
+    _ok([
+        'token_autenticacao' => $token,
+        'bridge_api_key'     => $bridge_key,
+    ]);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -350,27 +380,47 @@ function responder_gerar_token(mysqli $conn, array $body): void
 
 function responder_listar_eventos(mysqli $conn): void
 {
-    $serial    = trim((string) ($_GET['serial_number'] ?? ''));
-    $tipo      = trim((string) ($_GET['tipo_evento']   ?? ''));
-    $data_de   = trim((string) ($_GET['data_de']       ?? ''));
-    $data_ate  = trim((string) ($_GET['data_ate']      ?? ''));
-    $pagina    = max(1, (int) ($_GET['pagina']         ?? 1));
-    $pp        = 50;
-    $offset    = ($pagina - 1) * $pp;
+    // Schema real: controlid_eventos_acesso usa dispositivo_id (INT), card_value,
+    // event_type (TINYINT), event_time (DATETIME) — conforme migration_controlid_v2.sql
+    $disp_id  = (int) ($_GET['dispositivo_id'] ?? 0);
+    $tipo     = trim((string) ($_GET['tipo_evento']   ?? ''));
+    $data_de  = trim((string) ($_GET['data_de']       ?? ''));
+    $data_ate = trim((string) ($_GET['data_ate']      ?? ''));
+    $pagina   = max(1, (int) ($_GET['pagina']         ?? 1));
+    $pp       = 50;
+    $offset   = ($pagina - 1) * $pp;
 
     $where = []; $params = []; $types = '';
 
-    if ($serial !== '') { $where[] = 'serial_number = ?'; $params[] = $serial;         $types .= 's'; }
-    if ($tipo   !== '') { $where[] = 'tipo_evento = ?';   $params[] = (int) $tipo;     $types .= 'i'; }
-    if ($data_de  !== '') { $where[] = 'data_hora >= ?';  $params[] = $data_de  . ' 00:00:00'; $types .= 's'; }
-    if ($data_ate !== '') { $where[] = 'data_hora <= ?';  $params[] = $data_ate . ' 23:59:59'; $types .= 's'; }
+    if ($disp_id > 0) {
+        $where[]  = 'e.dispositivo_id = ?';
+        $params[] = $disp_id;
+        $types   .= 'i';
+    }
+    if ($tipo !== '') {
+        $where[]  = 'e.event_type = ?';
+        $params[] = (int) $tipo;
+        $types   .= 'i';
+    }
+    if ($data_de !== '') {
+        $where[]  = 'e.event_time >= ?';
+        $params[] = $data_de . ' 00:00:00';
+        $types   .= 's';
+    }
+    if ($data_ate !== '') {
+        $where[]  = 'e.event_time <= ?';
+        $params[] = $data_ate . ' 23:59:59';
+        $types   .= 's';
+    }
 
     $cond = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
     // Total
-    $cnt = $conn->prepare("SELECT COUNT(*) FROM controlid_eventos_acesso {$cond}");
+    $cnt = $conn->prepare(
+        "SELECT COUNT(*) FROM controlid_eventos_acesso e {$cond}"
+    );
     if (!$cnt) {
-        _erro($conn, 'Prepare count: ' . $conn->error);
+        _erro($conn, 'Prepare count eventos: ' . $conn->error);
     }
     if ($types !== '') {
         $cnt->bind_param($types, ...$params);
@@ -380,20 +430,23 @@ function responder_listar_eventos(mysqli $conn): void
     $cnt->fetch();
     $cnt->close();
 
-    // Dados
+    // Dados — JOIN com dispositivos para exibir nome
     $stmt = $conn->prepare(
-        "SELECT id, serial_number, user_id, data_hora, tipo_evento, criado_em
-         FROM controlid_eventos_acesso
+        "SELECT e.id, e.dispositivo_id, d.nome_dispositivo, d.serial_number,
+                e.user_id, e.card_value, e.event_type, e.event_time,
+                e.door_id, e.veiculo_id, e.morador_id, e.processado, e.criado_em
+         FROM controlid_eventos_acesso e
+         LEFT JOIN controlid_dispositivos d ON d.id = e.dispositivo_id
          {$cond}
-         ORDER BY data_hora DESC
+         ORDER BY e.event_time DESC
          LIMIT ? OFFSET ?"
     );
     if (!$stmt) {
-        _erro($conn, 'Prepare list: ' . $conn->error);
+        _erro($conn, 'Prepare list eventos: ' . $conn->error);
     }
     $stmt->bind_param($types . 'ii', ...array_merge($params, [$pp, $offset]));
     $stmt->execute();
-    $res = $stmt->get_result();
+    $res  = $stmt->get_result();
     $rows = [];
     while ($r = $res->fetch_assoc()) {
         $rows[] = $r;
@@ -416,31 +469,35 @@ function responder_listar_eventos(mysqli $conn): void
 
 function responder_listar_fila(mysqli $conn): void
 {
-    $serial = trim((string) ($_GET['serial_number'] ?? ''));
-    $status = trim((string) ($_GET['status']        ?? ''));
-    $pagina = max(1, (int) ($_GET['pagina']         ?? 1));
-    $offset = ($pagina - 1) * 30;
+    // Schema real: controlid_fila_comandos usa dispositivo_id (INT), tipo_comando, payload
+    // conforme migration_controlid_v2.sql
+    $disp_id = (int) ($_GET['dispositivo_id'] ?? 0);
+    $status  = trim((string) ($_GET['status'] ?? ''));
+    $pagina  = max(1, (int) ($_GET['pagina']  ?? 1));
+    $offset  = ($pagina - 1) * 30;
 
     $where = []; $params = []; $types = '';
 
-    if ($serial !== '') {
-        $where[] = 'serial_number = ?';
-        $params[] = $serial;
-        $types .= 's';
+    if ($disp_id > 0) {
+        $where[]  = 'f.dispositivo_id = ?';
+        $params[] = $disp_id;
+        $types   .= 'i';
     }
     if (in_array($status, ['pendente', 'enviado', 'cancelado'], true)) {
-        $where[] = 'status = ?';
+        $where[]  = 'f.status = ?';
         $params[] = $status;
-        $types .= 's';
+        $types   .= 's';
     }
 
     $cond = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
     $stmt = $conn->prepare(
-        "SELECT id, serial_number, verbo, endpoint, corpo_json, status, criado_em, enviado_em
-         FROM controlid_fila_comandos
+        "SELECT f.id, f.dispositivo_id, d.nome_dispositivo, d.serial_number,
+                f.tipo_comando, f.payload, f.status, f.criado_em, f.enviado_em
+         FROM controlid_fila_comandos f
+         LEFT JOIN controlid_dispositivos d ON d.id = f.dispositivo_id
          {$cond}
-         ORDER BY criado_em DESC
+         ORDER BY f.criado_em DESC
          LIMIT ? OFFSET ?"
     );
     if (!$stmt) {
@@ -448,10 +505,14 @@ function responder_listar_fila(mysqli $conn): void
     }
     $stmt->bind_param($types . 'ii', ...array_merge($params, [30, $offset]));
     $stmt->execute();
-    $res = $stmt->get_result();
+    $res  = $stmt->get_result();
     $rows = [];
     while ($r = $res->fetch_assoc()) {
-        $r['corpo_json'] = json_decode((string) ($r['corpo_json'] ?? '{}'), true) ?? [];
+        // Decodifica payload JSON se for string
+        if (isset($r['payload']) && is_string($r['payload'])) {
+            $decoded = json_decode($r['payload'], true);
+            $r['payload'] = is_array($decoded) ? $decoded : $r['payload'];
+        }
         $rows[] = $r;
     }
     $stmt->close();
@@ -461,32 +522,28 @@ function responder_listar_fila(mysqli $conn): void
 
 function responder_enfileirar_comando(mysqli $conn, array $body): void
 {
-    $serial   = trim((string) ($body['serial_number'] ?? ''));
-    $verbo    = strtoupper(trim((string) ($body['verbo']    ?? 'POST')));
-    $endpoint = trim((string) ($body['endpoint']            ?? ''));
-    $corpo    = $body['corpo_json'] ?? $body['body']         ?? [];
+    // Schema real: controlid_fila_comandos usa dispositivo_id, tipo_comando, payload
+    $disp_id      = (int) ($body['dispositivo_id'] ?? 0);
+    $tipo_comando = trim((string) ($body['tipo_comando'] ?? $body['tipo'] ?? ''));
+    $payload      = $body['payload'] ?? $body['corpo_json'] ?? [];
 
-    if ($serial === '' || $endpoint === '') {
-        _erro($conn, 'serial_number e endpoint são obrigatórios', 400);
-    }
-    if (!in_array($verbo, ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], true)) {
-        $verbo = 'POST';
+    if ($disp_id <= 0 || $tipo_comando === '') {
+        _erro($conn, 'dispositivo_id e tipo_comando são obrigatórios', 400);
     }
 
-    $corpo_str = json_encode(
-        is_array($corpo) ? $corpo : [],
+    $payload_str = json_encode(
+        is_array($payload) ? $payload : [],
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
 
-    // Confirma que o serial existe
+    // Confirma que o dispositivo existe
     $chk = $conn->prepare(
-        'SELECT id FROM controlid_dispositivos
-         WHERE serial_number = ? AND ativo = 1 LIMIT 1'
+        'SELECT id FROM controlid_dispositivos WHERE id = ? AND ativo = 1 LIMIT 1'
     );
     if (!$chk) {
         _erro($conn, 'Prepare check: ' . $conn->error);
     }
-    $chk->bind_param('s', $serial);
+    $chk->bind_param('i', $disp_id);
     $chk->execute();
     $chk->store_result();
     $existe = $chk->num_rows > 0;
@@ -500,14 +557,13 @@ function responder_enfileirar_comando(mysqli $conn, array $body): void
     }
 
     $stmt = $conn->prepare(
-        'INSERT INTO controlid_fila_comandos
-         (serial_number, verbo, endpoint, corpo_json)
-         VALUES (?, ?, ?, ?)'
+        'INSERT INTO controlid_fila_comandos (dispositivo_id, tipo_comando, payload)
+         VALUES (?, ?, ?)'
     );
     if (!$stmt) {
         _erro($conn, 'Prepare insert fila: ' . $conn->error);
     }
-    $stmt->bind_param('ssss', $serial, $verbo, $endpoint, $corpo_str);
+    $stmt->bind_param('iss', $disp_id, $tipo_comando, $payload_str);
     $stmt->execute();
     $cid = $conn->insert_id;
     $stmt->close();

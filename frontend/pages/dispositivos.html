@@ -379,8 +379,8 @@
       <div class="search-box">
         <div class="form-group">
           <label>Dispositivo</label>
-          <select id="ev-filtro-serial">
-            <option value="">Todos</option>
+          <select id="ev-filtro-disp">
+            <option value="">Todos os dispositivos</option>
           </select>
         </div>
         <div class="form-group">
@@ -440,27 +440,18 @@
       </div>
       <div class="form-grid form-grid-3">
         <div>
-          <label>Dispositivo (Serial) *</label>
-          <select id="fila-serial">
+          <label>Dispositivo *</label>
+          <select id="fila-disp">
             <option value="">Selecione o dispositivo...</option>
           </select>
         </div>
         <div>
-          <label>Verbo HTTP</label>
-          <select id="fila-verbo">
-            <option value="POST" selected>POST</option>
-            <option value="GET">GET</option>
-            <option value="PUT">PUT</option>
-            <option value="DELETE">DELETE</option>
-          </select>
-        </div>
-        <div>
-          <label>Endpoint *</label>
-          <input type="text" id="fila-endpoint" placeholder="Ex: /access/v1/grant_access">
+          <label>Tipo de Comando *</label>
+          <input type="text" id="fila-tipo-comando" placeholder="Ex: liberar_acesso, bloquear, sincronizar">
         </div>
         <div class="form-col-full">
-          <label>Corpo JSON (opcional)</label>
-          <textarea id="fila-corpo" rows="4" placeholder='{"user_id": 42, "timeout": 5}' class="textarea-mono"></textarea>
+          <label>Payload JSON (opcional)</label>
+          <textarea id="fila-payload" rows="4" placeholder='{"user_id": 42, "timeout": 5}' class="textarea-mono"></textarea>
         </div>
       </div>
       <div class="form-actions">
@@ -474,6 +465,9 @@
       <div class="card-header-row">
         <h2><i class="fas fa-list-ul"></i> Comandos na Fila</h2>
         <div class="search-inline">
+          <select id="fila-filtro-disp">
+            <option value="">Todos os dispositivos</option>
+          </select>
           <select id="fila-filtro-status">
             <option value="">Todos os status</option>
             <option value="pendente">Pendente</option>
@@ -492,8 +486,8 @@
             <tr>
               <th>#</th>
               <th>Dispositivo</th>
-              <th>Verbo</th>
-              <th>Endpoint</th>
+              <th>Tipo Comando</th>
+              <th>Payload</th>
               <th>Status</th>
               <th>Criado em</th>
               <th>Ação</th>
@@ -523,18 +517,29 @@
     </div>
     <div class="modal-body">
       <p class="modal-desc">
-        Configure este token no bridge local como <code>BRIDGE_API_KEY</code> no arquivo <code>controlid_bridge.py</code>.
-        Para o Monitor Nativo, use como header <strong>X-ControlID-Token</strong>.
+        Use o <strong>Token de Autenticação</strong> como <code>BRIDGE_API_KEY</code> no arquivo
+        <code>controlid_bridge.py</code>. Para o Monitor Nativo, use como header <strong>X-ControlID-Token</strong>.
       </p>
+
+      <label class="modal-label">Token de Autenticação</label>
       <div class="input-with-btn">
         <input type="text" id="token-display" readonly class="input-mono">
         <button class="btn-secondary-modern" id="btnCopiarToken" type="button">
           <i class="fas fa-copy"></i> Copiar
         </button>
       </div>
+
+      <label class="modal-label" style="margin-top:16px;">Bridge API Key (alternativa ao token)</label>
+      <div class="input-with-btn">
+        <input type="text" id="bridge-key-display" readonly class="input-mono">
+        <button class="btn-secondary-modern" type="button" onclick="navigator.clipboard.writeText(document.getElementById('bridge-key-display').value).then(()=>window.DispModule&&window.DispModule.toast&&window.DispModule.toast('Copiado!','sucesso'))">
+          <i class="fas fa-copy"></i> Copiar
+        </button>
+      </div>
+
       <div class="modal-footer-actions">
         <button class="btn-primary-modern" id="btnRegenerarToken" type="button">
-          <i class="fas fa-sync-alt"></i> Gerar Novo Token
+          <i class="fas fa-sync-alt"></i> Gerar Novo Token e Bridge Key
         </button>
       </div>
     </div>
