@@ -1,14 +1,17 @@
-# API .htaccess
+# API .htaccess — Restaurado ao estado original funcional
 Options -Indexes
 
 # =====================================================
-# CORS: NÃO definido aqui.
-# Cada arquivo PHP define seus próprios headers CORS
-# via header() antes de qualquer output. Definir aqui
-# causaria headers duplicados e quebraria o login.
+# CORS
 # =====================================================
+<IfModule mod_headers.c>
+    Header set Access-Control-Allow-Origin "https://asl.erpcondominios.com.br"
+    Header set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
+    Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+    Header set Access-Control-Allow-Credentials "true"
+</IfModule>
 
-# Não mostrar erros PHP para o usuário (log apenas)
+# Não mostrar erros PHP para o usuário
 php_flag display_errors off
 php_value error_reporting E_ALL
 php_flag log_errors on
@@ -19,26 +22,10 @@ RewriteCond %{REQUEST_METHOD} ^OPTIONS$
 RewriteRule ^ - [L,R=200]
 
 # =====================================================
-# MOD_SECURITY — Exceções para o Bridge Local
-# O Mod_Security bloqueia requisições POST com JSON
-# vindo de scripts externos (User-Agent não-browser).
-# As regras abaixo desativam as verificações de corpo
-# de requisição APENAS para o bridge_receiver.php.
+# MOD_SECURITY — COMENTADO
+# O bloco SecRuleRemoveById / SecRuleEngine Off
+# causa erro 500 no HostGator pois o mod_security2
+# não aceita diretivas via .htaccess neste plano.
+# Para liberar o bridge_receiver.php, use o cPanel:
+#   Security > ModSecurity > Disable for specific URL
 # =====================================================
-<Files "bridge_receiver.php">
-    <IfModule mod_security2.c>
-        SecRuleRemoveById 200001
-        SecRuleRemoveById 200002
-        SecRuleRemoveById 200003
-        SecRuleRemoveById 960010
-        SecRuleRemoveById 960015
-        SecRuleRemoveById 960016
-        SecRuleRemoveById 960017
-        SecRuleRemoveById 960035
-        SecRuleRemoveById 981173
-        SecRuleRemoveById 981243
-        SecRuleRemoveById 981245
-        SecRuleRemoveById 981246
-        SecRuleEngine Off
-    </IfModule>
-</Files>
