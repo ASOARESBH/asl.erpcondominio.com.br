@@ -210,19 +210,11 @@ if ($metodo === 'POST') {
     // ── Montar INSERT dinamicamente ──────────────────────────────────────────
     $cols   = 'data_hora, placa, modelo, cor, tag, tipo, morador_id, nome_visitante, unidade_destino, dias_permanencia, status, liberado, observacao, tipo_acesso, dependente_id, visitante_id, documento_visitante';
     $marks  = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
-    $types  = 'ssssssissisisssiss';
-    //          s=data_hora, s=placa, s=modelo, s=cor, s=tag, s=tipo,
-    //          i=morador_id, s=nome_visitante, s=unidade_destino,
-    //          i=dias_permanencia, s=status, i=liberado, s=observacao,
-    //          s=tipo_acesso, i=dependente_id, s=visitante_id(como string para null), s=documento_visitante
-    // Ajuste: visitante_id é INT NULL
-    $types  = 'ssssssissisisssiss';
-    //                                                              ^tipo_acesso ^dep_id ^vis_id ^doc
-    // Recalcular: 13 base + 4 novas = 17
-    // s s s s s s i s s i s i s s i i s
-    // 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
-    $types = 'ssssssissisisssiss';
-    // Verificar contagem: s(1)s(2)s(3)s(4)s(5)s(6)i(7)s(8)s(9)i(10)s(11)i(12)s(13)s(14)i(15)i(16)s(17) = 17 ✓
+    // s=data_hora(1) s=placa(2) s=modelo(3) s=cor(4) s=tag(5) s=tipo(6)
+    // i=morador_id(7) s=nome_visitante(8) s=unidade_destino(9)
+    // i=dias_permanencia(10) s=status(11) i=liberado(12) s=observacao(13)
+    // s=tipo_acesso(14) i=dependente_id(15) i=visitante_id(16) s=documento_visitante(17)
+    $types = 'ssssssissisissiis';
 
     $params = [
         &$data_hora, &$placa, &$modelo, &$cor, &$tag, &$tipo,
