@@ -11,7 +11,7 @@ SetEnvIf Origin "^https?://(asl\.erpcondominios\.com\.br|localhost(:[0-9]+)?)$" 
 
 Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
 Header always set Access-Control-Allow-Methods "POST, GET, OPTIONS, PUT, DELETE"
-Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-API-KEY, X-Bridge-Key, X-Bridge-ID"
 Header always set Access-Control-Allow-Credentials "true"
 Header always set Vary "Origin"
 
@@ -33,3 +33,28 @@ RewriteEngine On
 RewriteCond %{REQUEST_METHOD} ^OPTIONS$
 RewriteRule ^ - [L,R=200]
 
+# =====================================================
+# MOD_SECURITY — Exceções para o Bridge Local
+# O Mod_Security bloqueia requisições POST com JSON
+# vindo de scripts externos (User-Agent não-browser).
+# As regras abaixo desativam as verificações de corpo
+# de requisição APENAS para o bridge_receiver.php.
+# =====================================================
+<Files "bridge_receiver.php">
+    # Desativa inspeção de corpo de requisição POST (regras OWASP CRS)
+    <IfModule mod_security2.c>
+        SecRuleRemoveById 200001
+        SecRuleRemoveById 200002
+        SecRuleRemoveById 200003
+        SecRuleRemoveById 960010
+        SecRuleRemoveById 960015
+        SecRuleRemoveById 960016
+        SecRuleRemoveById 960017
+        SecRuleRemoveById 960035
+        SecRuleRemoveById 981173
+        SecRuleRemoveById 981243
+        SecRuleRemoveById 981245
+        SecRuleRemoveById 981246
+        SecRuleEngine Off
+    </IfModule>
+</Files>
