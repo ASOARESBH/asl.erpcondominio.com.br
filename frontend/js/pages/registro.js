@@ -1,28 +1,34 @@
 /**
- * Registro Manual Page Module v2
- * - Busca visitante/prestador por RG/CPF
- * - Seleção obrigatória de unidade e morador para visitante/prestador
- * - Mantém detecção automática de veículo por placa para morador
+ * Registro Manual Page Module v3
+ * - Tipo Morador: cascata Unidade → Morador → (checkbox) Dependente
+ * - Tipo Visitante/Prestador: busca por doc, cascata Unidade → Morador destino
+ * - Campo Entrada / Saída gravado no banco
+ * - Detecção automática de veículo por placa
  */
 
-const API_REGISTROS  = '../api/api_registros.php';
-const API_VEICULOS   = '../api/api_veiculos.php';
-const API_VISITANTES = '../api/api_visitantes.php';
-const API_MORADORES  = '../api/api_moradores.php';
-const API_UNIDADES   = '../api/api_unidades.php';
+const API_REGISTROS   = '../api/api_registros.php';
+const API_VEICULOS    = '../api/api_veiculos.php';
+const API_VISITANTES  = '../api/api_visitantes.php';
+const API_MORADORES   = '../api/api_moradores.php';
+const API_DEPENDENTES = '../api/api_dependentes.php';
+const API_UNIDADES    = '../api/api_unidades.php';
 
 let registrosCache = [];
 let veiculosCache  = [];
 let salvandoReg    = false;
 
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
 export function init() {
-    console.log('[Registro] Inicializando v2...');
+    console.log('[Registro] Inicializando v3...');
 
+    _setupTipoAcesso();
     _setupForm();
     _setupBusca();
     _setupActions();
     _setupMascaraDocumento();
-    _setupCascataUnidadeMorador();
+    _setupCascataVisitante();
+    _setupCascataMorador();
+    _setupCheckDependente();
     _carregarUnidades();
 
     atualizarDataHoraAtual();
@@ -45,9 +51,237 @@ export function destroy() {
     salvandoReg    = false;
 }
 
-// ===== MÁSCARA DOCUMENTO =====
+// ── Toggle Entrada / Saída ────────────────────────────────────────────────────
+function _setupTipoAcesso() {
+    const radios = document.querySelectorAll('input[name="tipo_acesso"]');
+    radios.forEach(r => r.addEventListener('change', _atualizarBotoesAcesso));
+    _atualizarBotoesAcesso();
+}
+
+function _atualizarBotoesAcesso() {
+    const val = document.querySelector('input[name="tipo_acesso"]:checked')?.value || 'Entrada';
+    const btnE = document.getElementById('btnEntrada');
+    const btnS = document.getElementById('btnSaida');
+    if (btnE) btnE.classList.toggle('entrada-ativo', val === 'Entrada');
+    if (btnS) btnS.classList.toggle('saida-ativo',   val === 'Saída');
+}
+
+function _getTipoAcesso() {
+    return document.querySelector('input[name="tipo_acesso"]:checked')?.value || 'Entrada';
+}
+
+// ── Carregar Unidades (ambos os selects) ──────────────────────────────────────
+async function _carregarUnidades() {
+    try {
+        const resp = await fetch(API_UNIDADES + '?acao=select');
+        const data = await resp.json();
+        const unidades = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
+
+        // Select de destino (visitante/prestador)
+        const selDest = document.getElementById('unidadeDestinoRegistro');
+        if (selDest) {
+            selDest.innerHTML = '<option value="">Selecione a unidade...</option>';
+            unidades.forEach(u => selDest.add(new Option(u.nome, u.nome)));
+        }
+
+        // Select de morador (tipo Morador)
+        const selMor = document.getElementById('unidadeMoradorRegistro');
+        if (selMor) {
+            selMor.innerHTML = '<option value="">Selecione a unidade...</option>';
+            unidades.forEach(u => selMor.add(new Option(u.nome, u.nome)));
+        }
+
+        console.log(`[Registro] ${unidades.length} unidades carregadas.`);
+    } catch (e) {
+        console.warn('[Registro] Não foi possível carregar unidades:', e);
+    }
+}
+
+// ── Cascata Unidade → Morador (bloco Morador) ─────────────────────────────────
+function _setupCascataMorador() {
+    const selUnidade = document.getElementById('unidadeMoradorRegistro');
+    if (!selUnidade) return;
+
+    selUnidade.addEventListener('change', async () => {
+        const unidade = selUnidade.value;
+        const selMorador = document.getElementById('moradorSelecionadoRegistro');
+        const infoWrap   = document.getElementById('moradorInfoWrap');
+        const infoBox    = document.getElementById('moradorInfoBox');
+
+        // Resetar dependente
+        _resetarDependente();
+
+        if (!unidade) {
+            if (selMorador) { selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>'; selMorador.disabled = true; }
+            if (infoWrap) infoWrap.style.display = 'none';
+            return;
+        }
+
+        if (selMorador) { selMorador.innerHTML = '<option value="">Carregando...</option>'; selMorador.disabled = true; }
+
+        try {
+            const resp = await fetch(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1&por_pagina=0`);
+            const data = await resp.json();
+            const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+
+            if (selMorador) {
+                selMorador.innerHTML = '<option value="">Selecione o morador...</option>';
+                moradores.forEach(m => {
+                    const opt = new Option(m.nome_completo || m.nome, m.id);
+                    opt.dataset.nome    = m.nome_completo || m.nome;
+                    opt.dataset.unidade = m.unidade || unidade;
+                    selMorador.add(opt);
+                });
+                selMorador.disabled = moradores.length === 0;
+                if (moradores.length === 0) selMorador.innerHTML = '<option value="">Nenhum morador nesta unidade</option>';
+            }
+            if (infoWrap) infoWrap.style.display = 'none';
+        } catch (e) {
+            if (selMorador) { selMorador.innerHTML = '<option value="">Erro ao carregar</option>'; selMorador.disabled = true; }
+        }
+    });
+
+    // Ao selecionar morador → mostrar info e carregar dependentes
+    const selMorador = document.getElementById('moradorSelecionadoRegistro');
+    if (selMorador) {
+        selMorador.addEventListener('change', () => {
+            const opt     = selMorador.options[selMorador.selectedIndex];
+            const infoWrap = document.getElementById('moradorInfoWrap');
+            const infoBox  = document.getElementById('moradorInfoBox');
+            const moradorId = selMorador.value;
+
+            _resetarDependente();
+
+            if (!moradorId) {
+                if (infoWrap) infoWrap.style.display = 'none';
+                document.getElementById('moradorId').value = '';
+                return;
+            }
+
+            document.getElementById('moradorId').value = moradorId;
+
+            if (infoBox) {
+                infoBox.innerHTML = `<i class="fas fa-home" style="margin-right:6px"></i>
+                    <strong>${_esc(opt.dataset.nome || opt.text)}</strong>
+                    &nbsp;—&nbsp; Unidade: <strong>${_esc(opt.dataset.unidade || selMorador.closest('.form-grid')?.querySelector('select')?.value || '')}</strong>`;
+            }
+            if (infoWrap) infoWrap.style.display = 'block';
+
+            // Carregar dependentes deste morador
+            _carregarDependentesMorador(moradorId);
+        });
+    }
+}
+
+// ── Carregar Dependentes ──────────────────────────────────────────────────────
+async function _carregarDependentesMorador(moradorId) {
+    const sel = document.getElementById('dependenteSelecionadoRegistro');
+    if (!sel) return;
+
+    sel.innerHTML = '<option value="">Carregando...</option>';
+    sel.disabled = true;
+
+    try {
+        const resp = await fetch(`${API_DEPENDENTES}?morador_id=${moradorId}`);
+        const data = await resp.json();
+        const deps = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
+
+        sel.innerHTML = '<option value="">Selecione o dependente...</option>';
+        deps.forEach(d => {
+            const opt = new Option(`${d.nome_completo || d.nome} (${d.parentesco || 'Familiar'})`, d.id);
+            opt.dataset.nome       = d.nome_completo || d.nome;
+            opt.dataset.parentesco = d.parentesco || '';
+            sel.add(opt);
+        });
+        sel.disabled = deps.length === 0;
+        if (deps.length === 0) sel.innerHTML = '<option value="">Nenhum dependente cadastrado</option>';
+
+        console.log(`[Registro] ${deps.length} dependentes carregados para morador ${moradorId}.`);
+    } catch (e) {
+        sel.innerHTML = '<option value="">Erro ao carregar dependentes</option>';
+        sel.disabled = true;
+        console.warn('[Registro] Erro ao carregar dependentes:', e);
+    }
+}
+
+function _resetarDependente() {
+    const check = document.getElementById('checkDependente');
+    if (check) check.checked = false;
+    const wrap = document.getElementById('dependenteWrap');
+    if (wrap) wrap.style.display = 'none';
+    const sel = document.getElementById('dependenteSelecionadoRegistro');
+    if (sel) { sel.innerHTML = '<option value="">Selecione o morador primeiro</option>'; sel.disabled = true; }
+    const infoWrap = document.getElementById('dependenteInfoWrap');
+    if (infoWrap) infoWrap.style.display = 'none';
+}
+
+// ── Checkbox Dependente ───────────────────────────────────────────────────────
+function _setupCheckDependente() {
+    const check = document.getElementById('checkDependente');
+    if (!check) return;
+
+    check.addEventListener('change', () => {
+        const wrap = document.getElementById('dependenteWrap');
+        if (wrap) wrap.style.display = check.checked ? 'block' : 'none';
+    });
+
+    // Ao selecionar dependente → mostrar info
+    const selDep = document.getElementById('dependenteSelecionadoRegistro');
+    if (selDep) {
+        selDep.addEventListener('change', () => {
+            const opt      = selDep.options[selDep.selectedIndex];
+            const infoWrap = document.getElementById('dependenteInfoWrap');
+            const infoBox  = document.getElementById('dependenteInfoBox');
+
+            if (!selDep.value) {
+                if (infoWrap) infoWrap.style.display = 'none';
+                return;
+            }
+            if (infoBox) {
+                infoBox.innerHTML = `<i class="fas fa-user-friends" style="margin-right:6px"></i>
+                    <strong>${_esc(opt.dataset.nome || opt.text)}</strong>
+                    ${opt.dataset.parentesco ? `&nbsp;—&nbsp; ${_esc(opt.dataset.parentesco)}` : ''}`;
+            }
+            if (infoWrap) infoWrap.style.display = 'block';
+        });
+    }
+}
+
+// ── Cascata Unidade → Morador (bloco Visitante/Prestador) ─────────────────────
+function _setupCascataVisitante() {
+    const selUnidade = document.getElementById('unidadeDestinoRegistro');
+    if (!selUnidade) return;
+
+    selUnidade.addEventListener('change', () => {
+        const unidade   = selUnidade.value;
+        const selMorador = document.getElementById('moradorDestinoRegistro');
+        if (!selMorador) return;
+
+        if (!unidade) {
+            selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>';
+            selMorador.disabled = true;
+            return;
+        }
+
+        selMorador.innerHTML = '<option value="">Carregando...</option>';
+        selMorador.disabled = true;
+
+        fetch(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1&por_pagina=0`)
+            .then(r => r.json())
+            .then(data => {
+                const moradores = data.dados?.itens || (Array.isArray(data.dados) ? data.dados : []);
+                selMorador.innerHTML = '<option value="">Selecione o morador...</option>';
+                moradores.forEach(m => selMorador.add(new Option(m.nome_completo || m.nome, m.id)));
+                selMorador.disabled = moradores.length === 0;
+                if (moradores.length === 0) selMorador.innerHTML = '<option value="">Nenhum morador nesta unidade</option>';
+            })
+            .catch(() => { selMorador.innerHTML = '<option value="">Erro ao carregar</option>'; selMorador.disabled = true; });
+    });
+}
+
+// ── Máscara Documento ─────────────────────────────────────────────────────────
 function _setupMascaraDocumento() {
-    const tipoDoc = document.getElementById('tipoDocRegistro');
+    const tipoDoc  = document.getElementById('tipoDocRegistro');
     const docInput = document.getElementById('documentoRegistro');
     if (!tipoDoc || !docInput) return;
 
@@ -72,24 +306,19 @@ function _setupMascaraDocumento() {
         docInput.value = v;
     });
 
-    // Buscar ao pressionar Enter no campo documento
     docInput.addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); _buscarVisitantePorDocumento(); }
     });
 
-    // Botão buscar
     const btnBuscar = document.getElementById('btnBuscarDocRegistro');
     if (btnBuscar) btnBuscar.addEventListener('click', _buscarVisitantePorDocumento);
 }
 
-// ===== BUSCAR VISITANTE POR DOCUMENTO =====
+// ── Buscar Visitante por Documento ────────────────────────────────────────────
 async function _buscarVisitantePorDocumento() {
     const docInput = document.getElementById('documentoRegistro');
     const doc = docInput?.value.trim() || '';
-    if (!doc) {
-        mostrarAlerta('error', 'Informe o documento para buscar.');
-        return;
-    }
+    if (!doc) { mostrarAlerta('error', 'Informe o documento para buscar.'); return; }
 
     const btnBuscar = document.getElementById('btnBuscarDocRegistro');
     if (btnBuscar) { btnBuscar.disabled = true; btnBuscar.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
@@ -97,20 +326,14 @@ async function _buscarVisitantePorDocumento() {
     try {
         const resp = await fetch(`${API_VISITANTES}?documento=${encodeURIComponent(doc)}`);
         const data = await resp.json();
-
-        const box = document.getElementById('visitanteEncontrado');
+        const box  = document.getElementById('visitanteEncontrado');
 
         if (data.sucesso && data.dados) {
             const v = data.dados;
             document.getElementById('nomeVisitanteRegistro').value = v.nome_completo || '';
             document.getElementById('visitanteIdRegistro').value   = v.id || '';
-
-            // Preencher placa do veículo se disponível e campo estiver vazio
             const placaInput = document.getElementById('placaRegistro');
-            if (placaInput && !placaInput.value && v.placa_veiculo) {
-                placaInput.value = v.placa_veiculo;
-            }
-
+            if (placaInput && !placaInput.value && v.placa_veiculo) placaInput.value = v.placa_veiculo;
             if (box) {
                 box.style.display = 'flex';
                 box.innerHTML = `<i class="fas fa-check-circle"></i>
@@ -118,13 +341,11 @@ async function _buscarVisitantePorDocumento() {
                     — ${_esc(v.tipo_documento)}: ${_esc(v.documento)}
                     ${v.telefone_contato ? '— Tel: ' + _esc(v.telefone_contato) : ''}</span>`;
             }
-            console.log(`[Registro] Visitante encontrado: ${v.nome_completo} (ID ${v.id})`);
         } else {
-            // Não encontrado — limpar campos e avisar
             document.getElementById('nomeVisitanteRegistro').value = '';
             document.getElementById('visitanteIdRegistro').value   = '';
             if (box) { box.style.display = 'none'; box.innerHTML = ''; }
-            mostrarAlerta('warning', 'Visitante não encontrado com este documento. Preencha o nome manualmente ou cadastre-o no módulo Visitantes.');
+            mostrarAlerta('warning', 'Visitante não encontrado. Preencha o nome manualmente ou cadastre-o no módulo Visitantes.');
         }
     } catch (error) {
         console.error('[Registro] Erro ao buscar visitante:', error);
@@ -134,77 +355,11 @@ async function _buscarVisitantePorDocumento() {
     }
 }
 
-// ===== CARREGAR UNIDADES =====
-async function _carregarUnidades() {
-    const sel = document.getElementById('unidadeDestinoRegistro');
-    if (!sel) return;
-    try {
-        const resp = await fetch(API_UNIDADES + '?acao=select');
-        const data = await resp.json();
-        const unidades = Array.isArray(data.dados) ? data.dados : (data.dados?.itens || []);
-        sel.innerHTML = '<option value="">Selecione a unidade...</option>';
-        unidades.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.nome || u.unidade || u.id;
-            opt.textContent = u.nome || u.unidade || u.id;
-            sel.appendChild(opt);
-        });
-    } catch (e) {
-        console.warn('[Registro] Não foi possível carregar unidades:', e);
-    }
-}
-
-// ===== CASCATA UNIDADE → MORADOR =====
-function _setupCascataUnidadeMorador() {
-    const selUnidade = document.getElementById('unidadeDestinoRegistro');
-    if (!selUnidade) return;
-
-    selUnidade.addEventListener('change', () => {
-        const unidade = selUnidade.value;
-        const selMorador = document.getElementById('moradorDestinoRegistro');
-        if (!selMorador) return;
-
-        if (!unidade) {
-            selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>';
-            selMorador.disabled = true;
-            return;
-        }
-
-        selMorador.innerHTML = '<option value="">Carregando...</option>';
-        selMorador.disabled = true;
-
-        fetch(`${API_MORADORES}?unidade=${encodeURIComponent(unidade)}&ativo=1&por_pagina=0`)
-            .then(r => r.json())
-            .then(data => {
-                const moradores = data.dados?.itens || data.dados || [];
-                selMorador.innerHTML = '<option value="">Selecione o morador...</option>';
-                moradores.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.id;
-                    opt.textContent = m.nome_completo || m.nome;
-                    selMorador.appendChild(opt);
-                });
-                selMorador.disabled = moradores.length === 0;
-                if (moradores.length === 0) {
-                    selMorador.innerHTML = '<option value="">Nenhum morador nesta unidade</option>';
-                }
-            })
-            .catch(() => {
-                selMorador.innerHTML = '<option value="">Erro ao carregar moradores</option>';
-                selMorador.disabled = true;
-            });
-    });
-}
-
-// ===== FORM SETUP =====
+// ── Form Setup ────────────────────────────────────────────────────────────────
 function _setupForm() {
     const form = document.getElementById('registroForm');
     if (!form) return;
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await salvarRegistro();
-    });
+    form.addEventListener('submit', async e => { e.preventDefault(); await salvarRegistro(); });
 
     const placaInput = document.getElementById('placaRegistro');
     if (placaInput) {
@@ -220,26 +375,48 @@ function _setupBusca() {
     const input = document.getElementById('buscaRegistro');
     if (!input) return;
     input.addEventListener('input', () => filtrarRegistros(input.value));
-    input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); buscarRegistros(); }
-    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarRegistros(); } });
 }
 
 function _setupActions() {
     const btnBuscar = document.getElementById('btnBuscarRegistro');
     if (btnBuscar) btnBuscar.addEventListener('click', buscarRegistros);
-
     const btnLimpar = document.getElementById('btnLimparRegistro');
     if (btnLimpar) btnLimpar.addEventListener('click', limparFormulario);
 }
 
-// ===== LOADING =====
-function setLoading(ativo) {
-    const el = document.getElementById('loadingRegistros');
-    if (el) el.style.display = ativo ? 'block' : 'none';
+// ── Tipo Change ───────────────────────────────────────────────────────────────
+function onTipoChange() {
+    const tipo         = document.getElementById('tipoRegistro')?.value || '';
+    const extraCampos  = document.getElementById('extraCampos');
+    const camposMorador = document.getElementById('camposMorador');
+
+    if (extraCampos)  extraCampos.style.display  = (tipo === 'Visitante' || tipo === 'Prestador') ? 'block' : 'none';
+    if (camposMorador) camposMorador.style.display = tipo === 'Morador' ? 'block' : 'none';
+
+    if (tipo !== 'Visitante' && tipo !== 'Prestador') {
+        ['nomeVisitanteRegistro', 'documentoRegistro', 'diasPermanenciaRegistro'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
+        const selU = document.getElementById('unidadeDestinoRegistro'); if (selU) selU.value = '';
+        const selM = document.getElementById('moradorDestinoRegistro');
+        if (selM) { selM.innerHTML = '<option value="">Selecione a unidade primeiro</option>'; selM.disabled = true; }
+        document.getElementById('visitanteIdRegistro').value = '';
+        const boxV = document.getElementById('visitanteEncontrado');
+        if (boxV) { boxV.style.display = 'none'; boxV.innerHTML = ''; }
+    }
+
+    if (tipo !== 'Morador') {
+        const selU = document.getElementById('unidadeMoradorRegistro'); if (selU) selU.value = '';
+        const selM = document.getElementById('moradorSelecionadoRegistro');
+        if (selM) { selM.innerHTML = '<option value="">Selecione a unidade primeiro</option>'; selM.disabled = true; }
+        document.getElementById('moradorId').value = '';
+        const iW = document.getElementById('moradorInfoWrap'); if (iW) iW.style.display = 'none';
+        _resetarDependente();
+    }
 }
 
-// ===== DATA/HORA =====
+// ── Data/Hora ─────────────────────────────────────────────────────────────────
 function atualizarDataHoraAtual() {
     const input = document.getElementById('dataHoraRegistro');
     if (!input) return;
@@ -248,30 +425,27 @@ function atualizarDataHoraAtual() {
     input.value = agora.toISOString().slice(0, 16);
 }
 
-// ===== CARREGAR VEÍCULOS =====
+// ── Carregar Veículos ─────────────────────────────────────────────────────────
 async function carregarVeiculos() {
     try {
         const response = await fetch(API_VEICULOS);
         const data = await response.json();
         veiculosCache = (data.sucesso && Array.isArray(data.dados)) ? data.dados : [];
     } catch (error) {
-        console.error('[Registro] Erro ao carregar veiculos:', error);
+        console.error('[Registro] Erro ao carregar veículos:', error);
         veiculosCache = [];
     }
 }
 
-// ===== CARREGAR REGISTROS =====
+// ── Carregar Registros ────────────────────────────────────────────────────────
 async function carregarRegistros() {
     const tbody = document.querySelector('#tabelaRegistros tbody');
     setLoading(true);
     try {
         const response = await fetch(`${API_REGISTROS}?limite=100`);
         const data = await response.json();
-        if (!data.sucesso) {
-            renderMensagemTabela(tbody, data.mensagem || 'Erro ao carregar registros.');
-            return;
-        }
-        registrosCache = Array.isArray(data.dados) ? data.dados : [];
+        if (!data.sucesso) { renderMensagemTabela(tbody, data.mensagem || 'Erro ao carregar registros.'); return; }
+        registrosCache = data.dados || [];
         renderRegistros(registrosCache);
     } catch (error) {
         console.error('[Registro] Erro ao carregar registros:', error);
@@ -281,42 +455,48 @@ async function carregarRegistros() {
     }
 }
 
-// ===== BUSCAR / FILTRAR =====
-function buscarRegistros() {
-    filtrarRegistros(document.getElementById('buscaRegistro')?.value || '');
-}
+// ── Buscar / Filtrar ──────────────────────────────────────────────────────────
+function buscarRegistros() { filtrarRegistros(document.getElementById('buscaRegistro')?.value || ''); }
 
 function filtrarRegistros(termo) {
     if (!termo?.trim()) { renderRegistros(registrosCache); return; }
     const q = termo.toLowerCase().trim();
-    const filtrados = registrosCache.filter(r => {
-        return (r.morador_nome || r.nome_visitante || '').toLowerCase().includes(q)
-            || (r.placa || '').toLowerCase().includes(q)
-            || (r.tipo || '').toLowerCase().includes(q)
-            || (r.morador_unidade || r.unidade_destino || '').toLowerCase().includes(q)
-            || (r.status || '').toLowerCase().includes(q)
-            || (r.modelo || '').toLowerCase().includes(q);
-    });
+    const filtrados = registrosCache.filter(r =>
+        (r.morador_nome || r.nome_visitante || '').toLowerCase().includes(q)
+        || (r.placa || '').toLowerCase().includes(q)
+        || (r.tipo || '').toLowerCase().includes(q)
+        || (r.morador_unidade || r.unidade_destino || '').toLowerCase().includes(q)
+        || (r.status || '').toLowerCase().includes(q)
+        || (r.modelo || '').toLowerCase().includes(q)
+        || (r.tipo_acesso || '').toLowerCase().includes(q)
+    );
     renderRegistros(filtrados);
 }
 
-// ===== RENDER =====
+// ── Render Tabela ─────────────────────────────────────────────────────────────
 function renderRegistros(registros) {
     const tbody = document.querySelector('#tabelaRegistros tbody');
     if (!tbody) return;
     if (!registros?.length) { renderMensagemTabela(tbody, 'Nenhum registro encontrado.'); return; }
 
     tbody.innerHTML = registros.map(r => {
-        const id       = r.id || 0;
-        const dataHora = _esc(r.data_hora_formatada || formatDateTime(r.data_hora) || '-');
-        const placa    = _esc(r.placa || '-');
-        const modelo   = _esc(r.modelo || '-');
-        const cor      = _esc(r.cor || '-');
-        const tipo     = _esc(r.tipo || '-');
-        const nome     = _esc(r.morador_nome || r.nome_visitante || r.tipo || '-');
-        const unidade  = _esc(r.morador_unidade || r.unidade_destino || '-');
-        const status   = _esc(r.status || '-');
+        const id        = r.id || 0;
+        const dataHora  = _esc(r.data_hora_formatada || formatDateTime(r.data_hora) || '-');
+        const placa     = _esc(r.placa || '-');
+        const modelo    = _esc(r.modelo || '-');
+        const cor       = _esc(r.cor || '-');
+        const tipo      = _esc(r.tipo || '-');
+        const nome      = _esc(r.morador_nome || r.nome_visitante || r.tipo || '-');
+        const unidade   = _esc(r.morador_unidade || r.unidade_destino || '-');
+        const status    = _esc(r.status || '-');
         const statusClass = classificarStatus(r.status, r.liberado);
+
+        const tipoAcesso = r.tipo_acesso || '';
+        const badgeAcesso = tipoAcesso === 'Saída'
+            ? `<span class="badge-saida"><i class="fas fa-sign-out-alt"></i> Saída</span>`
+            : tipoAcesso === 'Entrada'
+            ? `<span class="badge-entrada"><i class="fas fa-sign-in-alt"></i> Entrada</span>`
+            : '—';
 
         return `
             <tr>
@@ -327,6 +507,7 @@ function renderRegistros(registros) {
                 <td>${tipo}</td>
                 <td>${nome}</td>
                 <td>${unidade}</td>
+                <td>${badgeAcesso}</td>
                 <td><span class="status-pill ${statusClass}">${status}</span></td>
                 <td>
                     <button class="action-btn delete" type="button" onclick="window.RegistroPage.excluir(${id})" title="Excluir registro">
@@ -338,10 +519,10 @@ function renderRegistros(registros) {
 }
 
 function renderMensagemTabela(tbody, msg) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="empty-state">${_esc(msg)}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${_esc(msg)}</td></tr>`;
 }
 
-// ===== SALVAR =====
+// ── Salvar ────────────────────────────────────────────────────────────────────
 async function salvarRegistro() {
     if (salvandoReg) return;
     salvandoReg = true;
@@ -355,6 +536,7 @@ async function salvarRegistro() {
         const cor           = (document.getElementById('corRegistro')?.value || '').trim();
         const tipo          = (document.getElementById('tipoRegistro')?.value || '').trim();
         const observacao    = (document.getElementById('observacaoRegistro')?.value || '').trim();
+        const tipoAcesso    = _getTipoAcesso();
 
         if (!dataHoraInput || !placa || !tipo) {
             mostrarAlerta('error', 'Data/hora, placa e tipo são obrigatórios.');
@@ -367,10 +549,31 @@ async function salvarRegistro() {
             modelo,
             cor,
             tipo,
-            observacao
+            observacao,
+            tipo_acesso: tipoAcesso
         };
 
-        // Campos específicos para Visitante / Prestador
+        // ── Morador ──
+        if (tipo === 'Morador') {
+            const moradorId = document.getElementById('moradorId')?.value || '';
+            const unidade   = document.getElementById('unidadeMoradorRegistro')?.value || '';
+
+            if (!unidade)   { mostrarAlerta('error', 'Selecione a unidade do morador.'); return; }
+            if (!moradorId) { mostrarAlerta('error', 'Selecione o morador.'); return; }
+
+            payload.morador_id      = moradorId;
+            payload.unidade_destino = unidade;
+
+            // Dependente
+            const checkDep = document.getElementById('checkDependente');
+            if (checkDep?.checked) {
+                const depId = document.getElementById('dependenteSelecionadoRegistro')?.value || '';
+                if (!depId) { mostrarAlerta('error', 'Selecione o dependente ou desmarque a opção.'); return; }
+                payload.dependente_id = depId;
+            }
+        }
+
+        // ── Visitante / Prestador ──
         if (tipo === 'Visitante' || tipo === 'Prestador') {
             const nomeVisitante   = (document.getElementById('nomeVisitanteRegistro')?.value || '').trim();
             const unidadeDestino  = document.getElementById('unidadeDestinoRegistro')?.value || '';
@@ -398,13 +601,9 @@ async function salvarRegistro() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
         const data = await response.json();
 
-        if (!data.sucesso) {
-            mostrarAlerta('error', data.mensagem || 'Falha ao registrar acesso.');
-            return;
-        }
+        if (!data.sucesso) { mostrarAlerta('error', data.mensagem || 'Falha ao registrar acesso.'); return; }
 
         mostrarAlerta('success', data.mensagem || 'Registro salvo com sucesso.');
         limparFormulario();
@@ -419,7 +618,7 @@ async function salvarRegistro() {
     }
 }
 
-// ===== EXCLUIR =====
+// ── Excluir ───────────────────────────────────────────────────────────────────
 async function excluirRegistro(id) {
     if (!confirm('Deseja realmente excluir este registro?')) return;
     try {
@@ -438,58 +637,36 @@ async function excluirRegistro(id) {
     }
 }
 
-// ===== LIMPAR FORMULÁRIO =====
+// ── Limpar Formulário ─────────────────────────────────────────────────────────
 function limparFormulario() {
     const form = document.getElementById('registroForm');
     if (form) form.reset();
 
-    document.getElementById('moradorId').value           = '';
-    document.getElementById('veiculoId').value           = '';
-    document.getElementById('visitanteIdRegistro').value = '';
+    ['moradorId', 'veiculoId', 'visitanteIdRegistro'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+    });
 
-    const extra = document.getElementById('extraCampos');
-    if (extra) extra.style.display = 'none';
+    document.getElementById('extraCampos')?.style && (document.getElementById('extraCampos').style.display = 'none');
+    document.getElementById('camposMorador')?.style && (document.getElementById('camposMorador').style.display = 'none');
 
-    const boxVeiculo = document.getElementById('veiculoEncontrado');
-    if (boxVeiculo) { boxVeiculo.style.display = 'none'; boxVeiculo.innerHTML = ''; }
+    const boxV = document.getElementById('veiculoEncontrado');
+    if (boxV) { boxV.style.display = 'none'; boxV.innerHTML = ''; }
+    const boxVis = document.getElementById('visitanteEncontrado');
+    if (boxVis) { boxVis.style.display = 'none'; boxVis.innerHTML = ''; }
 
-    const boxVisitante = document.getElementById('visitanteEncontrado');
-    if (boxVisitante) { boxVisitante.style.display = 'none'; boxVisitante.innerHTML = ''; }
+    const selMorDest = document.getElementById('moradorDestinoRegistro');
+    if (selMorDest) { selMorDest.innerHTML = '<option value="">Selecione a unidade primeiro</option>'; selMorDest.disabled = true; }
 
-    // Reset morador select
-    const selMorador = document.getElementById('moradorDestinoRegistro');
-    if (selMorador) {
-        selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>';
-        selMorador.disabled = true;
-    }
+    const selMorSel = document.getElementById('moradorSelecionadoRegistro');
+    if (selMorSel) { selMorSel.innerHTML = '<option value="">Selecione a unidade primeiro</option>'; selMorSel.disabled = true; }
 
+    const iW = document.getElementById('moradorInfoWrap'); if (iW) iW.style.display = 'none';
+    _resetarDependente();
+    _atualizarBotoesAcesso();
     atualizarDataHoraAtual();
 }
 
-// ===== TIPO CHANGE =====
-function onTipoChange() {
-    const tipo  = document.getElementById('tipoRegistro')?.value || '';
-    const extra = document.getElementById('extraCampos');
-    if (!extra) return;
-
-    if (tipo === 'Visitante' || tipo === 'Prestador') {
-        extra.style.display = 'block';
-    } else {
-        extra.style.display = 'none';
-        // Limpar campos extras
-        const ids = ['nomeVisitanteRegistro', 'documentoRegistro', 'diasPermanenciaRegistro'];
-        ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-        const selUnidade = document.getElementById('unidadeDestinoRegistro');
-        if (selUnidade) selUnidade.value = '';
-        const selMorador = document.getElementById('moradorDestinoRegistro');
-        if (selMorador) { selMorador.innerHTML = '<option value="">Selecione a unidade primeiro</option>'; selMorador.disabled = true; }
-        document.getElementById('visitanteIdRegistro').value = '';
-        const boxVisitante = document.getElementById('visitanteEncontrado');
-        if (boxVisitante) { boxVisitante.style.display = 'none'; boxVisitante.innerHTML = ''; }
-    }
-}
-
-// ===== PLACA =====
+// ── Placa ─────────────────────────────────────────────────────────────────────
 function formatarPlacaInput(e) {
     let v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (v.length > 7) v = v.slice(0, 7);
@@ -497,14 +674,11 @@ function formatarPlacaInput(e) {
     e.target.value = v;
 }
 
-function normalizarPlaca(placa) {
-    return String(placa).toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
+function normalizarPlaca(placa) { return String(placa).toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 
 function detectarVeiculoPorPlaca() {
     const placaInput = document.getElementById('placaRegistro');
     if (!placaInput) return;
-
     const placa = normalizarPlaca(placaInput.value);
     if (placa.length < 7) { esconderVeiculoEncontrado(); return; }
 
@@ -512,7 +686,7 @@ function detectarVeiculoPorPlaca() {
     if (!veiculo) { esconderVeiculoEncontrado(); return; }
 
     document.getElementById('modeloRegistro').value = veiculo.modelo || '';
-    document.getElementById('corRegistro').value    = veiculo.cor || '';
+    document.getElementById('corRegistro').value    = veiculo.cor    || '';
     document.getElementById('moradorId').value      = veiculo.morador_id || '';
     document.getElementById('veiculoId').value      = veiculo.id || '';
     document.getElementById('tipoRegistro').value   = 'Morador';
@@ -527,6 +701,24 @@ function detectarVeiculoPorPlaca() {
     }
 
     onTipoChange();
+
+    // Pré-selecionar unidade e morador se disponível
+    const unidade = veiculo.morador_unidade || '';
+    if (unidade) {
+        const selU = document.getElementById('unidadeMoradorRegistro');
+        if (selU) {
+            selU.value = unidade;
+            selU.dispatchEvent(new Event('change'));
+            // Aguardar carregamento dos moradores e selecionar
+            setTimeout(() => {
+                const selM = document.getElementById('moradorSelecionadoRegistro');
+                if (selM && veiculo.morador_id) {
+                    selM.value = veiculo.morador_id;
+                    selM.dispatchEvent(new Event('change'));
+                }
+            }, 600);
+        }
+    }
 }
 
 function esconderVeiculoEncontrado() {
@@ -536,7 +728,12 @@ function esconderVeiculoEncontrado() {
     if (box) { box.style.display = 'none'; box.innerHTML = ''; }
 }
 
-// ===== STATUS =====
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setLoading(ativo) {
+    const el = document.getElementById('loadingRegistros');
+    if (el) el.style.display = ativo ? 'block' : 'none';
+}
+
 function classificarStatus(status, liberado) {
     const s = String(status || '').toLowerCase();
     if (liberado === 1 || s.includes('liberado') || s.includes('permitido')) return 'status-ok';
@@ -544,7 +741,6 @@ function classificarStatus(status, liberado) {
     return 'status-warn';
 }
 
-// ===== UTILITÁRIOS =====
 function formatDateTime(dateTimeRaw) {
     if (!dateTimeRaw) return '-';
     const date = new Date(dateTimeRaw.replace(' ', 'T'));
@@ -569,9 +765,6 @@ function mostrarAlerta(tipo, mensagem) {
 
 function _esc(value) {
     return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

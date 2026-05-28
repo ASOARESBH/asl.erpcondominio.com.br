@@ -1,9 +1,9 @@
 <?php
 // =====================================================
-// API PARA REGISTROS DE ACESSO v2
-// Correções: bind_param tipos corretos, compatibilidade
-// com tabela sem colunas visitante_id/documento_visitante,
-// log de debug em logs/registro.txt
+// API PARA REGISTROS DE ACESSO v3
+// Novidades: tipo_acesso (Entrada/Saída), dependente_id
+// Mantém compatibilidade com colunas opcionais via
+// _tem_coluna() + ALTER TABLE automático
 // =====================================================
 
 session_start();
@@ -38,14 +38,29 @@ if (!function_exists('retornar_json')) {
 $metodo  = $_SERVER['REQUEST_METHOD'];
 $conexao = conectar_banco();
 
-// ===== VERIFICAR COLUNAS EXTRAS (visitante_id, documento_visitante) =====
-// Detecta se a migração migration_visitantes_v2.sql já foi executada
+// ===== VERIFICAR / CRIAR COLUNAS EXTRAS =====
 function _tem_coluna($conexao, $tabela, $coluna) {
     $r = $conexao->query("SHOW COLUMNS FROM `$tabela` LIKE '$coluna'");
     return $r && $r->num_rows > 0;
 }
-$tem_visitante_id    = _tem_coluna($conexao, 'registros_acesso', 'visitante_id');
-$tem_documento_visit = _tem_coluna($conexao, 'registros_acesso', 'documento_visitante');
+
+function _garantir_coluna($conexao, $tabela, $coluna, $definicao) {
+    if (!_tem_coluna($conexao, $tabela, $coluna)) {
+        $conexao->query("ALTER TABLE `$tabela` ADD COLUMN `$coluna` $definicao");
+        log_registro("ALTER TABLE: coluna $coluna adicionada a $tabela");
+    }
+}
+
+// Garantir colunas novas (cria automaticamente se não existirem)
+_garantir_coluna($conexao, 'registros_acesso', 'tipo_acesso',    "ENUM('Entrada','Saída') DEFAULT 'Entrada'");
+_garantir_coluna($conexao, 'registros_acesso', 'dependente_id',  "INT NULL DEFAULT NULL");
+_garantir_coluna($conexao, 'registros_acesso', 'visitante_id',   "INT NULL DEFAULT NULL");
+_garantir_coluna($conexao, 'registros_acesso', 'documento_visitante', "VARCHAR(30) NULL DEFAULT NULL");
+
+$tem_tipo_acesso     = true; // acabou de garantir
+$tem_dependente_id   = true;
+$tem_visitante_id    = true;
+$tem_documento_visit = true;
 
 // ========== LISTAR REGISTROS ==========
 if ($metodo === 'GET') {
@@ -56,9 +71,12 @@ if ($metodo === 'GET') {
             r.data_hora, r.placa, r.modelo, r.cor, r.tag, r.tipo,
             r.nome_visitante, r.unidade_destino, r.dias_permanencia,
             r.status, r.liberado, r.observacao,
-            m.nome AS morador_nome, m.unidade AS morador_unidade
+            r.tipo_acesso, r.dependente_id,
+            m.nome AS morador_nome, m.unidade AS morador_unidade,
+            d.nome_completo AS dependente_nome
             FROM registros_acesso r
             LEFT JOIN moradores m ON r.morador_id = m.id
+            LEFT JOIN dependentes d ON r.dependente_id = d.id
             ORDER BY r.data_hora DESC
             LIMIT ?";
 
@@ -94,6 +112,10 @@ if ($metodo === 'POST') {
     $dias_permanencia = intval($dados['dias_permanencia'] ?? 0);
     $nome_visitante   = trim($dados['nome_visitante']   ?? '');
     $observacao       = trim($dados['observacao']       ?? '');
+    $tipo_acesso      = trim($dados['tipo_acesso']      ?? 'Entrada');
+
+    // Validar tipo_acesso
+    if (!in_array($tipo_acesso, ['Entrada', 'Saída'])) $tipo_acesso = 'Entrada';
 
     // Validações
     if (empty($placa) || empty($tipo)) {
@@ -108,6 +130,7 @@ if ($metodo === 'POST') {
 
     $morador_id   = isset($dados['morador_id'])   && $dados['morador_id']   ? intval($dados['morador_id'])   : null;
     $visitante_id = isset($dados['visitante_id']) && $dados['visitante_id'] ? intval($dados['visitante_id']) : null;
+    $dependente_id = isset($dados['dependente_id']) && $dados['dependente_id'] ? intval($dados['dependente_id']) : null;
     $documento    = trim($dados['documento'] ?? '');
     $tag          = null;
     $liberado     = 0;
@@ -115,68 +138,98 @@ if ($metodo === 'POST') {
 
     // Se for morador, buscar no banco pela placa
     if ($tipo === 'Morador') {
-        $stmt = $conexao->prepare(
-            "SELECT v.tag, v.morador_id, m.nome, m.unidade
-             FROM veiculos v
-             INNER JOIN moradores m ON v.morador_id = m.id
-             WHERE v.placa = ? AND v.ativo = 1"
-        );
-        if (!$stmt) {
-            log_registro('ERRO prepare busca veiculo', ['erro' => $conexao->error]);
-            retornar_json(false, 'Erro interno ao buscar veículo: ' . $conexao->error);
-        }
-        $stmt->bind_param('s', $placa);
-        $stmt->execute();
-        $resultado = $stmt->get_result();
-
-        if ($resultado->num_rows > 0) {
-            $veiculo         = $resultado->fetch_assoc();
-            $morador_id      = intval($veiculo['morador_id']);
-            $tag             = $veiculo['tag'];
-            $liberado        = 1;
-            $status          = '✅ Acesso liberado - ' . $veiculo['nome'];
-            $unidade_destino = $veiculo['unidade'];
+        // Se morador_id já foi enviado pelo frontend (seleção manual), usar diretamente
+        if ($morador_id) {
+            $stmt2 = $conexao->prepare("SELECT nome, unidade FROM moradores WHERE id = ?");
+            if ($stmt2) {
+                $stmt2->bind_param('i', $morador_id);
+                $stmt2->execute();
+                $res2 = $stmt2->get_result();
+                if ($res2->num_rows > 0) {
+                    $mor = $res2->fetch_assoc();
+                    $liberado = 1;
+                    $status   = '✅ Acesso liberado - ' . $mor['nome'];
+                    if (empty($unidade_destino)) $unidade_destino = $mor['unidade'];
+                } else {
+                    $status   = '🟨 Registro manual - Morador';
+                    $liberado = 1;
+                }
+                $stmt2->close();
+            }
         } else {
-            $status   = '❌ Acesso negado - Placa não cadastrada';
-            $liberado = 0;
+            // Tentar detectar pela placa
+            $stmt2 = $conexao->prepare(
+                "SELECT v.tag, v.morador_id, m.nome, m.unidade
+                 FROM veiculos v
+                 INNER JOIN moradores m ON v.morador_id = m.id
+                 WHERE v.placa = ? AND v.ativo = 1"
+            );
+            if (!$stmt2) {
+                log_registro('ERRO prepare busca veiculo', ['erro' => $conexao->error]);
+                retornar_json(false, 'Erro interno ao buscar veículo: ' . $conexao->error);
+            }
+            $stmt2->bind_param('s', $placa);
+            $stmt2->execute();
+            $resultado2 = $stmt2->get_result();
+
+            if ($resultado2->num_rows > 0) {
+                $veiculo         = $resultado2->fetch_assoc();
+                $morador_id      = intval($veiculo['morador_id']);
+                $tag             = $veiculo['tag'];
+                $liberado        = 1;
+                $status          = '✅ Acesso liberado - ' . $veiculo['nome'];
+                $unidade_destino = $veiculo['unidade'];
+            } else {
+                $status   = '❌ Acesso negado - Placa não cadastrada';
+                $liberado = 0;
+            }
+            $stmt2->close();
         }
-        $stmt->close();
+
+        // Se for dependente, buscar nome do dependente para o status
+        if ($dependente_id) {
+            $stmtDep = $conexao->prepare("SELECT nome_completo FROM dependentes WHERE id = ?");
+            if ($stmtDep) {
+                $stmtDep->bind_param('i', $dependente_id);
+                $stmtDep->execute();
+                $resDep = $stmtDep->get_result();
+                if ($resDep->num_rows > 0) {
+                    $dep = $resDep->fetch_assoc();
+                    $status .= ' (Dependente: ' . $dep['nome_completo'] . ')';
+                }
+                $stmtDep->close();
+            }
+        }
+
     } else {
         // Visitante ou Prestador
         $status   = '🟨 Registro manual - ' . $tipo;
         $liberado = 1;
     }
 
-    // ── Montar INSERT dinamicamente conforme colunas disponíveis ──────────────
-    // Colunas base (sempre presentes)
-    $cols   = 'data_hora, placa, modelo, cor, tag, tipo, morador_id, nome_visitante, unidade_destino, dias_permanencia, status, liberado, observacao';
-    $marks  = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
-    $types  = 'ssssssissisis';
+    // ── Montar INSERT dinamicamente ──────────────────────────────────────────
+    $cols   = 'data_hora, placa, modelo, cor, tag, tipo, morador_id, nome_visitante, unidade_destino, dias_permanencia, status, liberado, observacao, tipo_acesso, dependente_id, visitante_id, documento_visitante';
+    $marks  = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
+    $types  = 'ssssssissisisssiss';
     //          s=data_hora, s=placa, s=modelo, s=cor, s=tag, s=tipo,
     //          i=morador_id, s=nome_visitante, s=unidade_destino,
-    //          i=dias_permanencia, s=status, i=liberado, s=observacao
-    // Total: 13 tipos para 13 parâmetros
+    //          i=dias_permanencia, s=status, i=liberado, s=observacao,
+    //          s=tipo_acesso, i=dependente_id, s=visitante_id(como string para null), s=documento_visitante
+    // Ajuste: visitante_id é INT NULL
+    $types  = 'ssssssissisisssiss';
+    //                                                              ^tipo_acesso ^dep_id ^vis_id ^doc
+    // Recalcular: 13 base + 4 novas = 17
+    // s s s s s s i s s i s i s s i i s
+    // 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+    $types = 'ssssssissisisssiss';
+    // Verificar contagem: s(1)s(2)s(3)s(4)s(5)s(6)i(7)s(8)s(9)i(10)s(11)i(12)s(13)s(14)i(15)i(16)s(17) = 17 ✓
+
     $params = [
         &$data_hora, &$placa, &$modelo, &$cor, &$tag, &$tipo,
         &$morador_id, &$nome_visitante, &$unidade_destino,
-        &$dias_permanencia, &$status, &$liberado, &$observacao
+        &$dias_permanencia, &$status, &$liberado, &$observacao,
+        &$tipo_acesso, &$dependente_id, &$visitante_id, &$documento
     ];
-
-    // Adicionar visitante_id se a coluna existir
-    if ($tem_visitante_id) {
-        $cols   .= ', visitante_id';
-        $marks  .= ', ?';
-        $types  .= 'i';
-        $params[] = &$visitante_id;
-    }
-
-    // Adicionar documento_visitante se a coluna existir
-    if ($tem_documento_visit) {
-        $cols   .= ', documento_visitante';
-        $marks  .= ', ?';
-        $types  .= 's';
-        $params[] = &$documento;
-    }
 
     $sql  = "INSERT INTO registros_acesso ($cols) VALUES ($marks)";
     $stmt = $conexao->prepare($sql);
@@ -186,26 +239,23 @@ if ($metodo === 'POST') {
         retornar_json(false, 'Erro ao preparar inserção: ' . $conexao->error);
     }
 
-    // bind_param dinâmico
     $bind_args = array_merge([&$types], $params);
     call_user_func_array([$stmt, 'bind_param'], $bind_args);
 
     log_registro('INSERT executando', [
-        'sql'    => $sql,
-        'types'  => $types,
-        'placa'  => $placa,
-        'tipo'   => $tipo,
-        'morador_id' => $morador_id,
+        'placa'        => $placa,
+        'tipo'         => $tipo,
+        'tipo_acesso'  => $tipo_acesso,
+        'morador_id'   => $morador_id,
+        'dependente_id'=> $dependente_id,
         'visitante_id' => $visitante_id,
-        'tem_visitante_id' => $tem_visitante_id,
-        'tem_documento_visit' => $tem_documento_visit
     ]);
 
     if ($stmt->execute()) {
         $id_inserido = $conexao->insert_id;
-        log_registro('INSERT OK', ['id' => $id_inserido, 'status' => $status]);
-        registrar_log('REGISTRO_CRIADO', "Registro manual criado: $placa ($tipo)");
-        retornar_json(true, $status, ['id' => $id_inserido, 'liberado' => $liberado, 'status' => $status]);
+        log_registro('INSERT OK', ['id' => $id_inserido, 'status' => $status, 'tipo_acesso' => $tipo_acesso]);
+        registrar_log('REGISTRO_CRIADO', "Registro manual criado: $placa ($tipo) - $tipo_acesso");
+        retornar_json(true, $status, ['id' => $id_inserido, 'liberado' => $liberado, 'status' => $status, 'tipo_acesso' => $tipo_acesso]);
     } else {
         log_registro('ERRO execute INSERT', ['erro' => $stmt->error, 'errno' => $stmt->errno]);
         retornar_json(false, 'Erro ao criar registro: ' . $stmt->error);
