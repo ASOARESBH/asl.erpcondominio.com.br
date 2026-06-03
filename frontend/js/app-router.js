@@ -156,6 +156,13 @@ const AppRouter = {
                 console.log(`[Router] URL atualizada: ${newUrl}`);
             }
 
+            // 9. Disparar evento pageLoaded para guard de permissões e outros listeners
+            document.dispatchEvent(new CustomEvent('pageLoaded', {
+                detail: { page: pageName },
+                bubbles: false
+            }));
+            console.log(`[Router] Evento pageLoaded disparado para: ${pageName}`);
+
         } catch (error) {
             console.error('[Router] Erro fatal:', error);
             container.innerHTML = `

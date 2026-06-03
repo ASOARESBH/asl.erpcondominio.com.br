@@ -22,14 +22,16 @@ export function init() {
     carregarUsuarios();
     // Expor no window para onclick inline
     window.UsuariosPage = {
-        mostrarTab:             mostrarTab,
+        mostrarTab:               mostrarTab,
         selecionarUsuarioModulos: selecionarUsuarioModulos,
-        filtrarModulos:         filtrarModulos,
-        habilitarTodos:         habilitarTodos,
-        desabilitarTodos:       desabilitarTodos,
-        resetarParaPerfil:      resetarParaPerfil,
-        salvarPermissoes:       salvarPermissoes,
-        abrirModulosUsuario:    abrirModulosUsuario
+        filtrarModulos:           filtrarModulos,
+        habilitarTodos:           habilitarTodos,
+        desabilitarTodos:         desabilitarTodos,
+        resetarParaPerfil:        resetarParaPerfil,
+        salvarPermissoes:         salvarPermissoes,
+        abrirModulosUsuario:      abrirModulosUsuario,
+        _onToggleModulo:          _onToggleModulo,
+        _onTogglePerm:            _onTogglePerm
     };
 }
 
@@ -74,7 +76,13 @@ function bindDOM() {
         modAdminBanner:  document.getElementById('modAdminBanner'),
         modLegenda:      document.getElementById('modLegenda'),
         modBusca:        document.getElementById('modBusca'),
-        modBadgeUsuario: document.getElementById('modBadgeUsuario')
+        modBadgeUsuario:  document.getElementById('modBadgeUsuario'),
+        modPendingBadge: document.getElementById('modPendingBadge'),
+        modAuditoriaBar: document.getElementById('modAuditoriaBar'),
+        modAuditData:    document.getElementById('modAuditData'),
+        modAuditAutor:   document.getElementById('modAuditAutor'),
+        modAuditOrigem:  document.getElementById('modAuditOrigem'),
+        modEstadoVazio:  document.getElementById('modEstadoVazio')
     };
 }
 
@@ -252,15 +260,31 @@ function abrirModulosUsuario(userId) {
 }
 
 function selecionarUsuarioModulos(userId) {
-    if (!userId) return;
+    if (!userId) {
+        // Sem usuário: mostrar estado vazio
+        if (state.dom.modEstadoVazio)   state.dom.modEstadoVazio.style.display = 'block';
+        if (state.dom.modAdminBanner)   state.dom.modAdminBanner.classList.remove('show');
+        if (state.dom.modHeader)        state.dom.modHeader.style.display = 'none';
+        if (state.dom.modLegenda)       state.dom.modLegenda.style.display = 'none';
+        if (state.dom.modBusca)         state.dom.modBusca.style.display = 'none';
+        if (state.dom.modAuditoriaBar)  state.dom.modAuditoriaBar.classList.remove('show');
+        if (state.dom.modGruposContainer) state.dom.modGruposContainer.innerHTML = '';
+        if (state.dom.modBadgeUsuario)  state.dom.modBadgeUsuario.style.display = 'none';
+        return;
+    }
     const uid = parseInt(userId);
     const usuario = state.todosUsuarios.find(u => u.id == uid);
     if (!usuario) return;
 
     state.usuarioModuloAtual = usuario;
     state.permissoesEditadas = {};
+    state.alteracoesPendentes = 0;
+    _atualizarBadgePendente(0);
 
-    // Atualizar badge
+    // Ocultar estado vazio
+    if (state.dom.modEstadoVazio) state.dom.modEstadoVazio.style.display = 'none';
+
+    // Atualizar badge na tab
     if (state.dom.modBadgeUsuario) {
         state.dom.modBadgeUsuario.textContent = usuario.nome.split(' ')[0];
         state.dom.modBadgeUsuario.style.display = 'inline';
@@ -284,9 +308,9 @@ function selecionarUsuarioModulos(userId) {
     const isAdmin = usuario.permissao === 'admin';
     if (state.dom.modAdminBanner) state.dom.modAdminBanner.classList.toggle('show', isAdmin);
     if (state.dom.modHeader)      state.dom.modHeader.style.display = isAdmin ? 'none' : 'flex';
-    if (state.dom.modSelecionarUsuario) state.dom.modSelecionarUsuario.style.display = 'none';
-    if (state.dom.modLegenda)     state.dom.modLegenda.style.display = isAdmin ? 'none' : 'flex';
-    if (state.dom.modBusca)       state.dom.modBusca.style.display   = isAdmin ? 'none' : 'block';
+    if (state.dom.modLegenda)     state.dom.modLegenda.style.display   = isAdmin ? 'none' : 'flex';
+    if (state.dom.modBusca)       state.dom.modBusca.style.display     = isAdmin ? 'none' : 'block';
+    if (state.dom.modAuditoriaBar) state.dom.modAuditoriaBar.classList.remove('show');
 
     if (isAdmin) {
         if (state.dom.modGruposContainer) state.dom.modGruposContainer.innerHTML = '';
@@ -314,6 +338,8 @@ function selecionarUsuarioModulos(userId) {
                     pode_exportar: m.pode_exportar
                 };
             });
+            // Exibir rastreabilidade de auditoria
+            _exibirAuditoria(permissoes);
             renderizarGruposModulos(state.todosModulos, usuario);
         })
         .catch(err => {
@@ -408,6 +434,7 @@ function _renderCardModulo(m, usuario) {
     }[m.permissao_minima] || 'mod-min-operador';
 
     const perms = [
+        { key:'pode_acessar',  label:'Ver',      icon:'fa-eye' },
         { key:'pode_criar',    label:'Criar',    icon:'fa-plus' },
         { key:'pode_editar',   label:'Editar',   icon:'fa-edit' },
         { key:'pode_excluir',  label:'Excluir',  icon:'fa-trash' },
@@ -422,27 +449,22 @@ function _renderCardModulo(m, usuario) {
                 <div class="mod-card-nome">${m.nome}</div>
                 <div class="mod-card-desc">${m.descricao || ''}</div>
                 <span class="mod-min-badge ${minBadgeClass}">
-                    <i class="fas fa-lock" style="font-size:0.65rem;"></i> ${_textoPermissao(m.permissao_minima)}
+                    <i class="fas fa-lock" style="font-size:0.65rem;"></i> mínimo: ${_textoPermissao(m.permissao_minima)}
                 </span>
             </div>
-            <div class="mod-card-toggle">
-                <label class="toggle-switch" title="${perfilPermite ? 'Clique para habilitar/desabilitar' : 'Perfil não tem permissão mínima para este módulo'}">
-                    <input type="checkbox" id="toggle_${m.modulo_chave}"
-                           ${habilitado ? 'checked' : ''}
-                           ${!perfilPermite ? 'disabled' : ''}
-                           onchange="UsuariosPage._onToggleModulo('${m.modulo_chave}', this.checked)">
-                    <span class="toggle-slider"></span>
-                </label>
-            </div>
+            ${!perfilPermite ? `<div title="Perfil não tem permissão mínima" style="color:#94a3b8;font-size:0.85rem;"><i class="fas fa-lock"></i></div>` : ''}
         </div>
         <div class="mod-card-perms" id="perms_${m.modulo_chave}">
-            ${perms.map(p => `
-            <div class="mod-perm-chip ${perm[p.key] ? 'on' : 'off'} ${!habilitado || !perfilPermite ? 'disabled' : ''}"
-                 id="chip_${m.modulo_chave}_${p.key}"
-                 onclick="UsuariosPage._onTogglePerm('${m.modulo_chave}','${p.key}',this)"
-                 title="${p.label}">
-                <i class="fas ${p.icon}" style="font-size:0.65rem;"></i> ${p.label}
-            </div>`).join('')}
+            ${perms.map(p => {
+                const ativo = !!perm[p.key];
+                const desabilitado = !perfilPermite || (p.key !== 'pode_acessar' && !perm.pode_acessar);
+                return `<div class="mod-perm-chip ${ativo ? 'on' : 'off'} ${desabilitado ? 'disabled' : ''}"
+                     id="chip_${m.modulo_chave}_${p.key}"
+                     onclick="UsuariosPage._onTogglePerm('${m.modulo_chave}','${p.key}',this)"
+                     title="${p.label}: ${ativo ? 'Habilitado — clique para desabilitar' : 'Desabilitado — clique para habilitar'}">
+                    <i class="fas ${p.icon}" style="font-size:0.65rem;"></i> ${p.label}
+                </div>`;
+            }).join('')}
         </div>
     </div>`;
 }
@@ -466,10 +488,31 @@ function _onToggleModulo(chave, habilitado) {
 
 function _onTogglePerm(chave, permKey, chip) {
     const perm = state.permissoesEditadas[chave];
-    if (!perm || !perm.pode_acessar) return; // não alterar se módulo desabilitado
-    perm[permKey] = perm[permKey] ? 0 : 1;
-    chip.classList.toggle('on',  !!perm[permKey]);
-    chip.classList.toggle('off', !perm[permKey]);
+    if (!perm) return;
+    // Se clicar em 'Ver' (pode_acessar), ativar/desativar o módulo todo
+    if (permKey === 'pode_acessar') {
+        perm.pode_acessar = perm.pode_acessar ? 0 : 1;
+        chip.classList.toggle('on',  !!perm.pode_acessar);
+        chip.classList.toggle('off', !perm.pode_acessar);
+        // Desabilitar/habilitar os outros chips
+        const card = document.getElementById(`card_${chave}`);
+        const m = state.todosModulos.find(x => x.modulo_chave === chave);
+        if (card) _atualizarClasseCard(card, !!perm.pode_acessar, m?.perfil_permite);
+        const outrosChips = document.querySelectorAll(`[id^="chip_${chave}_"]`);
+        outrosChips.forEach(c => {
+            if (c.id === `chip_${chave}_pode_acessar`) return;
+            c.classList.toggle('disabled', !perm.pode_acessar);
+        });
+        if (m) _atualizarContadorGrupo(m.grupo);
+    } else {
+        if (!perm.pode_acessar) return; // não alterar se módulo desabilitado
+        perm[permKey] = perm[permKey] ? 0 : 1;
+        chip.classList.toggle('on',  !!perm[permKey]);
+        chip.classList.toggle('off', !perm[permKey]);
+    }
+    // Rastrear alterações pendentes
+    state.alteracoesPendentes = (state.alteracoesPendentes || 0) + 1;
+    _atualizarBadgePendente(state.alteracoesPendentes);
 }
 
 function _atualizarClasseCard(card, habilitado, perfilPermite) {
@@ -558,6 +601,14 @@ function salvarPermissoes() {
     .then(data => {
         if (data.sucesso) {
             mostrarAlerta(`✓ Permissões de "${state.usuarioModuloAtual.nome}" salvas com sucesso!`, 'success');
+            state.alteracoesPendentes = 0;
+            _atualizarBadgePendente(0);
+            // Atualizar rastreabilidade
+            if (state.dom.modAuditData)   state.dom.modAuditData.textContent   = new Date().toLocaleString('pt-BR');
+            if (state.dom.modAuditAutor)  state.dom.modAuditAutor.textContent  = 'Você (agora)';
+            const total = Object.keys(state.permissoesEditadas).length;
+            const hab   = Object.values(state.permissoesEditadas).filter(p => p.pode_acessar).length;
+            if (state.dom.modAuditOrigem) state.dom.modAuditOrigem.textContent = `${hab}/${total} módulos habilitados`;
         } else {
             mostrarAlerta('Erro ao salvar: ' + data.mensagem, 'error');
         }
@@ -731,4 +782,48 @@ function _badgePermissao(p) {
 }
 function _textoPermissao(p) {
     return { admin:'Administrador', gerente:'Gerente', operador:'Operador', visualizador:'Visualizador' }[p] || p;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// RASTREABILIDADE / AUDITORIA
+// ─────────────────────────────────────────────────────────────────────
+function _exibirAuditoria(permissoes) {
+    const d = state.dom;
+    if (!d.modAuditoriaBar) return;
+
+    // Verificar se algum módulo tem registro individual (origem = 'individual')
+    const comRegistro = Object.values(permissoes).filter(p => p.origem === 'individual');
+    const totalModulos = Object.values(permissoes).length;
+    const habilitados  = Object.values(permissoes).filter(p => p.pode_acessar).length;
+
+    if (comRegistro.length > 0) {
+        // Buscar a data mais recente de atualização
+        d.modAuditoriaBar.classList.add('show');
+        if (d.modAuditData)   d.modAuditData.textContent   = 'Permissões personalizadas';
+        if (d.modAuditAutor)  d.modAuditAutor.textContent  = 'Configurado manualmente';
+        if (d.modAuditOrigem) d.modAuditOrigem.textContent = `${habilitados}/${totalModulos} módulos habilitados`;
+    } else {
+        d.modAuditoriaBar.classList.add('show');
+        if (d.modAuditData)   d.modAuditData.textContent   = 'Padrão do perfil';
+        if (d.modAuditAutor)  d.modAuditAutor.textContent  = 'Automático';
+        if (d.modAuditOrigem) d.modAuditOrigem.textContent = `${habilitados}/${totalModulos} módulos habilitados`;
+    }
+}
+
+function _atualizarBadgePendente(count) {
+    const badge = state.dom.modPendingBadge;
+    if (!badge) return;
+    if (count > 0) {
+        badge.textContent = `● ${count} alteração${count > 1 ? 'ões' : ''} não salva${count > 1 ? 's' : ''}`;
+        badge.classList.add('show');
+    } else {
+        badge.classList.remove('show');
+    }
+}
+
+// Expor funções de toggle para uso inline no HTML
+if (typeof window !== 'undefined') {
+    window.UsuariosPage = window.UsuariosPage || {};
+    window.UsuariosPage._onToggleModulo = _onToggleModulo;
+    window.UsuariosPage._onTogglePerm   = _onTogglePerm;
 }
