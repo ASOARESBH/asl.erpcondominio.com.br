@@ -49,10 +49,16 @@
 
         // Administrativo
         administrativa:         'administrativa',
+        assembleia:             'assembleia',
         contratos:              'contratos',
         protocolos:             'protocolos',
         notificacoes:           'notificacoes',
         eventos:                'eventos',
+        fornecedores:           'fornecedores',
+        cadastro_fornecedor_admin: 'fornecedores',
+
+        // Manutenção (inclui checklists movido de Administrativo)
+        checklists:             'checklists',
 
         // RH
         recursos_humanos:       'recursos_humanos',

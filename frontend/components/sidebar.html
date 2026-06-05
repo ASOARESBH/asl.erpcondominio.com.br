@@ -74,10 +74,70 @@
                     <i class="fas fa-boxes"></i> Estoque
                 </a>
             </li>
+            <!-- Checklists (movido de Administrativo) -->
+            <li>
+                <a href="#" data-page="checklists" class="nav-link nav-sublink">
+                    <i class="fas fa-clipboard-check"></i> Checklists
+                </a>
+            </li>
         </ul>
     </li>
-    <li class="nav-item"><a href="#" data-page="administrativa" class="nav-link"><i class="fas fa-briefcase"></i>
-            Administrativo</a></li>
+    <!-- ============================================================
+         ADMINISTRATIVO — com submenu incluindo Assembleia
+         ============================================================ -->
+    <li class="nav-item submenu-container">
+        <a href="#" class="nav-link submenu-toggle" data-toggle="submenu" data-target="submenu-administrativa">
+            <i class="fas fa-briefcase"></i> Administrativo
+            <i class="fas fa-chevron-down submenu-arrow" style="margin-left:auto;font-size:11px;transition:transform 0.2s;"></i>
+        </a>
+        <ul class="submenu-content" id="submenu-administrativa">
+            <li>
+                <a href="#" data-page="administrativa" class="nav-link nav-sublink">
+                    <i class="fas fa-home"></i> Visão Geral
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="assembleia" class="nav-link nav-sublink">
+                    <i class="fas fa-landmark"></i> Assembleia
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="contratos" class="nav-link nav-sublink">
+                    <i class="fas fa-file-contract"></i> Contratos
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="eventos" class="nav-link nav-sublink">
+                    <i class="fas fa-calendar-alt"></i> Eventos
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="protocolos" class="nav-link nav-sublink">
+                    <i class="fas fa-inbox"></i> Protocolos
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="inventario" class="nav-link nav-sublink">
+                    <i class="fas fa-boxes"></i> Inventário
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="marketplace" class="nav-link nav-sublink">
+                    <i class="fas fa-store"></i> Marketplace
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="crm" class="nav-link nav-sublink">
+                    <i class="fas fa-handshake"></i> CRM
+                </a>
+            </li>
+            <li>
+                <a href="#" data-page="fornecedores" class="nav-link nav-sublink">
+                    <i class="fas fa-truck"></i> Fornecedores
+                </a>
+            </li>
+        </ul>
+    </li>
 
     <li class="nav-item" style="margin-top: 1rem;">
         <a href="#" class="nav-link nav-link-logout" id="btn-logout" style="color: #fca5a5;">
