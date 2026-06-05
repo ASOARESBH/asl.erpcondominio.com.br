@@ -382,16 +382,14 @@ tbody td { padding: 8px 10px; vertical-align: middle; }
                     <th>E-mail</th>
                     <th>Telefone</th>
                     <th>Celular</th>
-                    <th style="width:50px;text-align:center">Dep.</th>
                     <th style="width:55px">Status</th>
                 </tr>
             </thead>
             <tbody>
             <?php if (empty($moradores)): ?>
-                <tr><td colspan="8" class="sem-dados">Nenhum morador encontrado</td></tr>
+                <tr><td colspan="7" class="sem-dados">Nenhum morador encontrado</td></tr>
             <?php else: ?>
                 <?php foreach ($moradores as $m): ?>
-                <?php $deps = $dep_por_morador[$m['id']] ?? []; ?>
                 <tr>
                     <td><span class="unidade-tag"><?= esc($m['unidade'] ?? '—') ?></span></td>
                     <td><strong><?= esc($m['nome'] ?? '—') ?></strong></td>
@@ -399,7 +397,6 @@ tbody td { padding: 8px 10px; vertical-align: middle; }
                     <td><?= esc($m['email'] ?? '—') ?></td>
                     <td><?= fmt_tel($m['telefone']) ?></td>
                     <td><?= fmt_tel($m['celular']) ?></td>
-                    <td style="text-align:center"><span class="dep-count"><?= count($deps) ?></span></td>
                     <td>
                         <?php if (($m['ativo'] ?? 1) == 1): ?>
                         <span class="badge badge-ativo">Ativo</span>
@@ -408,30 +405,70 @@ tbody td { padding: 8px 10px; vertical-align: middle; }
                         <?php endif; ?>
                     </td>
                 </tr>
-                <?php if (!empty($deps)): ?>
-                <tr>
-                    <td colspan="8" style="padding:0 10px 6px 30px;background:#f8fafc;">
-                        <?php foreach ($deps as $d): ?>
-                        <div class="dep-bloco">
-                            <strong><?= esc($d['nome_completo'] ?? '—') ?></strong>
-                            <span> — <?= esc($d['parentesco'] ?? '—') ?></span>
-                            <?php if (!empty($d['cpf'])): ?>
-                            <span> | CPF: <?= fmt_cpf($d['cpf']) ?></span>
-                            <?php endif; ?>
-                            <?php if (!empty($d['celular'])): ?>
-                            <span> | <?= esc($d['celular']) ?></span>
-                            <?php endif; ?>
-                        </div>
-                        <?php endforeach; ?>
-                    </td>
-                </tr>
-                <?php endif; ?>
                 <?php endforeach; ?>
             <?php endif; ?>
             </tbody>
         </table>
         <p style="margin-top:10px;font-size:9px;color:#64748b;text-align:right;">
-            Total: <?= count($moradores) ?> morador(es) | <?= $total_dependentes ?> dependente(s)
+            Total: <?= count($moradores) ?> morador(es)
+        </p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         TIPO: DEPENDENTES
+    ═══════════════════════════════════════════════════════ -->
+    <?php elseif ($tipo === 'dependentes'): ?>
+    <?php
+    // Ordenar dependentes por unidade do morador titular (natural)
+    usort($dependentes, function($a, $b) {
+        $nA = (int) preg_replace('/\D/', '', $a['morador_unidade'] ?? '0');
+        $nB = (int) preg_replace('/\D/', '', $b['morador_unidade'] ?? '0');
+        if ($nA !== $nB) return $nA - $nB;
+        $cmp = strcmp($a['morador_unidade'] ?? '', $b['morador_unidade'] ?? '');
+        if ($cmp !== 0) return $cmp;
+        return strcmp($a['nome_completo'] ?? '', $b['nome_completo'] ?? '');
+    });
+    // Aplicar filtro de texto sobre dependentes
+    if ($filtro !== '') {
+        $dependentes = array_values(array_filter($dependentes, function($d) use ($filtro_lower) {
+            return strpos(strtolower($d['morador_unidade'] ?? ''), $filtro_lower) !== false
+                || strpos(strtolower($d['nome_completo']   ?? ''), $filtro_lower) !== false
+                || strpos(strtolower($d['morador_nome']    ?? ''), $filtro_lower) !== false;
+        }));
+    }
+    ?>
+    <div class="secao">
+        <div class="secao-titulo">Relatório de Dependentes</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:90px">Unidade</th>
+                    <th>Morador Titular</th>
+                    <th>Nome do Dependente</th>
+                    <th style="width:110px">CPF</th>
+                    <th style="width:100px">Parentesco</th>
+                    <th style="width:120px">Celular</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if (empty($dependentes)): ?>
+                <tr><td colspan="6" class="sem-dados">Nenhum dependente encontrado</td></tr>
+            <?php else: ?>
+                <?php foreach ($dependentes as $d): ?>
+                <tr>
+                    <td><span class="unidade-tag"><?= esc($d['morador_unidade'] ?? '—') ?></span></td>
+                    <td><?= esc($d['morador_nome'] ?? '—') ?></td>
+                    <td><strong><?= esc($d['nome_completo'] ?? '—') ?></strong></td>
+                    <td><?= fmt_cpf($d['cpf']) ?></td>
+                    <td><?= esc($d['parentesco'] ?? '—') ?></td>
+                    <td><?= fmt_tel($d['celular']) ?></td>
+                </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+            </tbody>
+        </table>
+        <p style="margin-top:10px;font-size:9px;color:#64748b;text-align:right;">
+            Total: <?= count($dependentes) ?> dependente(s)
         </p>
     </div>
 

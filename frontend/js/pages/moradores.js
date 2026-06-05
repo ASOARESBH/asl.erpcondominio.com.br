@@ -983,11 +983,18 @@ let _relTipoAtual = null; // tipo de relatório selecionado
 // Configuração dos tipos de relatório
 const REL_TIPOS = {
     completo: {
-        titulo: 'Relatório Completo',
+        titulo: 'Relatório Completo de Moradores',
         icon: '<i class="fas fa-file-alt"></i>',
-        colunas: ['Unidade', 'Nome Completo', 'CPF', 'E-mail', 'Telefone', 'Celular', 'Dep.', 'Status'],
+        colunas: ['Unidade', 'Nome Completo', 'CPF', 'E-mail', 'Telefone', 'Celular', 'Status'],
         csvNome: 'relatorio_completo_moradores.csv',
         mostrarStatus: true,
+    },
+    dependentes: {
+        titulo: 'Relatório de Dependentes',
+        icon: '<i class="fas fa-users"></i>',
+        colunas: ['Unidade', 'Morador Titular', 'Nome do Dependente', 'CPF', 'Parentesco', 'Celular'],
+        csvNome: 'relatorio_dependentes.csv',
+        mostrarStatus: false,
     },
     contato_simples: {
         titulo: 'Unidade, Nome e Telefone',
@@ -1182,8 +1189,6 @@ function _relRenderizarTabela() {
 
     if (_relTipoAtual === 'completo') {
         lista.forEach(m => {
-            const id   = m.id || m.id_morador;
-            const deps = depPorMorador[id] || [];
             const ativo = String(m.ativo) === '1';
             html += `<tr>
                 <td><span class="rel-badge-unidade">${m.unidade || '—'}</span></td>
@@ -1192,22 +1197,49 @@ function _relRenderizarTabela() {
                 <td>${m.email || '—'}</td>
                 <td>${m.telefone || '—'}</td>
                 <td>${m.celular || '—'}</td>
-                <td style="text-align:center"><span class="rel-badge-count">${deps.length}</span></td>
                 <td><span class="rel-badge-status ${ativo ? 'ativo' : 'inativo'}">${ativo ? 'Ativo' : 'Inativo'}</span></td>
             </tr>`;
-            if (deps.length) {
-                html += `<tr class="rel-dep-row"><td colspan="8">`;
-                deps.forEach(d => {
-                    html += `<div class="rel-dep-item">
-                        <i class="fas fa-user-tag"></i>
-                        <strong>${d.nome_completo || '—'}</strong>
-                        <span class="rel-dep-parentesco">${d.parentesco || '—'}</span>
-                        ${d.cpf ? `<span>CPF: ${d.cpf}</span>` : ''}
-                        ${d.celular ? `<span>${d.celular}</span>` : ''}
-                    </div>`;
-                });
-                html += `</td></tr>`;
-            }
+        });
+
+    } else if (_relTipoAtual === 'dependentes') {
+        // Listar todos os dependentes ordenados por unidade do morador titular
+        const todosOsDeps = _relDados.dependentes.slice().sort((a, b) => {
+            const numA = parseInt((a.morador_unidade || '0').replace(/\D/g, '') || '0', 10);
+            const numB = parseInt((b.morador_unidade || '0').replace(/\D/g, '') || '0', 10);
+            if (numA !== numB) return numA - numB;
+            return (a.morador_unidade || '').localeCompare(b.morador_unidade || '');
+        });
+
+        // Aplicar filtro de texto (unidade ou nome do dependente ou do titular)
+        const termoD = (document.getElementById('rel-filtro-texto')?.value || '').trim().toLowerCase();
+        const filtrados = todosOsDeps.filter(d => {
+            if (!termoD) return true;
+            return (d.morador_unidade || '').toLowerCase().includes(termoD)
+                || (d.nome_completo   || '').toLowerCase().includes(termoD)
+                || (d.morador_nome    || '').toLowerCase().includes(termoD);
+        });
+
+        // Atualizar contador
+        if (elContador) {
+            elContador.textContent = filtrados.length === 0
+                ? 'Nenhum dependente encontrado com os filtros aplicados'
+                : `${filtrados.length} dependente(s) encontrado(s)`;
+        }
+
+        if (!filtrados.length) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;opacity:.6;">Nenhum dependente encontrado</td></tr>`;
+            return;
+        }
+
+        filtrados.forEach(d => {
+            html += `<tr>
+                <td><span class="rel-badge-unidade">${d.morador_unidade || '—'}</span></td>
+                <td>${d.morador_nome || '—'}</td>
+                <td><strong>${d.nome_completo || '—'}</strong></td>
+                <td>${d.cpf || '—'}</td>
+                <td>${d.parentesco || '—'}</td>
+                <td>${d.celular || '—'}</td>
+            </tr>`;
         });
 
     } else if (_relTipoAtual === 'contato_simples') {
@@ -1364,14 +1396,24 @@ function _relExportarCSV(tipoOverride) {
     let rows = [];
 
     if (tipo === 'completo') {
-        rows.push(['Unidade', 'Nome Completo', 'CPF', 'E-mail', 'Telefone', 'Celular', 'Dependentes', 'Status']);
+        rows.push(['Unidade', 'Nome Completo', 'CPF', 'E-mail', 'Telefone', 'Celular', 'Status']);
         lista.forEach(m => {
-            const id   = m.id || m.id_morador;
-            const deps = depPorMorador[id] || [];
             rows.push([m.unidade || '', m.nome || '', m.cpf || '', m.email || '',
-                       m.telefone || '', m.celular || '', deps.length,
+                       m.telefone || '', m.celular || '',
                        String(m.ativo) === '1' ? 'Ativo' : 'Inativo']);
         });
+    } else if (tipo === 'dependentes') {
+        rows.push(['Unidade', 'Morador Titular', 'Nome do Dependente', 'CPF', 'Parentesco', 'Celular']);
+        const depsSorted = _relDados.dependentes.slice().sort((a, b) => {
+            const nA = parseInt((a.morador_unidade || '0').replace(/\D/g, '') || '0', 10);
+            const nB = parseInt((b.morador_unidade || '0').replace(/\D/g, '') || '0', 10);
+            if (nA !== nB) return nA - nB;
+            return (a.morador_unidade || '').localeCompare(b.morador_unidade || '');
+        });
+        depsSorted.forEach(d => rows.push([
+            d.morador_unidade || '', d.morador_nome || '',
+            d.nome_completo || '', d.cpf || '', d.parentesco || '', d.celular || ''
+        ]));
     } else if (tipo === 'contato_simples') {
         rows.push(['Unidade', 'Nome Completo', 'Telefone', 'Celular']);
         lista.forEach(m => rows.push([m.unidade || '', m.nome || '', m.telefone || '', m.celular || '']));
