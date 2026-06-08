@@ -31,6 +31,7 @@
 
         // Financeiro
         financeiro:             'financeiro',
+        contas_bancarias:       'financeiro',
         contas_pagar:           'contas_pagar',
         contas_receber:         'contas_receber',
         planos_contas:          'planos_contas',
