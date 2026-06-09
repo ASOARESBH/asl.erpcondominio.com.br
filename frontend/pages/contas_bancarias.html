@@ -399,12 +399,15 @@
       <div class="cb-form-row">
         <div class="cb-form-grupo cb-form-grupo-sm">
           <label>Código do Banco <span class="obrig">*</span></label>
-          <input type="text" id="conta-banco-codigo" placeholder="Ex: 0237" maxlength="10"
-                 oninput="ContasBancarias.autocompletarBanco(this.value)">
+          <input type="text" id="conta-banco-codigo" placeholder="Ex: 0237 ou nome do banco" maxlength="10"
+                 oninput="ContasBancarias.autocompletarBanco(this.value)"
+                 autocomplete="off">
         </div>
         <div class="cb-form-grupo">
           <label>Nome do Banco <span class="obrig">*</span></label>
-          <input type="text" id="conta-banco-nome" placeholder="Ex: Banco Bradesco S.A.">
+          <input type="text" id="conta-banco-nome" placeholder="Ex: Banco Bradesco S.A."
+                 oninput="ContasBancarias.autocompletarBancoNome(this.value)"
+                 autocomplete="off">
         </div>
       </div>
 

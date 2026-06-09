@@ -75,6 +75,11 @@ switch ($acao) {
     case 'saldo_contas':        _saldo_contas($db); break;
     case 'relatorio_extrato':   _relatorio_extrato($db); break;
 
+    // ── BANCOS BRASILEIROS ───────────────────────────
+    case 'buscar_banco':        _buscar_banco($db); break;
+    case 'listar_bancos':       _listar_bancos($db); break;
+    case 'migration_bancos':    _migration_bancos($db); break;
+
     default:
         _json(false, 'Ação inválida: ' . htmlspecialchars($acao), null, 400);
 }
@@ -650,7 +655,144 @@ function _ofx_data($str) {
 }
 
 // =====================================================
-// MIGRATION AUTOMÁTICA
+// BANCOS BRASILEIROS
+// =====================================================
+
+/**
+ * Busca banco por código exato ou por nome (busca parcial).
+ * GET ?acao=buscar_banco&q=237  ou  ?acao=buscar_banco&q=bradesco
+ */
+function _buscar_banco($db) {
+    $q = trim($_GET['q'] ?? '');
+    if (strlen($q) === 0) _json(false, 'Parâmetro q obrigatório', null, 400);
+
+    // Verifica se a tabela existe
+    $chk = $db->query("SHOW TABLES LIKE 'bancos_brasileiros'");
+    if (!$chk || $chk->num_rows === 0) {
+        // Tabela não existe ainda — retorna array vazio para não quebrar o front
+        _json(true, 'Tabela não migrada', []);
+    }
+
+    // Busca por código exato primeiro
+    $stmt = $db->prepare("SELECT codigo, ispb, nome, nome_curto FROM bancos_brasileiros WHERE codigo = ? AND ativo = 1 LIMIT 1");
+    $stmt->bind_param('s', $q);
+    $stmt->execute();
+    $exact = $stmt->get_result()->fetch_assoc();
+    if ($exact) {
+        _json(true, 'OK', [$exact]);
+    }
+
+    // Busca por nome parcial (máx 15 resultados)
+    $like = '%' . $q . '%';
+    $stmt2 = $db->prepare("SELECT codigo, ispb, nome, nome_curto FROM bancos_brasileiros WHERE (nome LIKE ? OR nome_curto LIKE ? OR codigo LIKE ?) AND ativo = 1 ORDER BY CAST(codigo AS UNSIGNED), codigo LIMIT 15");
+    $stmt2->bind_param('sss', $like, $like, $like);
+    $stmt2->execute();
+    $res = $stmt2->get_result();
+    $rows = [];
+    while ($r = $res->fetch_assoc()) $rows[] = $r;
+    _json(true, 'OK', $rows);
+}
+
+/**
+ * Lista todos os bancos ativos (para popular um select completo).
+ * GET ?acao=listar_bancos
+ */
+function _listar_bancos($db) {
+    $chk = $db->query("SHOW TABLES LIKE 'bancos_brasileiros'");
+    if (!$chk || $chk->num_rows === 0) _json(true, 'Tabela não migrada', []);
+
+    $res = $db->query("SELECT codigo, ispb, nome, nome_curto FROM bancos_brasileiros WHERE ativo = 1 ORDER BY CAST(codigo AS UNSIGNED), codigo");
+    $rows = [];
+    while ($r = $res->fetch_assoc()) $rows[] = $r;
+    _json(true, 'OK', $rows);
+}
+
+/**
+ * Cria a tabela bancos_brasileiros e insere o seed completo.
+ * GET ?acao=migration_bancos
+ */
+function _migration_bancos($db) {
+    header('Content-Type: application/json; charset=utf-8');
+
+    // 1. Criar tabela
+    $create = "CREATE TABLE IF NOT EXISTS bancos_brasileiros (
+        id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        codigo    VARCHAR(10)  NOT NULL,
+        ispb      VARCHAR(8)   DEFAULT NULL,
+        nome      VARCHAR(120) NOT NULL,
+        nome_curto VARCHAR(60) DEFAULT NULL,
+        ativo     TINYINT(1)   NOT NULL DEFAULT 1,
+        UNIQUE KEY uk_codigo (codigo),
+        KEY idx_nome (nome)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+
+    if (!$db->query($create)) {
+        echo json_encode(['sucesso'=>false,'mensagem'=>'Erro ao criar tabela: '.$db->error], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 2. Verificar se já tem dados
+    $count = $db->query("SELECT COUNT(*) AS n FROM bancos_brasileiros")->fetch_assoc()['n'];
+    if ($count > 0) {
+        echo json_encode(['sucesso'=>true,'mensagem'=>"Tabela já populada ($count bancos)"], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // 3. Inserir seed via arquivo SQL
+    $seed_file = __DIR__ . '/../sql/seed_bancos_brasileiros.sql';
+    if (!file_exists($seed_file)) {
+        // Fallback: inserir os principais bancos inline
+        _inserir_bancos_inline($db);
+    } else {
+        // Executar o arquivo SQL linha a linha
+        $sql_content = file_get_contents($seed_file);
+        // Remover CREATE TABLE (já feito) e TRUNCATE
+        $sql_content = preg_replace('/CREATE TABLE.*?;/s', '', $sql_content);
+        $sql_content = preg_replace('/TRUNCATE TABLE.*?;/s', '', $sql_content);
+        // Executar multi_query
+        if ($db->multi_query($sql_content)) {
+            do { if ($res = $db->store_result()) $res->free(); } while ($db->next_result());
+        }
+        if ($db->errno) {
+            // Tentar inserir inline como fallback
+            _inserir_bancos_inline($db);
+        }
+    }
+
+    $total = $db->query("SELECT COUNT(*) AS n FROM bancos_brasileiros")->fetch_assoc()['n'];
+    echo json_encode(['sucesso'=>true,'mensagem'=>"$total bancos inseridos com sucesso"], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function _inserir_bancos_inline($db) {
+    // Principais bancos brasileiros (fallback se o arquivo SQL não estiver disponível)
+    $bancos = [
+        ['001','00000000','Banco do Brasil S.A.','BB'],
+        ['033','90400888','Banco Santander (Brasil) S.A.','SANTANDER'],
+        ['041','92702067','Banco do Estado do Rio Grande do Sul S.A.','BANRISUL'],
+        ['077','00416968','Banco Inter S.A.','INTER'],
+        ['104','00360305','Caixa Econômica Federal','CAIXA'],
+        ['208','33870163','Banco BTG Pactual S.A.','BTG PACTUAL'],
+        ['212','92894922','Banco Original S.A.','ORIGINAL'],
+        ['237','60746948','Banco Bradesco S.A.','BRADESCO'],
+        ['260','18236120','Nu Pagamentos S.A. — Nubank','NUBANK'],
+        ['290','13884775','Pagseguro Internet S.A.','PAGSEGURO'],
+        ['318','71371686','Banco BMG S.A.','BMG'],
+        ['323','10573521','Mercado Pago — Conta do Mercado Livre','MERCADO PAGO'],
+        ['336','00000000','Banco C6 S.A.','C6 BANK'],
+        ['341','60701190','Itaú Unibanco S.A.','ITAÚ'],
+        ['380','22896431','PicPay Serviços S.A.','PICPAY'],
+        ['422','58160789','Banco Safra S.A.','SAFRA'],
+        ['748','01181521','Banco Cooperativo Sicredi S.A.','SICREDI'],
+        ['756','02038232','Banco Cooperativo do Brasil S.A. — Bancoob','SICOOB'],
+    ];
+    $stmt = $db->prepare("INSERT IGNORE INTO bancos_brasileiros (codigo,ispb,nome,nome_curto) VALUES (?,?,?,?)");
+    foreach ($bancos as $b) {
+        $stmt->bind_param('ssss', $b[0], $b[1], $b[2], $b[3]);
+        $stmt->execute();
+    }
+}
+
 // =====================================================
 function _executar_migration() {
     header('Content-Type: application/json; charset=utf-8');

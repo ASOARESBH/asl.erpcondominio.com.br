@@ -20,28 +20,9 @@ const S = {
 };
 
 const API = '/api/api_contas_bancarias.php';
-
-// ─── Bancos brasileiros (autocomplete) ───────────────────
-const BANCOS = {
-    '001': 'Banco do Brasil S.A.',
-    '033': 'Banco Santander (Brasil) S.A.',
-    '077': 'Banco Inter S.A.',
-    '104': 'Caixa Econômica Federal',
-    '208': 'Banco BTG Pactual S.A.',
-    '212': 'Banco Original S.A.',
-    '237': 'Banco Bradesco S.A.',
-    '260': 'Nu Pagamentos S.A. (Nubank)',
-    '290': 'PagBank (PagSeguro)',
-    '341': 'Itaú Unibanco S.A.',
-    '389': 'Banco Mercantil do Brasil S.A.',
-    '422': 'Banco Safra S.A.',
-    '623': 'Banco Pan S.A.',
-    '633': 'Banco Rendimento S.A.',
-    '655': 'Banco Votorantim S.A.',
-    '707': 'Banco Daycoval S.A.',
-    '748': 'Sicredi',
-    '756': 'Bancoob (Sicoob)',
-};
+// ─── Bancos brasileiros (autocomplete via API) ────────────────
+let _bancosTimer = null;  // debounce timer
+let _bancosDropdown = null; // elemento dropdown ativo
 
 // ─── Init / Destroy ──────────────────────────────────────
 export function init() {
@@ -76,6 +57,7 @@ function _api_publica() {
         conciliarSelecionados,
         exportarCSV,
         autocompletarBanco,
+        autocompletarBancoNome,
         setTipoMov,
         dragOver,
         dragLeave,
@@ -391,9 +373,97 @@ async function salvarConta() {
     }
 }
 
-function autocompletarBanco(codigo) {
-    const nome = BANCOS[codigo.replace(/\D/g,'').padStart(3,'0')];
-    if (nome) _el('conta-banco-nome').value = nome;
+// Autocomplete de banco: busca na API com debounce 300ms
+function autocompletarBanco(query) {
+    clearTimeout(_bancosTimer);
+    _fecharDropdownBancos();
+    const q = query.trim();
+    if (!q) return;
+    _bancosTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`${API}?acao=buscar_banco&q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (data.ok && data.bancos && data.bancos.length > 0) {
+                _abrirDropdownBancos(data.bancos);
+            }
+        } catch(e) { /* silencioso */ }
+    }, 300);
+}
+
+function _abrirDropdownBancos(bancos) {
+    _fecharDropdownBancos();
+    const input = _el('conta-banco-codigo');
+    if (!input) return;
+    const dd = document.createElement('div');
+    dd.id = 'banco-dropdown';
+    dd.className = 'banco-autocomplete-dropdown';
+    bancos.forEach(b => {
+        const item = document.createElement('div');
+        item.className = 'banco-autocomplete-item';
+        item.innerHTML = `<span class="banco-codigo">${b.codigo}</span><span class="banco-nome">${b.nome}</span>`;
+        item.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            _el('conta-banco-codigo').value = b.codigo;
+            _el('conta-banco-nome').value   = b.nome;
+            _fecharDropdownBancos();
+        });
+        dd.appendChild(item);
+    });
+    input.parentNode.style.position = 'relative';
+    input.parentNode.appendChild(dd);
+    _bancosDropdown = dd;
+    // Fechar ao clicar fora
+    setTimeout(() => {
+        document.addEventListener('click', _fecharDropdownBancos, { once: true });
+    }, 10);
+}
+
+function _fecharDropdownBancos() {
+    if (_bancosDropdown) {
+        _bancosDropdown.remove();
+        _bancosDropdown = null;
+    }
+}
+
+// Autocomplete por nome do banco
+function autocompletarBancoNome(query) {
+    clearTimeout(_bancosTimer);
+    _fecharDropdownBancos();
+    const q = query.trim();
+    if (q.length < 2) return;
+    _bancosTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`${API}?acao=buscar_banco&q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (data.ok && data.bancos && data.bancos.length > 0) {
+                // Dropdown ancorado no campo nome
+                _fecharDropdownBancos();
+                const input = _el('conta-banco-nome');
+                if (!input) return;
+                const dd = document.createElement('div');
+                dd.id = 'banco-dropdown';
+                dd.className = 'banco-autocomplete-dropdown';
+                data.bancos.forEach(b => {
+                    const item = document.createElement('div');
+                    item.className = 'banco-autocomplete-item';
+                    item.innerHTML = `<span class="banco-codigo">${b.codigo}</span><span class="banco-nome">${b.nome}</span>`;
+                    item.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        _el('conta-banco-codigo').value = b.codigo;
+                        _el('conta-banco-nome').value   = b.nome;
+                        _fecharDropdownBancos();
+                    });
+                    dd.appendChild(item);
+                });
+                input.parentNode.style.position = 'relative';
+                input.parentNode.appendChild(dd);
+                _bancosDropdown = dd;
+                setTimeout(() => {
+                    document.addEventListener('click', _fecharDropdownBancos, { once: true });
+                }, 10);
+            }
+        } catch(e) { /* silencioso */ }
+    }, 300);
 }
 
 // =====================================================
