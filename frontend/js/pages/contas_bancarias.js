@@ -381,12 +381,12 @@ function autocompletarBanco(query) {
     if (!q) return;
     _bancosTimer = setTimeout(async () => {
         try {
-            const res = await fetch(`${API}?acao=buscar_banco&q=${encodeURIComponent(q)}`);
+            const res = await fetch(`${API}?acao=buscar_banco&q=${encodeURIComponent(q)}`, { credentials: 'include' });
             const data = await res.json();
-            if (data.ok && data.bancos && data.bancos.length > 0) {
-                _abrirDropdownBancos(data.bancos);
+            if (data.sucesso && data.dados && data.dados.length > 0) {
+                _abrirDropdownBancos(data.dados);
             }
-        } catch(e) { /* silencioso */ }
+        } catch(e) { console.warn('[ContasBancarias] autocompletarBanco erro:', e); }
     }, 300);
 }
 
@@ -433,9 +433,9 @@ function autocompletarBancoNome(query) {
     if (q.length < 2) return;
     _bancosTimer = setTimeout(async () => {
         try {
-            const res = await fetch(`${API}?acao=buscar_banco&q=${encodeURIComponent(q)}`);
+            const res = await fetch(`${API}?acao=buscar_banco&q=${encodeURIComponent(q)}`, { credentials: 'include' });
             const data = await res.json();
-            if (data.ok && data.bancos && data.bancos.length > 0) {
+            if (data.sucesso && data.dados && data.dados.length > 0) {
                 // Dropdown ancorado no campo nome
                 _fecharDropdownBancos();
                 const input = _el('conta-banco-nome');
@@ -443,7 +443,7 @@ function autocompletarBancoNome(query) {
                 const dd = document.createElement('div');
                 dd.id = 'banco-dropdown';
                 dd.className = 'banco-autocomplete-dropdown';
-                data.bancos.forEach(b => {
+                data.dados.forEach(b => {
                     const item = document.createElement('div');
                     item.className = 'banco-autocomplete-item';
                     item.innerHTML = `<span class="banco-codigo">${b.codigo}</span><span class="banco-nome">${b.nome}</span>`;
@@ -462,7 +462,7 @@ function autocompletarBancoNome(query) {
                     document.addEventListener('click', _fecharDropdownBancos, { once: true });
                 }, 10);
             }
-        } catch(e) { /* silencioso */ }
+        } catch(e) { console.warn('[ContasBancarias] autocompletarBancoNome erro:', e); }
     }, 300);
 }
 

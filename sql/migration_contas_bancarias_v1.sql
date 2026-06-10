@@ -118,3 +118,22 @@ FROM contas_bancarias cb
 LEFT JOIN movimentacoes_bancarias mb ON mb.conta_id = cb.id
 WHERE cb.ativo = 1
 GROUP BY cb.id;
+
+-- ─────────────────────────────────────────────────────────────
+-- 7. TABELA: Bancos Brasileiros (autocomplete)
+-- Execute também: seed_bancos_brasileiros.sql
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `bancos_brasileiros` (
+  `id`        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `codigo`    VARCHAR(10)  NOT NULL COMMENT 'Código COMPE (3 dígitos) ou ISPB',
+  `ispb`      VARCHAR(8)   DEFAULT NULL COMMENT 'Código ISPB (8 dígitos)',
+  `nome`      VARCHAR(120) NOT NULL,
+  `nome_curto` VARCHAR(60) DEFAULT NULL,
+  `ativo`     TINYINT(1)   NOT NULL DEFAULT 1,
+  UNIQUE KEY `uk_codigo` (`codigo`),
+  KEY `idx_nome` (`nome`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  COMMENT='Tabela de bancos brasileiros — COMPE/BCB';
+-- IMPORTANTE: Após executar esta migration, execute também seed_bancos_brasileiros.sql
+-- para popular a tabela com os 332 bancos brasileiros.
+-- OU acesse: https://asl.erpcondominios.com.br/api/api_contas_bancarias.php?acao=migration_bancos

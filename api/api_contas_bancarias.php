@@ -876,6 +876,18 @@ function _executar_migration() {
         WHERE cb.ativo = 1
         GROUP BY cb.id";
 
+    // Tabela bancos_brasileiros
+    $sqls[] = "CREATE TABLE IF NOT EXISTS bancos_brasileiros (
+        id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        codigo    VARCHAR(10)  NOT NULL,
+        ispb      VARCHAR(8)   DEFAULT NULL,
+        nome      VARCHAR(120) NOT NULL,
+        nome_curto VARCHAR(60) DEFAULT NULL,
+        ativo     TINYINT(1)   NOT NULL DEFAULT 1,
+        UNIQUE KEY uk_codigo (codigo),
+        KEY idx_nome (nome)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+
     // Seed módulo
     $sqls[] = "INSERT IGNORE INTO modulos_sistema (chave, nome, descricao, icone, grupo, ordem)
         VALUES ('contas_bancarias','Contas Bancárias','Cadastro de contas e importação OFX','fas fa-university','financeiro',55)";
@@ -883,6 +895,12 @@ function _executar_migration() {
     $erros = [];
     foreach ($sqls as $sql) {
         if (!$db->query($sql)) $erros[] = $db->error;
+    }
+
+    // Seed bancos brasileiros (se tabela vazia)
+    $count_bancos = $db->query("SELECT COUNT(*) AS n FROM bancos_brasileiros")->fetch_assoc()['n'] ?? 0;
+    if ($count_bancos == 0) {
+        _inserir_bancos_inline($db);
     }
 
     echo json_encode([
