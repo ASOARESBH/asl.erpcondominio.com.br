@@ -24,13 +24,14 @@ $role = $sess['role'] ?? $sess['perfil'] ?? 'morador';
 
 // ── Roteamento ───────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
-$acao   = $_GET['acao'] ?? $_POST['acao'] ?? '';
 $body   = [];
 if (in_array($method, ['POST','PUT','PATCH'])) {
     $raw  = file_get_contents('php://input');
     $body = json_decode($raw, true) ?? [];
     if (empty($body)) $body = $_POST;
 }
+// acao: GET param > POST param > JSON body (suporte a Content-Type: application/json)
+$acao = $_GET['acao'] ?? $_POST['acao'] ?? $body['acao'] ?? '';
 
 switch ($acao) {
     // ── Assembleias ──

@@ -27,15 +27,16 @@ function _json($ok, $msg, $dados = null, $code = 200) {
 // ─── Autenticação ─────────────────────────────────────
 verificarAutenticacao(true, 'operador');
 
-$acao   = $_GET['acao']   ?? $_POST['acao']   ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'];
 $body   = [];
 if ($metodo !== 'GET') {
     $raw = file_get_contents('php://input');
     if ($raw) $body = json_decode($raw, true) ?? [];
-    // Merge POST form-data
-    $body = array_merge($_POST, $body);
+    // Merge POST form-data (form-data tem prioridade sobre JSON)
+    $body = array_merge($body, $_POST);
 }
+// acao: GET param > POST param > JSON body (suporte a Content-Type: application/json)
+$acao = $_GET['acao'] ?? $_POST['acao'] ?? $body['acao'] ?? '';
 
 // ─── Migration automática ─────────────────────────────
 if ($acao === 'migration') {
