@@ -24,19 +24,49 @@ function _json($ok, $msg, $dados = null, $code = 200) {
     exit;
 }
 
+// ─── Log de Debug ────────────────────────────────────
+function _debug_log($msg, $dados = []) {
+    $log_file = __DIR__ . '/../logs/debug_contas_bancarias.log';
+    $dir = dirname($log_file);
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    $linha = date('Y-m-d H:i:s') . ' | ' . $msg;
+    if (!empty($dados)) $linha .= ' | ' . json_encode($dados, JSON_UNESCAPED_UNICODE);
+    @file_put_contents($log_file, $linha . PHP_EOL, FILE_APPEND | LOCK_EX);
+}
+
+$metodo = $_SERVER['REQUEST_METHOD'];
+$raw_input = ($metodo !== 'GET') ? file_get_contents('php://input') : '';
+$content_type = $_SERVER['CONTENT_TYPE'] ?? '';
+$session_id = session_id() ?: 'sem-sessao';
+
+_debug_log('REQUEST', [
+    'method'       => $metodo,
+    'content_type' => $content_type,
+    'get_acao'     => $_GET['acao'] ?? '(vazio)',
+    'post_acao'    => $_POST['acao'] ?? '(vazio)',
+    'raw_input'    => substr($raw_input, 0, 500),
+    'session_id'   => $session_id,
+    'usuario_logado' => $_SESSION['usuario_logado'] ?? '(sem sessao)',
+    'usuario_id'   => $_SESSION['usuario_id'] ?? '(sem sessao)',
+]);
+
 // ─── Autenticação ─────────────────────────────────────
 verificarAutenticacao(true, 'operador');
 
-$metodo = $_SERVER['REQUEST_METHOD'];
 $body   = [];
 if ($metodo !== 'GET') {
-    $raw = file_get_contents('php://input');
-    if ($raw) $body = json_decode($raw, true) ?? [];
+    if ($raw_input) $body = json_decode($raw_input, true) ?? [];
     // Merge POST form-data (form-data tem prioridade sobre JSON)
     $body = array_merge($body, $_POST);
 }
 // acao: GET param > POST param > JSON body (suporte a Content-Type: application/json)
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? $body['acao'] ?? '';
+
+_debug_log('ACAO_DETERMINADA', [
+    'acao'      => $acao,
+    'body_keys' => array_keys($body),
+    'body_acao' => $body['acao'] ?? '(ausente)',
+]);
 
 // ─── Migration automática ─────────────────────────────
 if ($acao === 'migration') {

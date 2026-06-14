@@ -862,6 +862,7 @@ async function _get_params(params) {
 }
 
 async function _post(body) {
+    console.log('[CB] POST →', JSON.stringify(body));
     const resp = await fetch(API, {
         method: 'POST',
         credentials: 'include',
@@ -869,8 +870,17 @@ async function _post(body) {
         body: JSON.stringify(body),
     });
     const text = await resp.text();
-    try { return JSON.parse(text); }
-    catch(e) { return { sucesso: false, mensagem: `Erro ${resp.status}: resposta inválida` }; }
+    console.log(`[CB] POST ← HTTP ${resp.status} | URL: ${API} | Body enviado: ${JSON.stringify(body)} | Resposta: ${text.substring(0, 800)}`);
+    try {
+        const parsed = JSON.parse(text);
+        if (!parsed.sucesso) {
+            console.warn('[CB] Falha na ação:', body.acao, '| Mensagem:', parsed.mensagem, '| HTTP:', resp.status);
+        }
+        return parsed;
+    } catch(e) {
+        console.error('[CB] Resposta não-JSON (HTTP ' + resp.status + '):', text.substring(0, 800));
+        return { sucesso: false, mensagem: `Erro ${resp.status}: ${text.substring(0, 300)}` };
+    }
 }
 
 function _toast(msg, tipo = 'info') {
