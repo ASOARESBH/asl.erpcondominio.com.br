@@ -6,6 +6,32 @@
 @keyframes cbToastIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
 @keyframes cbFadeIn  { from { opacity:0; transform:translateY(8px); }  to { opacity:1; transform:translateY(0); } }
 
+
+/* ── Botão Voltar ─────────────────────────────────────── */
+.btn-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.btn-voltar:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+.btn-voltar i { font-size: 12px; }
+
 /* ── Header ─────────────────────────────────────────── */
 .cb-header {
   display: flex;

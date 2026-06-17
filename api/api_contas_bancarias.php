@@ -75,6 +75,9 @@ if ($acao === 'migration') {
 }
 
 $db = conectar_banco();
+// ─── Migration automática na primeira chamada ─────────
+// Garante que as tabelas existam sem precisar chamar ?acao=migration manualmente
+_garantir_tabelas($db);
 
 // =====================================================
 // ROTEAMENTO
@@ -825,6 +828,16 @@ function _inserir_bancos_inline($db) {
 }
 
 // =====================================================
+
+// ─── Garantir tabelas (migration silenciosa) ──────────
+function _garantir_tabelas($db) {
+    // Verifica se a tabela principal existe; se não, executa migration completa
+    $check = $db->query("SHOW TABLES LIKE 'contas_bancarias'");
+    if ($check && $check->num_rows === 0) {
+        _executar_migration();
+    }
+}
+
 function _executar_migration() {
     header('Content-Type: application/json; charset=utf-8');
     $db = conectar_banco();
