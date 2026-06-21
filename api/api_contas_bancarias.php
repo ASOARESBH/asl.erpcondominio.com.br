@@ -123,9 +123,20 @@ switch ($acao) {
 // =====================================================
 
 function _listar_contas($db) {
+    // Query resiliente: verifica se tabelas auxiliares existem antes de usar subqueries
+    $tem_mov = $db->query("SHOW TABLES LIKE 'movimentacoes_bancarias'")->num_rows > 0;
+    $tem_ofx = $db->query("SHOW TABLES LIKE 'historico_importacoes_ofx'")->num_rows > 0;
+
+    $sub_mov = $tem_mov
+        ? "(SELECT COUNT(*) FROM movimentacoes_bancarias mb WHERE mb.conta_id = cb.id)"
+        : "0";
+    $sub_ofx = $tem_ofx
+        ? "(SELECT MAX(importado_em) FROM historico_importacoes_ofx hi WHERE hi.conta_id = cb.id)"
+        : "NULL";
+
     $sql = "SELECT cb.*,
-                (SELECT COUNT(*) FROM movimentacoes_bancarias mb WHERE mb.conta_id = cb.id) AS total_mov,
-                (SELECT MAX(importado_em) FROM historico_importacoes_ofx hi WHERE hi.conta_id = cb.id) AS ultima_importacao
+                {$sub_mov} AS total_mov,
+                {$sub_ofx} AS ultima_importacao
             FROM contas_bancarias cb
             WHERE cb.ativo = 1
             ORDER BY cb.nome ASC";
@@ -133,8 +144,10 @@ function _listar_contas($db) {
     if (!$res) _json(false, 'Erro ao listar contas: ' . $db->error);
     $rows = [];
     while ($r = $res->fetch_assoc()) {
-        $r['saldo_atual'] = (float)$r['saldo_atual'];
+        $r['id']            = (int)$r['id'];
+        $r['saldo_atual']   = (float)$r['saldo_atual'];
         $r['saldo_inicial'] = (float)$r['saldo_inicial'];
+        $r['total_mov']     = (int)($r['total_mov'] ?? 0);
         $rows[] = $r;
     }
     _json(true, 'OK', $rows);
@@ -209,6 +222,10 @@ function _excluir_conta($db, $body) {
 // =====================================================
 
 function _listar_movimentacoes($db) {
+    // Verificar se tabela existe
+    if ($db->query("SHOW TABLES LIKE 'movimentacoes_bancarias'")->num_rows === 0) {
+        _json(true, 'OK', ['movimentacoes' => [], 'total' => 0]);
+    }
     $conta_id   = intval($_GET['conta_id'] ?? 0);
     $tipo       = $_GET['tipo'] ?? '';
     $conciliado = $_GET['conciliado'] ?? '';
