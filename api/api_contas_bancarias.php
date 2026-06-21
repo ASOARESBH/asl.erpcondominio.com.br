@@ -267,10 +267,10 @@ function _listar_movimentacoes($db) {
 
     // Total para paginação
     $sql_count = "SELECT COUNT(*) AS total FROM movimentacoes_bancarias mb WHERE " . implode(' AND ', $where);
-    $types_count = rtrim($types, 'ii');
+    $types_count  = substr($types, 0, -2); // remove os 2 'i' do fim (limite e offset)
     $params_count = array_slice($params, 0, -2);
     $stmt2 = $db->prepare($sql_count);
-    if ($types_count) $stmt2->bind_param($types_count, ...$params_count);
+    if ($types_count && count($params_count) > 0) $stmt2->bind_param($types_count, ...$params_count);
     $stmt2->execute();
     $total = $stmt2->get_result()->fetch_assoc()['total'] ?? 0;
 
@@ -523,10 +523,15 @@ function _historico_importacoes($db) {
 function _ultimo_importado($db) {
     $conta_id = intval($_GET['conta_id'] ?? 0);
     if (!$conta_id) _json(false, 'conta_id obrigatório', null, 400);
-    $r = $db->query("SELECT ultimo_fitid, ultima_data, importado_em, nome_arquivo
+    // Verificar se tabela existe
+    if ($db->query("SHOW TABLES LIKE 'historico_importacoes_ofx'")->num_rows === 0) {
+        _json(true, 'OK', null);
+    }
+    $res = $db->query("SELECT ultimo_fitid, ultima_data, importado_em, nome_arquivo
                      FROM historico_importacoes_ofx
                      WHERE conta_id=$conta_id
-                     ORDER BY importado_em DESC LIMIT 1")->fetch_assoc();
+                     ORDER BY importado_em DESC LIMIT 1");
+    $r = $res ? $res->fetch_assoc() : null;
     _json(true, 'OK', $r ?? null);
 }
 
