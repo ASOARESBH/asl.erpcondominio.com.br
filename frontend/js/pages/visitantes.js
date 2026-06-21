@@ -16,6 +16,7 @@ let salvando          = false;
 
 export function init() {
     console.log('[Visitantes] Inicializando v3...');
+    _setupAbas();
     _setupMascaras();
     _setupForm();
     _setupBusca();
@@ -32,9 +33,60 @@ export function init() {
         verFoto:        _verFoto,
         verDoc:         _verDoc,
         relExportarCSV: relExportarCSV,
-        relGerarPDF:    relGerarPDF
+        relGerarPDF:    relGerarPDF,
+        relAtualizar:   _relAtualizar
     };
     console.log('[Visitantes] Módulo pronto.');
+}
+
+// ===== CONTROLE DE ABAS =====
+function _setupAbas() {
+    const tabBtns = document.querySelectorAll('.page-visitantes .vis-tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            tabBtns.forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page-visitantes .vis-tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            const content = document.getElementById('vis-tab-' + tab);
+            if (content) content.classList.add('active');
+            if (tab === 'listagem') _carregarVisitantes();
+            if (tab === 'relatorios') _relAtualizar();
+        });
+    });
+}
+
+function _atualizarKpis(lista) {
+    const total   = lista.length;
+    const ativos  = lista.filter(v => v.ativo == 1 || v.ativo === true).length;
+    const comFoto = lista.filter(v => v.foto).length;
+    const comDoc  = lista.filter(v => v.documento_arquivo).length;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('kpiTotalVisitantes', total);
+    set('kpiAtivos', ativos);
+    set('kpiComFoto', comFoto);
+    set('kpiComDoc', comDoc);
+}
+
+function _relAtualizar() {
+    const filtros = _relColetarFiltros();
+    const dados   = _relFiltrarCache(filtros);
+    const preview = document.getElementById('relPreviewVisitantes');
+    const ativos   = dados.filter(v => (v.ativo ?? 1) == 1).length;
+    const inativos = dados.length - ativos;
+    const comFoto  = dados.filter(v => v.foto).length;
+    const comDoc   = dados.filter(v => v.documento_arquivo).length;
+    const kpis = document.getElementById('relKpisVisitantes');
+    if (kpis) {
+        kpis.style.display = 'flex';
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        set('relKpiTotal',    dados.length);
+        set('relKpiAtivos',   ativos);
+        set('relKpiInativos', inativos);
+        set('relKpiComFoto',  comFoto);
+        set('relKpiComDoc',   comDoc);
+    }
+    _relMostrarPreview(dados, preview);
 }
 
 export function destroy() {
