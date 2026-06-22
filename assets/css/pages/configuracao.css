@@ -240,3 +240,33 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   CARD FOOTER (seta "Acessar")
+   ============================================================ */
+.page-configuracao .page-card.interactive .card-footer {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.page-configuracao .page-card.interactive .card-footer .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #4f46e5;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: gap 0.2s ease;
+}
+
+.page-configuracao .page-card.interactive:hover .card-footer .card-link {
+    gap: 10px;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.page-configuracao .tabs {
+    margin-bottom: 2rem;
+}

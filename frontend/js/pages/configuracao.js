@@ -63,3 +63,23 @@ function _getCardList() {
         document.querySelectorAll('.page-configuracao .page-card.interactive[data-page]')
     ).map(c => c.dataset.page);
 }
+
+// ============================================================
+// NAVEGAÇÃO POR TABS (submenu)
+// ============================================================
+function _setupTabNavigation() {
+    const tabs = document.querySelectorAll('.page-configuracao .tabs .tab-button[data-page]');
+    tabs.forEach(btn => {
+        const fn = (e) => {
+            e.preventDefault();
+            const pageName = btn.dataset.page;
+            if (pageName) {
+                console.log(`[Configuracao Hub] Tab clicada: ${pageName}`);
+                if (window.AppRouter) window.AppRouter.loadPage(pageName);
+            }
+        };
+        btn.addEventListener('click', fn);
+        _listeners.push({ el: btn, ev: 'click', fn });
+    });
+    console.log(`[Configuracao Hub] Tabs configuradas: ${tabs.length}`);
+}
