@@ -3,6 +3,46 @@
 // API - CONTAS BANCÁRIAS + MOVIMENTAÇÕES + IMPORTAÇÃO OFX
 // Versão: 1.0  |  Data: 2026-06-08
 // =====================================================
+
+// ─── Configurações de sessão (ANTES do session_start) ─
+// Deve ser idêntico ao validar_login.php para compatibilidade de cookies
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.gc_maxlifetime', 7200);
+
+// ─── Handler de erro fatal para retornar JSON em vez de HTML ─
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $log_file = __DIR__ . '/../logs/debug_contas_bancarias.log';
+    $dir = dirname($log_file);
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+    $entry = date('Y-m-d H:i:s') . ' | PHP_ERROR | ' . json_encode([
+        'errno' => $errno, 'errstr' => $errstr,
+        'errfile' => basename($errfile), 'errline' => $errline
+    ], JSON_UNESCAPED_UNICODE) . PHP_EOL;
+    file_put_contents($log_file, $entry, FILE_APPEND | LOCK_EX);
+    if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        http_response_code(500);
+        echo json_encode(['sucesso'=>false,'mensagem'=>"Erro interno: $errstr (linha $errline)"], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    return false; // continua o handler padrão para warnings
+});
+
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        $log_file = __DIR__ . '/../logs/debug_contas_bancarias.log';
+        $entry = date('Y-m-d H:i:s') . ' | FATAL_ERROR | ' . json_encode($error, JSON_UNESCAPED_UNICODE) . PHP_EOL;
+        file_put_contents($log_file, $entry, FILE_APPEND | LOCK_EX);
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['sucesso'=>false,'mensagem'=>'Erro fatal: '.$error['message']], JSON_UNESCAPED_UNICODE);
+        }
+    }
+});
+
 require_once 'config.php';
 require_once 'auth_helper.php';
 
