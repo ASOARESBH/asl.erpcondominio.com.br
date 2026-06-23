@@ -163,7 +163,10 @@
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
         }
-        #mainNav.visible { display: block !important; }
+        /* .visible exibe o nav; .nav-ativo garante que só aparece no dispositivo correto */
+        #mainNav.visible { display: block; }
+        #mainNav.visible.nav-ativo { display: block !important; }
+        #mainNav.visible:not(.nav-ativo) { display: none !important; }
         #mainNav::-webkit-scrollbar { display: none; }
 
         .nav-inner {
@@ -192,7 +195,7 @@
            MOBILE NAV — HAMBURGER MENU
            ============================================================ */
 
-        /* Barra mobile: oculta em desktop */
+        /* Barra mobile: oculta por padrão — JS controla via classe .nav-ativo */
         #mobileNavBar {
             display: none;
             position: sticky; top: var(--header-h); z-index: 91;
@@ -204,7 +207,8 @@
             padding: 0 1rem;
             gap: .75rem;
         }
-        #mobileNavBar.visible { display: flex !important; }
+        /* .nav-ativo é adicionado pelo JS quando o dispositivo é mobile */
+        #mobileNavBar.nav-ativo { display: flex !important; }
 
         /* Indicador da aba atual */
         .mobile-nav-current {
@@ -949,9 +953,8 @@
                 max-height: 85vh; max-height: 85dvh;
             }
 
-            /* Nav desktop: oculto em mobile, substituído pelo hambúrguer */
-            #mainNav { display: none !important; }
-            #mobileNavBar { display: flex !important; }
+            /* Media query como fallback — JS é a fonte primária de controle */
+            #mainNav.visible:not(.nav-ativo) { display: none !important; }
 
             /* Marketplace */
             .mkt-grid { grid-template-columns: 1fr 1fr; }
@@ -1995,14 +1998,16 @@ function inicializarPortal() {
     document.getElementById('headerNome').textContent    = Portal.moradorNome    || 'Morador';
     document.getElementById('headerUnidade').textContent = Portal.moradorUnidade ? 'Unidade ' + Portal.moradorUnidade : '';
 
-    // Mostrar conteúdo via classe (garante !important sobre display:none do ID)
+    // Mostrar conteúdo via classe
     header.classList.add('visible');
     nav.classList.add('visible');
     content.classList.add('visible');
 
-    // Mostrar barra de navegação mobile
-    const mobileBar = document.getElementById('mobileNavBar');
-    if (mobileBar) mobileBar.classList.add('visible');
+    // Aplicar layout de navegação conforme dispositivo
+    aplicarLayoutNavegacao();
+
+    // Reagir a redimensionamento de janela em tempo real
+    window.addEventListener('resize', debounce(aplicarLayoutNavegacao, 150));
 
     // Iniciar fade-out da tela de loading
     loading.classList.add('hide');
@@ -2049,6 +2054,53 @@ function abrirAba(aba, btnEl) {
     if (btnEl) {
         btnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   DETECÇÃO DE DISPOSITIVO — LAYOUT DE NAVEGAÇÃO
+   ────────────────────────────────────────────────────────────────── */
+
+/**
+ * Detecta se o dispositivo é mobile (largura ≤ 768px ou touch)
+ * e aplica o layout de navegação correto:
+ *   - Mobile: exibe barra hamburguer, oculta nav desktop
+ *   - Desktop: exibe nav desktop, oculta barra hamburguer
+ */
+function aplicarLayoutNavegacao() {
+    const nav       = document.getElementById('mainNav');
+    const mobileBar = document.getElementById('mobileNavBar');
+    if (!nav || !mobileBar) return;
+
+    // Critério primário: largura da janela
+    // Critério secundário: suporte a touch (tablets com teclado passam pelo critério de largura)
+    const isMobile = window.innerWidth <= 768;
+
+    console.log('[Portal] Layout nav:', isMobile ? 'MOBILE (hamburger)' : 'DESKTOP (abas)', '| width:', window.innerWidth);
+
+    if (isMobile) {
+        // Mobile: mostrar hamburguer, ocultar nav desktop
+        nav.classList.remove('nav-ativo');
+        mobileBar.classList.add('nav-ativo');
+        // Fechar dropdown se estiver aberto ao redimensionar
+        fecharMobileMenu();
+    } else {
+        // Desktop: mostrar nav desktop, ocultar hamburguer
+        nav.classList.add('nav-ativo');
+        mobileBar.classList.remove('nav-ativo');
+        // Garantir que o dropdown também está fechado
+        fecharMobileMenu();
+    }
+}
+
+/**
+ * Debounce: evita que o listener de resize dispare muitas vezes seguidas
+ */
+function debounce(fn, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
 }
 
 /* ──────────────────────────────────────────────────────────────────
