@@ -348,11 +348,18 @@ function _atualizar_movimentacao($db, $body) {
     $stmt = $db->prepare("UPDATE movimentacoes_bancarias SET
         tipo=?, valor=?, data_lancamento=?, descricao=?, checknum=?, categoria=?, observacoes=?
         WHERE id=?");
-    $valor = abs((float)($body['valor'] ?? 0));
+    $valor        = abs((float)($body['valor'] ?? 0));
+    // bind_param exige variáveis (referências) — não expressões
+    $upd_tipo     = $body['tipo']             ?? '';
+    $upd_dt       = $body['data_lancamento']  ?? '';
+    $upd_desc     = $body['descricao']        ?? '';
+    $upd_chknum   = $body['checknum']         ?? '';
+    $upd_cat      = $body['categoria']        ?? '';
+    $upd_obs      = $body['observacoes']      ?? '';
     $stmt->bind_param('sdsssssi',
-        $body['tipo'], $valor, $body['data_lancamento'],
-        $body['descricao'] ?? '', $body['checknum'] ?? null,
-        $body['categoria'] ?? null, $body['observacoes'] ?? null, $id
+        $upd_tipo, $valor, $upd_dt,
+        $upd_desc, $upd_chknum,
+        $upd_cat, $upd_obs, $id
     );
     if (!$stmt->execute()) _json(false, 'Erro ao atualizar: ' . $stmt->error);
     // Recalcular saldo da conta
@@ -481,13 +488,18 @@ function _importar_ofx($db) {
                 continue;
             }
 
-            $tipo  = ($t['valor'] >= 0) ? 'credito' : 'debito';
-            $valor = abs($t['valor']);
-            $imp_id = 0; // será atualizado após inserir o histórico
+            $tipo     = ($t['valor'] >= 0) ? 'credito' : 'debito';
+            $valor    = abs($t['valor']);
+            $imp_id   = 0; // será atualizado após inserir o histórico
+            // bind_param exige variáveis (referências) — não expressões
+            $t_fitid  = $t['fitid']    ?? '';
+            $t_data   = $t['data']     ?? '';
+            $t_memo   = $t['memo']     ?? '';
+            $t_chknum = $t['checknum'] ?? '';
 
             $stmt->bind_param('issdssis',
-                $conta_id, $t['fitid'], $tipo, $valor,
-                $t['data'], $t['memo'], $t['checknum'], $imp_id
+                $conta_id, $t_fitid, $tipo, $valor,
+                $t_data, $t_memo, $t_chknum, $imp_id
             );
             if ($stmt->execute()) {
                 if ($stmt->affected_rows > 0) {
@@ -511,12 +523,19 @@ function _importar_ofx($db) {
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
         $total = count($parsed['transacoes']);
         $saldo = $parsed['saldo_final'];
+        // bind_param exige variáveis (referências), não expressões — atribuir antes
+        $banco_id_ofx  = $parsed['banco_id']  ?? '';
+        $acct_id_ofx   = $parsed['acct_id']   ?? '';
+        $dt_inicio_ofx = $parsed['dt_inicio'] ?? '';
+        $dt_fim_ofx    = $parsed['dt_fim']    ?? '';
+        $fitid_final   = $ultimo_fitid_novo ?? $ultimo_fitid ?? '';
+        $saldo_final   = (float)$saldo;
         $stmt2->bind_param('isssssssiiids',
-            $conta_id, $nome_arq, $parsed['banco_id'], $parsed['acct_id'],
-            $parsed['dt_inicio'], $parsed['dt_fim'],
-            $ultimo_fitid_novo ?? $ultimo_fitid,
+            $conta_id, $nome_arq, $banco_id_ofx, $acct_id_ofx,
+            $dt_inicio_ofx, $dt_fim_ofx,
+            $fitid_final,
             $ultima_data_nova,
-            $total, $importadas, $duplicatas, $saldo, $usuario
+            $total, $importadas, $duplicatas, $saldo_final, $usuario
         );
         $stmt2->execute();
         $imp_id_novo = $db->insert_id;
