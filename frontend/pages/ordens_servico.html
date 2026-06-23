@@ -15,7 +15,7 @@
                 <i class="fas fa-arrow-left"></i> Voltar
             </button>
             <button class="btn-os-novo" id="btnNovaOS">
-                <i class="fas fa-plus"></i> Nova OS
+                <i class="fas fa-plus"></i> + Nova O.S
             </button>
         </div>
     </div>
@@ -313,7 +313,7 @@
 </div><!-- /page-wrapper -->
 
 <!-- ═══════════════════════════════════════════════════════════ -->
-<!-- MODAL: NOVA / EDITAR OS                                      -->
+<!-- MODAL: NOVA / EDITAR O.S                                     -->
 <!-- ═══════════════════════════════════════════════════════════ -->
 <div class="os-modal-overlay" id="modal-os" style="display:none;">
     <div class="os-modal">
@@ -329,7 +329,7 @@
             <!-- Número (somente leitura ao editar) -->
             <div class="os-form-row" id="row-numero" style="display:none;">
                 <div class="os-form-group">
-                    <label>Número da OS</label>
+                    <label>Número da O.S</label>
                     <input type="text" id="os-numero-view" readonly class="os-input-readonly">
                 </div>
             </div>
@@ -367,7 +367,7 @@
                 </div>
             </div>
 
-            <!-- Linha 3: Morador -->
+            <!-- Linha 3: Morador / Cliente (largura total) -->
             <div class="os-form-row">
                 <div class="os-form-group os-form-group-flex2">
                     <label>Morador / Cliente</label>
@@ -380,23 +380,15 @@
                     <input type="hidden" id="os-morador-unidade">
                     <div class="os-morador-selecionado" id="os-morador-tag" style="display:none;"></div>
                 </div>
-                <div class="os-form-group">
-                    <label>Previsão de Conclusão</label>
-                    <input type="date" id="os-data-previsao">
-                </div>
             </div>
 
-            <!-- Linha 4: Atendente + Horas estimadas -->
+            <!-- Linha 4: Atendente Responsável (pré-preenchido com o usuário logado) -->
             <div class="os-form-row">
-                <div class="os-form-group">
+                <div class="os-form-group" style="flex:1;">
                     <label>Atendente Responsável</label>
                     <select id="os-atendente">
                         <option value="">— Selecione —</option>
                     </select>
-                </div>
-                <div class="os-form-group">
-                    <label>Horas Estimadas</label>
-                    <input type="number" id="os-horas-estimadas" placeholder="Ex: 2.5" min="0" step="0.5">
                 </div>
             </div>
 
@@ -424,19 +416,23 @@
                 <div class="os-editor" id="os-descricao" contenteditable="true" placeholder="Descreva o problema, sintomas, localização..."></div>
             </div>
 
-            <!-- OS Dependente (vincular a outra OS) -->
+            <!-- O.S Dependente (vincular a outra O.S) -->
             <div class="os-form-group">
-                <label>Depende de (OS Pai)</label>
-                <input type="text" id="os-pai-busca" placeholder="Número da OS pai (ex: OS-2024-0001)">
+                <label>Depende de (O.S Pai)</label>
+                <input type="text" id="os-pai-busca" placeholder="Número da O.S pai (ex: O.S-2024-0001)">
                 <input type="hidden" id="os-pai-id">
                 <div class="os-pai-tag" id="os-pai-tag" style="display:none;"></div>
             </div>
+
+            <!-- Campos ocultos mantidos para compatibilidade com a API -->
+            <input type="hidden" id="os-data-previsao">
+            <input type="hidden" id="os-horas-estimadas">
 
         </div>
         <div class="os-modal-footer">
             <button class="btn-os-cancelar" id="btnCancelarOS">Cancelar</button>
             <button class="btn-os-salvar" id="btnSalvarOS">
-                <i class="fas fa-save"></i> Salvar OS
+                <i class="fas fa-save"></i> Salvar O.S
             </button>
         </div>
     </div>
@@ -449,7 +445,7 @@
     <div class="os-modal os-modal-large">
         <div class="os-modal-header">
             <div>
-                <h2 id="detalhe-titulo"><i class="fas fa-wrench"></i> OS #</h2>
+                <h2 id="detalhe-titulo"><i class="fas fa-wrench"></i> O.S #</h2>
                 <div class="os-detalhe-badges" id="detalhe-badges"></div>
             </div>
             <button class="os-modal-close" id="btnFecharDetalhe">&times;</button>
@@ -521,15 +517,25 @@
                         <button class="btn-os-salvar" id="btnAdicionarInteracao">
                             <i class="fas fa-paper-plane"></i> Enviar Interação
                         </button>
-                        <button class="btn-os-finalizar" id="btnIniciarFinalizacao">
-                            <i class="fas fa-flag-checkered"></i> Finalizar OS
-                        </button>
+                <button class="btn-os-finalizar" id="btnIniciarFinalizacao">
+                    <i class="fas fa-flag-checkered"></i> Finalizar O.S
+                </button>
                     </div>
                 </div>
 
                 <!-- Formulário de finalização -->
                 <div class="os-finalizar-form" id="os-finalizar-form" style="display:none;">
                     <h3><i class="fas fa-flag-checkered"></i> Finalizar Ordem de Serviço</h3>
+                    <div class="os-form-row">
+                        <div class="os-form-group">
+                            <label>Previsão de Conclusão</label>
+                            <input type="date" id="fin-data-previsao">
+                        </div>
+                        <div class="os-form-group">
+                            <label>Horas Estimadas</label>
+                            <input type="number" id="fin-horas-estimadas" placeholder="Ex: 2.5" min="0" step="0.5">
+                        </div>
+                    </div>
                     <div class="os-form-row">
                         <div class="os-form-group">
                             <label>Horas Totais Trabalhadas <span class="os-required">*</span></label>
@@ -581,7 +587,7 @@
         <div class="os-modal-footer">
             <button class="btn-os-cancelar" id="btnFecharDetalhe2">Fechar</button>
             <button class="btn-os-editar" id="btnEditarOS">
-                <i class="fas fa-edit"></i> Editar OS
+                <i class="fas fa-edit"></i> Editar O.S
             </button>
         </div>
     </div>

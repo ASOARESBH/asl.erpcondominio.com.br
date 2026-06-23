@@ -695,31 +695,41 @@ switch ($acao) {
 
     // ─────────────────────────────────────────────────
     case 'finalizar':
-        $dados = array_merge($body, $_POST);
-        $os_id        = (int)($dados['os_id'] ?? 0);
-        $horas_totais = isset($dados['horas_totais']) ? (float)$dados['horas_totais'] : null;
-        $observacao   = trim($dados['observacao_finalizacao'] ?? '');
+        $dados           = array_merge($body, $_POST);
+        $os_id           = (int)($dados['os_id'] ?? 0);
+        $horas_totais    = isset($dados['horas_totais']) ? (float)$dados['horas_totais'] : null;
+        $horas_estimadas = !empty($dados['horas_estimadas']) ? (float)$dados['horas_estimadas'] : null;
+        $data_previsao   = !empty($dados['data_previsao']) ? trim($dados['data_previsao']) : null;
+        $observacao      = trim($dados['observacao_finalizacao'] ?? '');
 
         if (!$os_id) retornar_json(false, 'os_id inválido');
-        if ($horas_totais === null || $horas_totais < 0) retornar_json(false, 'Horas totais são obrigatórias para finalizar');
+        if ($horas_totais === null || $horas_totais < 0) retornar_json(false, 'Horas totais são obrigatórias para finalizar a O.S');
 
         $res = $conn->query("SELECT id, status, numero FROM os_chamados WHERE id = $os_id");
-        $os = $res ? $res->fetch_assoc() : null;
-        if (!$os) retornar_json(false, 'OS não encontrada');
-        if ($os['status'] === 'finalizado') retornar_json(false, 'OS já está finalizada');
+        $os  = $res ? $res->fetch_assoc() : null;
+        if (!$os) retornar_json(false, 'O.S não encontrada');
+        if ($os['status'] === 'finalizado') retornar_json(false, 'O.S já está finalizada');
 
-        $stmt = $conn->prepare(
-            "UPDATE os_chamados SET status='finalizado', horas_totais=?, data_finalizacao=NOW(), observacao_finalizacao=? WHERE id=?"
-        );
-        $stmt->bind_param('dsi', $horas_totais, $observacao, $os_id);
-        if (!$stmt->execute()) retornar_json(false, 'Erro ao finalizar OS');
+        // UPDATE dinâmico: inclui horas_estimadas e data_previsao se informados
+        $set_extra    = '';
+        $extra_types  = '';
+        $extra_values = [];
+        if ($horas_estimadas !== null) { $set_extra .= ', horas_estimadas=?'; $extra_types .= 'd'; $extra_values[] = $horas_estimadas; }
+        if ($data_previsao   !== null) { $set_extra .= ', data_previsao=?';   $extra_types .= 's'; $extra_values[] = $data_previsao; }
+
+        $sql_fin = "UPDATE os_chamados SET status='finalizado', horas_totais=?, data_finalizacao=NOW(), observacao_finalizacao=?{$set_extra} WHERE id=?";
+        $stmt    = $conn->prepare($sql_fin);
+        $bind_types  = 'ds' . $extra_types . 'i';
+        $bind_values = array_merge([$horas_totais, $observacao], $extra_values, [$os_id]);
+        $stmt->bind_param($bind_types, ...$bind_values);
+        if (!$stmt->execute()) retornar_json(false, 'Erro ao finalizar O.S: ' . $conn->error);
 
         // Adicionar interação de finalização
-        $usuario = obterUsuarioAutenticado();
+        $usuario      = obterUsuarioAutenticado();
         $usuario_id   = $usuario ? (int)$usuario['id'] : null;
         $usuario_nome = $usuario ? $usuario['nome'] : 'Sistema';
-        $msg_fin = "OS finalizada. Horas totais: {$horas_totais}h." . ($observacao ? " Observação: {$observacao}" : '');
-        $stmt_int = $conn->prepare(
+        $msg_fin      = "O.S finalizada. Horas totais: {$horas_totais}h." . ($observacao ? " Observação: {$observacao}" : '');
+        $stmt_int     = $conn->prepare(
             "INSERT INTO os_interacoes (os_id, tipo, mensagem, usuario_id, usuario_nome) VALUES (?,'solucao',?,?,?)"
         );
         $stmt_int->bind_param('isis', $os_id, $msg_fin, $usuario_id, $usuario_nome);
@@ -732,7 +742,6 @@ switch ($acao) {
         $erros_estoque = [];
         if ($res_mats) {
             while ($mat = $res_mats->fetch_assoc()) {
-                // Verificar estoque disponível
                 $res_prod = $conn->query("SELECT quantidade_estoque FROM produtos_estoque WHERE id = " . (int)$mat['produto_id']);
                 if ($res_prod) {
                     $prod = $res_prod->fetch_assoc();
@@ -745,8 +754,8 @@ switch ($acao) {
             }
         }
 
-        os_log('info', 'OS finalizada', ['os_id' => $os_id, 'numero' => $os['numero'], 'horas' => $horas_totais]);
-        retornar_json(true, 'OS finalizada com sucesso', ['erros_estoque' => $erros_estoque]);
+        os_log('info', 'O.S finalizada', ['os_id' => $os_id, 'numero' => $os['numero'], 'horas' => $horas_totais]);
+        retornar_json(true, 'O.S finalizada com sucesso', ['erros_estoque' => $erros_estoque]);
         break;
 
     // ─────────────────────────────────────────────────

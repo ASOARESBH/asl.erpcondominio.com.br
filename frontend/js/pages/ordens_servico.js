@@ -6,23 +6,25 @@
  */
 'use strict';
 // ─── Configuração ─────────────────────────────────────────────────────
-const API           = window.location.origin + '/api/api_ordens_servico.php';
-const API_MORADORES = window.location.origin + '/api/api_moradores.php';
-const API_USUARIOS  = window.location.origin + '/api/api_usuarios.php';
-const API_RH        = window.location.origin + '/api/api_rh_colaboradores.php';
-const API_ESTOQUE   = window.location.origin + '/api/api_estoque.php';
+const API                = window.location.origin + '/api/api_ordens_servico.php';
+const API_MORADORES      = window.location.origin + '/api/api_moradores.php';
+const API_USUARIOS       = window.location.origin + '/api/api_usuarios.php';
+const API_RH             = window.location.origin + '/api/api_rh_colaboradores.php';
+const API_ESTOQUE        = window.location.origin + '/api/api_estoque.php';
+const API_USUARIO_LOGADO = window.location.origin + '/api/api_usuario_logado.php';
 
 // Estado global do módulo
 const state = {
     abaAtiva: 'dashboard',
     paginaAtual: 1,
     filtros: { status: '', prioridade: '', departamento: '', busca: '' },
-    osAtual: null,          // OS aberta no modal de detalhe
-    rhSelecionados: [],     // Colaboradores selecionados no form de nova OS
+    osAtual: null,          // O.S aberta no modal de detalhe
+    rhSelecionados: [],     // Colaboradores selecionados no form de nova O.S
     relDados: [],           // Dados do relatório gerado
     departamentos: [],      // Cache de departamentos
     assuntos: [],           // Cache de assuntos
     usuarios: [],           // Cache de usuários
+    usuarioLogado: null,    // Usuário logado (para auto-preencher atendente)
 };
 
 // ─── Utilitários ──────────────────────────────────────────────────────────
@@ -276,6 +278,14 @@ function abrirModalNova() {
     limparFormOS();
     document.getElementById('modal-os-titulo').innerHTML = '<i class="fas fa-plus-circle"></i> Nova Ordem de Serviço';
     document.getElementById('row-numero').style.display = 'none';
+    // Auto-preencher atendente com o usuário logado
+    if (state.usuarioLogado) {
+        const sel = document.getElementById('os-atendente');
+        if (sel) {
+            const opt = Array.from(sel.options).find(o => o.value == state.usuarioLogado.id);
+            if (opt) sel.value = opt.value;
+        }
+    }
     document.getElementById('modal-os').style.display = 'flex';
 }
 
@@ -284,7 +294,7 @@ async function abrirEditar(id) {
     if (!res.sucesso) { toast('Erro ao carregar OS', 'erro'); return; }
     const os = res.dados;
     limparFormOS();
-    document.getElementById('modal-os-titulo').innerHTML = '<i class="fas fa-edit"></i> Editar OS — ' + os.numero;
+    document.getElementById('modal-os-titulo').innerHTML = '<i class="fas fa-edit"></i> Editar O.S — ' + os.numero;
     document.getElementById('os-id').value = os.id;
     document.getElementById('os-numero-view').value = os.numero;
     document.getElementById('row-numero').style.display = 'flex';
@@ -338,52 +348,57 @@ function limparFormOS() {
 }
 
 async function salvarOS() {
-    const id = document.getElementById('os-id').value;
+    const id     = document.getElementById('os-id').value;
     const titulo = document.getElementById('os-titulo').value.trim();
     if (!titulo) { toast('Título é obrigatório', 'aviso'); return; }
 
+    // Atendente: pegar o texto correto do select (ignorar "Selecione")
+    const atendenteSelect = document.getElementById('os-atendente');
+    const atendenteId     = atendenteSelect.value || null;
+    const atendenteNome   = atendenteId ? (atendenteSelect.selectedOptions[0]?.text || '') : '';
+
     const dados = {
-        id:             id || undefined,
+        id:               id || undefined,
         titulo,
-        prioridade:     document.getElementById('os-prioridade').value,
-        assunto_id:     document.getElementById('os-assunto').value || null,
-        departamento:   document.getElementById('os-departamento').value,
-        morador_id:     document.getElementById('os-morador-id').value || null,
-        morador_nome:   document.getElementById('os-morador-nome').value,
-        morador_unidade: document.getElementById('os-morador-unidade').value,
-        atendente_id:   document.getElementById('os-atendente').value || null,
-        atendente_nome: document.getElementById('os-atendente').selectedOptions[0]?.text || '',
-        horas_estimadas: document.getElementById('os-horas-estimadas').value || null,
-        data_previsao:  document.getElementById('os-data-previsao').value || null,
-        descricao:      document.getElementById('os-descricao').innerHTML,
-        os_pai_id:      document.getElementById('os-pai-id').value || null,
+        prioridade:       document.getElementById('os-prioridade').value,
+        assunto_id:       document.getElementById('os-assunto').value || null,
+        departamento:     document.getElementById('os-departamento').value || '',
+        morador_id:       document.getElementById('os-morador-id').value || null,
+        morador_nome:     document.getElementById('os-morador-nome').value || '',
+        morador_unidade:  document.getElementById('os-morador-unidade').value || '',
+        atendente_id:     atendenteId,
+        atendente_nome:   atendenteNome,
+        descricao:        document.getElementById('os-descricao').innerHTML,
+        os_pai_id:        document.getElementById('os-pai-id').value || null,
         recursos_humanos: state.rhSelecionados,
     };
 
+    log('Salvando O.S', dados);
+
     const acao = id ? 'editar' : 'criar';
-    const btn = document.getElementById('btnSalvarOS');
+    const btn  = document.getElementById('btnSalvarOS');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
     const res = await _post(acao, dados);
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-save"></i> Salvar OS';
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar O.S';
 
     if (res.sucesso) {
-        toast(res.mensagem, 'sucesso');
+        toast(res.mensagem || 'O.S salva com sucesso!', 'sucesso');
         fecharModalOS();
         carregarChamados(state.paginaAtual);
         if (state.abaAtiva === 'dashboard') carregarDashboard();
     } else {
-        toast(res.mensagem || 'Erro ao salvar OS', 'erro');
+        toast(res.mensagem || 'Erro ao salvar O.S', 'erro');
     }
 }
 
 async function excluirOS(id, numero) {
-    if (!confirm(`Confirma a exclusão da OS ${numero}?`)) return;
+    if (!confirm(`Confirma a exclusão da O.S ${numero}?`)) return;
     const res = await _get('excluir', { id });
     if (res.sucesso) {
-        toast('OS excluída com sucesso', 'sucesso');
+        toast('O.S excluída com sucesso', 'sucesso');
         carregarChamados(state.paginaAtual);
     } else {
         toast(res.mensagem || 'Erro ao excluir', 'erro');
@@ -540,29 +555,35 @@ async function confirmarFinalizacao() {
     if (!state.osAtual) return;
     const horas = parseFloat(document.getElementById('fin-horas').value);
     if (!horas || horas < 0) { toast('Informe as horas totais trabalhadas', 'aviso'); return; }
-    const observacao = document.getElementById('fin-observacao').value.trim();
+    const observacao      = document.getElementById('fin-observacao').value.trim();
+    const dataPrevisao    = document.getElementById('fin-data-previsao')?.value || null;
+    const horasEstimadas  = document.getElementById('fin-horas-estimadas')?.value || null;
 
     const btn = document.getElementById('btnConfirmarFinalizacao');
     btn.disabled = true;
     const res = await _post('finalizar', {
         os_id: state.osAtual.id,
         horas_totais: horas,
+        horas_estimadas: horasEstimadas,
+        data_previsao: dataPrevisao,
         observacao_finalizacao: observacao
     });
     btn.disabled = false;
 
     if (res.sucesso) {
-        toast('OS finalizada com sucesso!', 'sucesso');
+        toast('O.S finalizada com sucesso!', 'sucesso');
         state.osAtual.status = 'finalizado';
         document.getElementById('detalhe-badges').innerHTML = badgeStatus('finalizado') + ' ' + badgePrioridade(state.osAtual.prioridade);
         document.getElementById('os-finalizar-form').style.display = 'none';
         document.getElementById('os-nova-interacao-form').style.display = 'none';
         document.getElementById('d-horas-tot').textContent = horas + 'h';
+        if (dataPrevisao) document.getElementById('d-previsao').textContent = dataPrevisao.split('-').reverse().join('/');
+        if (horasEstimadas) document.getElementById('d-horas-est').textContent = horasEstimadas + 'h';
         carregarInteracoes(state.osAtual.id);
         carregarChamados(state.paginaAtual);
         if (state.abaAtiva === 'dashboard') carregarDashboard();
     } else {
-        toast(res.mensagem || 'Erro ao finalizar OS', 'erro');
+        toast(res.mensagem || 'Erro ao finalizar O.S', 'erro');
     }
 }
 
@@ -1242,10 +1263,29 @@ function init_modulo() {
     document.getElementById('btnGerarRelatorio').addEventListener('click', gerarRelatorio);
     document.getElementById('btnExportarCSV').addEventListener('click', exportarCSV);
 
-    // Carregar dados iniciais
-    carregarSelects().then(() => {
-        carregarDashboard();
-    });
+    // Carregar dados iniciais — primeiro busca o usuário logado para auto-preencher o atendente
+    fetch(API_USUARIO_LOGADO, { credentials: 'include' })
+        .then(r => r.json())
+        .then(json => {
+            if (json.sucesso && json.usuario) {
+                state.usuarioLogado = json.usuario;
+                log('Usuário logado:', json.usuario.nome);
+            }
+        })
+        .catch(e => log('Erro ao buscar usuário logado', e))
+        .finally(() => {
+            carregarSelects().then(() => {
+                // Após carregar selects, auto-preencher o atendente no select
+                if (state.usuarioLogado) {
+                    const sel = document.getElementById('os-atendente');
+                    if (sel) {
+                        const opt = Array.from(sel.options).find(o => o.value == state.usuarioLogado.id);
+                        if (opt) sel.value = opt.value;
+                    }
+                }
+                carregarDashboard();
+            });
+        });
 
     log('Módulo Ordens de Serviço inicializado');
 }
