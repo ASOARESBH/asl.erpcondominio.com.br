@@ -57,9 +57,24 @@
         <script type="module">
             import { AppRouter } from './js/app-router.js';
 
-            // Mobile Menu Toggle
+            // Menu Toggle — Mobile: abre/fecha sidebar; Desktop: recolhe/expande sidebar
             window.toggleMenu = function () {
-                document.getElementById('sidebar').classList.toggle('active');
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.querySelector('.main-content');
+                if (!sidebar) return;
+                if (window.innerWidth <= 768) {
+                    // Mobile: mostrar/ocultar sidebar
+                    sidebar.classList.toggle('active');
+                } else {
+                    // Desktop: recolher/expandir sidebar
+                    const isCollapsed = sidebar.classList.toggle('collapsed');
+                    if (mainContent) mainContent.classList.toggle('sidebar-collapsed', isCollapsed);
+                    localStorage.setItem('sidebarCollapsed', isCollapsed);
+                    // Atualizar ícone do botão interno (sidebarCollapseBtn) se existir
+                    const icon = document.getElementById('sidebarCollapseBtnIcon');
+                    if (icon) icon.className = isCollapsed ? 'fas fa-bars' : 'fas fa-bars';
+                    console.log('[toggleMenu] Sidebar desktop', isCollapsed ? 'recolhida' : 'expandida');
+                }
             };
 
             // Initialize Router
