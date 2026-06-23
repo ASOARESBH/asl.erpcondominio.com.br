@@ -468,35 +468,23 @@ switch ($acao) {
 
         // Gerar número sequencial único: OS-YYYY-NNNN
         $ano = date('Y');
-        $res = $conn->query("SELECT MAX(CAST(SUBSTRING(numero, 9) AS UNSIGNED)) as ultimo FROM os_chamados WHERE numero LIKE 'OS-{$ano}-%'");
+        // Busca tanto o formato antigo (OS-) quanto o novo (O.S-) para não repetir sequencial
+        $res = $conn->query("SELECT MAX(CAST(SUBSTRING_INDEX(numero, '-', -1) AS UNSIGNED)) as ultimo FROM os_chamados WHERE numero LIKE '%{$ano}-%'");
         $row = $res ? $res->fetch_assoc() : null;
         $seq = ($row && $row['ultimo']) ? (int)$row['ultimo'] + 1 : 1;
-        $numero = 'OS-' . $ano . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+        $numero = 'O.S-' . $ano . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
 
         // Usuário logado
         $usuario = obterUsuarioAutenticado();
         $criado_por_id   = $usuario ? (int)$usuario['id'] : null;
         $criado_por_nome = $usuario ? $usuario['nome'] : null;
 
-        $stmt = $conn->prepare(
-            "INSERT INTO os_chamados
-             (numero, titulo, assunto_id, departamento, prioridade, status,
-              morador_id, morador_nome, morador_unidade,
-              atendente_id, atendente_nome,
-              descricao, horas_estimadas, data_previsao, os_pai_id,
-              criado_por_id, criado_por_nome, data_abertura)
-             VALUES (?,?,?,?,?,'aberto',?,?,?,?,?,?,?,?,?,?,?,NOW())"
-        );
-        $stmt->bind_param(
-            'ssississsissdss ii',
-            $numero, $titulo, $assunto_id, $departamento, $prioridade,
-            $morador_id, $morador_nome, $morador_unidade,
-            $atendente_id, $atendente_nome,
-            $descricao, $horas_estimadas, $data_previsao, $os_pai_id,
-            $criado_por_id, $criado_por_nome
-        );
-
-        // Reescrever com bind correto
+        // INSERT com 16 colunas (sem data_abertura que usa DEFAULT CURRENT_TIMESTAMP)
+        // Tipos: s=numero, s=titulo, i=assunto_id, s=departamento, s=prioridade,
+        //        i=morador_id, s=morador_nome, s=morador_unidade,
+        //        i=atendente_id, s=atendente_nome,
+        //        s=descricao, d=horas_estimadas, s=data_previsao, i=os_pai_id,
+        //        i=criado_por_id, s=criado_por_nome
         $stmt = $conn->prepare(
             "INSERT INTO os_chamados
              (numero, titulo, assunto_id, departamento, prioridade, status,
@@ -506,8 +494,11 @@ switch ($acao) {
               criado_por_id, criado_por_nome)
              VALUES (?,?,?,?,?,'aberto',?,?,?,?,?,?,?,?,?,?,?)"
         );
+        // 16 parâmetros (s=numero, s=titulo, i=assunto_id, s=departamento, s=prioridade,
+        //  i=morador_id, s=morador_nome, s=morador_unidade, i=atendente_id, s=atendente_nome,
+        //  s=descricao, d=horas_estimadas, s=data_previsao, i=os_pai_id, i=criado_por_id, s=criado_por_nome)
         $stmt->bind_param(
-            'ssissississdssii',
+            'ssissississdsiis',
             $numero, $titulo, $assunto_id, $departamento, $prioridade,
             $morador_id, $morador_nome, $morador_unidade,
             $atendente_id, $atendente_nome,
@@ -516,8 +507,8 @@ switch ($acao) {
         );
 
         if (!$stmt->execute()) {
-            os_log('erro', 'Erro ao criar OS', ['error' => $conn->error]);
-            retornar_json(false, 'Erro ao criar OS: ' . $conn->error);
+            os_log('erro', 'Erro ao criar O.S', ['error' => $conn->error, 'sql_error' => $stmt->error]);
+            retornar_json(false, 'Erro ao criar O.S: ' . $stmt->error);
         }
         $os_id = $conn->insert_id;
 
@@ -539,15 +530,15 @@ switch ($acao) {
         }
 
         // Interação inicial automática
-        $msg_inicial = "OS criada com status **Aberto**. Prioridade: {$prioridade}.";
+        $msg_inicial = "O.S criada com status **Aberto**. Prioridade: {$prioridade}.";
         $stmt_int = $conn->prepare(
             "INSERT INTO os_interacoes (os_id, tipo, mensagem, usuario_id, usuario_nome) VALUES (?,'comentario',?,?,?)"
         );
         $stmt_int->bind_param('isis', $os_id, $msg_inicial, $criado_por_id, $criado_por_nome);
         $stmt_int->execute();
 
-        os_log('info', 'OS criada', ['os_id' => $os_id, 'numero' => $numero]);
-        retornar_json(true, "OS {$numero} criada com sucesso", ['id' => $os_id, 'numero' => $numero]);
+        os_log('info', 'O.S criada', ['os_id' => $os_id, 'numero' => $numero]);
+        retornar_json(true, "O.S {$numero} criada com sucesso!", ['id' => $os_id, 'numero' => $numero]);
         break;
 
     // ─────────────────────────────────────────────────
