@@ -2,7 +2,13 @@
  * notif-bell.js — Componente Global de Notificações
  * Injeta o ícone de sino no cabeçalho, faz polling automático,
  * toca som e anima o ícone quando há novas notificações.
- * Versão: 1.0 | 2026-06-22
+ * Versão: 1.1 | 2026-06-23
+ *
+ * CORREÇÕES v1.1:
+ * - Inserção do sino antes de #userMiniProfile (compatível com user-profile-sidebar.js)
+ * - Evento corrigido: pageLoaded (era appPageLoaded)
+ * - Delay de inicialização aumentado para 800ms (user-profile-sidebar.js recria o header)
+ * - Tentativas múltiplas de injeção (retry) para garantir que o header esteja pronto
  */
 (function () {
     'use strict';
@@ -19,8 +25,8 @@
     // ─── Injetar HTML do sino no cabeçalho ───────────────────────────────
     function _injetar() {
         const header = document.querySelector('header.header');
-        if (!header) return;
-        if (document.getElementById('notif-bell-wrap')) return;
+        if (!header) return false;
+        if (document.getElementById('notif-bell-wrap')) return true;
 
         const wrap = document.createElement('div');
         wrap.id = 'notif-bell-wrap';
@@ -51,10 +57,14 @@
                 </div>
             </div>`;
 
-        // Inserir antes do app-user-menu
-        const userMenu = header.querySelector('app-user-menu');
-        if (userMenu) {
-            header.insertBefore(wrap, userMenu);
+        // Inserir antes do #userMiniProfile (compatível com user-profile-sidebar.js)
+        // O user-profile-sidebar.js substitui o app-user-menu por #userMiniProfile
+        const userMiniProfile = document.getElementById('userMiniProfile');
+        const appUserMenu = header.querySelector('app-user-menu');
+        if (userMiniProfile && userMiniProfile.parentElement === header) {
+            header.insertBefore(wrap, userMiniProfile);
+        } else if (appUserMenu) {
+            header.insertBefore(wrap, appUserMenu);
         } else {
             header.appendChild(wrap);
         }
@@ -77,6 +87,7 @@
         });
 
         _initialized = true;
+        return true;
     }
 
     // ─── CSS do componente ────────────────────────────────────────────────
@@ -486,26 +497,48 @@
         setTimeout(() => btn.classList.remove('shaking'), 1000);
     }
 
-    // ─── Inicialização ────────────────────────────────────────────────────
+    // ─── Inicialização com retry ──────────────────────────────────────────
     function _init() {
-        _injetar();
-        if (_initialized) {
-            _iniciarPolling();
+        // Tentar injetar com retry — user-profile-sidebar.js pode recriar o header
+        // após o notif-bell.js ser carregado
+        let tentativas = 0;
+        const maxTentativas = 10;
+        const intervalo = 200; // ms entre tentativas
+
+        function _tentarInjetar() {
+            tentativas++;
+            const ok = _injetar();
+            if (ok) {
+                // Injeção bem-sucedida — iniciar polling
+                if (!_pollTimer) _iniciarPolling();
+                console.log('[NotifBell] Sino injetado com sucesso (tentativa ' + tentativas + ')');
+            } else if (tentativas < maxTentativas) {
+                setTimeout(_tentarInjetar, intervalo);
+            } else {
+                console.warn('[NotifBell] Não foi possível injetar o sino após ' + maxTentativas + ' tentativas.');
+            }
         }
+
+        // Aguardar 800ms para o user-profile-sidebar.js recriar o header
+        setTimeout(_tentarInjetar, 800);
     }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', _init);
     } else {
-        setTimeout(_init, 200);
+        _init();
     }
 
     // Reinicializar ao navegar entre páginas (SPA)
-    document.addEventListener('appPageLoaded', function () {
-        if (!document.getElementById('notif-bell-wrap')) {
-            _injetar();
-            if (_initialized && !_pollTimer) _iniciarPolling();
-        }
+    // CORRIGIDO: era 'appPageLoaded', o router dispara 'pageLoaded'
+    document.addEventListener('pageLoaded', function () {
+        // Aguardar um tick para o router terminar de renderizar
+        setTimeout(function () {
+            if (!document.getElementById('notif-bell-wrap')) {
+                const ok = _injetar();
+                if (ok && !_pollTimer) _iniciarPolling();
+            }
+        }, 300);
     });
 
 })();
