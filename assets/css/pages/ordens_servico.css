@@ -435,6 +435,8 @@
 .page-ordens-servico .os-btn-acao.editar:hover { background: #fffbeb; }
 .page-ordens-servico .os-btn-acao.excluir { color: var(--os-red); border-color: #fecaca; }
 .page-ordens-servico .os-btn-acao.excluir:hover { background: #fef2f2; }
+.page-ordens-servico .os-btn-acao.imprimir { color: #0f766e; border-color: #99f6e4; }
+.page-ordens-servico .os-btn-acao.imprimir:hover { background: #f0fdfa; }
 
 /* ── Paginação ────────────────────────────────────────────────────────── */
 .page-ordens-servico .os-paginacao {

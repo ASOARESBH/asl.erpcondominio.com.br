@@ -228,6 +228,7 @@ async function carregarChamados(pagina = 1) {
             <td>
                 <button class="os-btn-acao ver" onclick="osVerDetalhe(${os.id})" title="Ver detalhes"><i class="fas fa-eye"></i></button>
                 ${os.status !== 'finalizado' ? `<button class="os-btn-acao editar" onclick="osAbrirEditar(${os.id})" title="Editar"><i class="fas fa-edit"></i></button>` : ''}
+                <button class="os-btn-acao imprimir" onclick="osImprimir(${os.id})" title="Imprimir / Gerar PDF"><i class="fas fa-print"></i></button>
                 ${os.status !== 'finalizado' ? `<button class="os-btn-acao excluir" onclick="osExcluir(${os.id},'${os.numero}')" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
             </td>
         </tr>
@@ -258,6 +259,13 @@ window.osPaginar = (p) => carregarChamados(p);
 window.osVerDetalhe = (id) => abrirDetalhe(id);
 window.osAbrirEditar = (id) => abrirEditar(id);
 window.osExcluir = (id, numero) => excluirOS(id, numero);
+
+// ─── IMPRIMIR / GERAR PDF ─────────────────────────────────────────────────
+function imprimirOS(id) {
+    const url = window.location.origin + '/frontend/pages/imprimir_os.html?id=' + id;
+    window.open(url, '_blank', 'width=900,height=750,scrollbars=yes,resizable=yes');
+}
+window.osImprimir = (id) => imprimirOS(id);
 
 // ─── FILTROS ──────────────────────────────────────────────────────────────
 function initFiltros() {
