@@ -2,13 +2,13 @@
  * notif-bell.js — Componente Global de Notificações
  * Injeta o ícone de sino no cabeçalho, faz polling automático,
  * toca som e anima o ícone quando há novas notificações.
- * Versão: 1.1 | 2026-06-23
+ * Versão: 1.2 | 2026-06-23
  *
- * CORREÇÕES v1.1:
- * - Inserção do sino antes de #userMiniProfile (compatível com user-profile-sidebar.js)
+ * CORREÇÕES v1.2:
+ * - Sino inserido dentro de #headerSessionGroup (ao lado da sessão do usuário)
+ * - Fallback: antes de #userMiniProfile ou no header se o grupo não existir
  * - Evento corrigido: pageLoaded (era appPageLoaded)
- * - Delay de inicialização aumentado para 800ms (user-profile-sidebar.js recria o header)
- * - Tentativas múltiplas de injeção (retry) para garantir que o header esteja pronto
+ * - Sistema de retry (10x × 200ms) para aguardar o header ser recriado
  */
 (function () {
     'use strict';
@@ -57,11 +57,20 @@
                 </div>
             </div>`;
 
-        // Inserir antes do #userMiniProfile (compatível com user-profile-sidebar.js)
-        // O user-profile-sidebar.js substitui o app-user-menu por #userMiniProfile
+        // Inserir dentro do #headerSessionGroup (ao lado da sessão do usuário)
+        // O user-profile-sidebar.js v1.1+ cria o grupo #headerSessionGroup no header
+        const sessionGroup = document.getElementById('headerSessionGroup');
         const userMiniProfile = document.getElementById('userMiniProfile');
         const appUserMenu = header.querySelector('app-user-menu');
-        if (userMiniProfile && userMiniProfile.parentElement === header) {
+        if (sessionGroup) {
+            // Inserir o sino ANTES do #userMiniProfile dentro do grupo de sessão
+            const userMiniInGroup = sessionGroup.querySelector('#userMiniProfile');
+            if (userMiniInGroup) {
+                sessionGroup.insertBefore(wrap, userMiniInGroup);
+            } else {
+                sessionGroup.prepend(wrap);
+            }
+        } else if (userMiniProfile && userMiniProfile.parentElement === header) {
             header.insertBefore(wrap, userMiniProfile);
         } else if (appUserMenu) {
             header.insertBefore(wrap, appUserMenu);
