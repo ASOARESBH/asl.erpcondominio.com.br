@@ -114,6 +114,80 @@ if (!function_exists('retornar_json')) {
     }
 }
 
+// ─── Função de geração de notificações ────────────────
+if (!function_exists('_os_gerar_notificacoes')) {
+    function _os_gerar_notificacoes($conn, $evento, $os_dados) {
+        // Buscar regras ativas para este evento
+        $stmt = $conn->prepare(
+            "SELECT r.*, GROUP_CONCAT(d.destinatario_id SEPARATOR ',') as dest_ids,
+                    GROUP_CONCAT(d.destinatario_nome SEPARATOR '||') as dest_nomes
+             FROM notif_os_regras r
+             LEFT JOIN notif_os_destinatarios d ON d.regra_id = r.id
+             WHERE r.ativo = 1 AND r.evento = ?
+             GROUP BY r.id"
+        );
+        if (!$stmt) return;
+        $stmt->bind_param('s', $evento);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if (!$result) return;
+
+        while ($regra = $result->fetch_assoc()) {
+            // Verificar filtros de prioridade
+            if (!empty($regra['filtro_prioridade']) && $regra['filtro_prioridade'] !== 'todas') {
+                if ($os_dados['prioridade'] !== $regra['filtro_prioridade']) continue;
+            }
+
+            // Montar título e corpo
+            $titulo_notif = str_replace(
+                ['{numero}', '{titulo}', '{prioridade}', '{departamento}'],
+                [$os_dados['numero'], $os_dados['titulo'], $os_dados['prioridade'], $os_dados['departamento']],
+                $regra['titulo_template'] ?? 'Nova O.S: {numero}'
+            );
+            $corpo_notif = str_replace(
+                ['{numero}', '{titulo}', '{prioridade}', '{departamento}', '{morador}', '{atendente}'],
+                [$os_dados['numero'], $os_dados['titulo'], $os_dados['prioridade'], $os_dados['departamento'],
+                 $os_dados['morador_nome'] ?? '', $os_dados['atendente_nome'] ?? ''],
+                $regra['corpo_template'] ?? 'O.S {numero} - {titulo} ({prioridade})'
+            );
+
+            // Inserir alerta para cada destinatário
+            $dest_ids   = $regra['dest_ids']   ? explode(',', $regra['dest_ids'])   : [];
+            $dest_nomes = $regra['dest_nomes'] ? explode('||', $regra['dest_nomes']) : [];
+
+            // Sempre incluir o atendente responsável
+            if (!empty($os_dados['atendente_id'])) {
+                if (!in_array($os_dados['atendente_id'], $dest_ids)) {
+                    $dest_ids[]   = $os_dados['atendente_id'];
+                    $dest_nomes[] = $os_dados['atendente_nome'] ?? '';
+                }
+            }
+
+            if (empty($dest_ids)) continue;
+
+            $stmt_ins = $conn->prepare(
+                "INSERT INTO notif_os_alertas (regra_id, os_id, os_numero, evento, titulo, corpo, destinatario_id, destinatario_nome, canal)
+                 VALUES (?,?,?,?,?,?,?,?,?)"
+            );
+            if (!$stmt_ins) continue;
+
+            foreach ($dest_ids as $k => $dest_id) {
+                $dest_id_int  = (int)$dest_id;
+                $dest_nome    = $dest_nomes[$k] ?? '';
+                $canal        = $regra['canal'] ?? 'sistema';
+                $os_id_int    = (int)$os_dados['id'];
+                $regra_id_int = (int)$regra['id'];
+                $os_numero    = $os_dados['numero'];
+                $stmt_ins->bind_param('iiissssss',
+                    $regra_id_int, $os_id_int, $os_numero, $evento,
+                    $titulo_notif, $corpo_notif, $dest_id_int, $dest_nome, $canal
+                );
+                $stmt_ins->execute();
+            }
+        }
+    }
+}
+
 // ─── Autenticação ────────────────────────────────────
 try {
     verificarAutenticacao(true, 'operador');
@@ -538,6 +612,35 @@ switch ($acao) {
         $stmt_int->execute();
 
         os_log('info', 'O.S criada', ['os_id' => $os_id, 'numero' => $numero]);
+
+        // ── Gerar notificações para esta O.S ──────────────────────────────
+        try {
+            $api_notif = __DIR__ . '/api_notificacoes_os.php';
+            if (file_exists($api_notif)) {
+                // Chamar a função de geração de alertas diretamente
+                $os_dados_notif = [
+                    'id'          => $os_id,
+                    'numero'      => $numero,
+                    'titulo'      => $titulo,
+                    'prioridade'  => $prioridade,
+                    'departamento'=> $departamento,
+                    'atendente_id'=> $atendente_id,
+                    'atendente_nome'=> $atendente_nome,
+                    'criado_por_id'=> $criado_por_id,
+                    'criado_por_nome'=> $criado_por_nome,
+                    'morador_nome'=> $morador_nome,
+                    'morador_unidade'=> $morador_unidade,
+                ];
+                _os_gerar_notificacoes($conn, 'os_criada', $os_dados_notif);
+                // Prioridade urgente ou alta: notificar imediatamente
+                if (in_array($prioridade, ['urgente', 'alta'])) {
+                    _os_gerar_notificacoes($conn, 'os_prioridade_' . $prioridade, $os_dados_notif);
+                }
+            }
+        } catch (Exception $e_notif) {
+            os_log('aviso', 'Erro ao gerar notificações: ' . $e_notif->getMessage());
+        }
+
         retornar_json(true, "O.S {$numero} criada com sucesso!", ['id' => $os_id, 'numero' => $numero]);
         break;
 

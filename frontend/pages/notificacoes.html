@@ -1,29 +1,131 @@
 <!-- Page Metadata -->
-<div id="page-metadata" data-title="Notificações" data-icon="fa-bell" style="display:none;"></div>
+<div id="page-metadata" data-title="Configurações de Notificações" data-icon="fa-bell" style="display:none;"></div>
 
-<div class="page-wrapper page-notificacoes">
-
-  <!-- Breadcrumb -->
-  <nav class="stub-breadcrumb">
-    <span data-page="configuracao"><i class="fas fa-cog"></i> Configurações</span>
-    <span class="stub-sep"><i class="fas fa-chevron-right"></i></span>
-    <span>Notificações</span>
-  </nav>
+<div class="page-wrapper page-notificacoes-config">
 
   <!-- Page Header -->
   <div class="page-header">
-    <h1><i class="fas fa-bell"></i> Configurações de Notificações</h1>
-    <p>Alertas push, avisos do painel e e-mails automáticos</p>
+    <div class="page-header-content">
+      <h1><i class="fas fa-bell"></i> Configurações de Notificações</h1>
+      <p>Configure alertas automáticos por módulo, canais de envio e destinatários</p>
+    </div>
   </div>
 
-  <!-- Em desenvolvimento -->
-  <div class="page-card stub-card">
-    <i class="fas fa-bell stub-icon"></i>
-    <h3>Módulo em Desenvolvimento</h3>
-    <p>As configurações de notificações push e alertas do painel estarão disponíveis em breve.</p>
-    <button class="stub-btn-back" data-page="configuracao">
-      <i class="fas fa-arrow-left"></i> Voltar às Configurações
-    </button>
+  <!-- Módulos de Notificação -->
+  <div class="notif-modulos-grid">
+
+    <!-- Módulo: Ordens de Serviço -->
+    <div class="notif-modulo-card" id="modulo-os">
+      <div class="notif-modulo-header">
+        <div class="notif-modulo-icon os-icon">
+          <i class="fas fa-wrench"></i>
+        </div>
+        <div class="notif-modulo-info">
+          <h2>Ordens de Serviço</h2>
+          <p>Alertas de abertura, prazo e prioridade de O.S</p>
+        </div>
+        <span class="notif-modulo-badge" id="badge-os">Carregando...</span>
+      </div>
+      <div class="notif-regras-lista" id="regras-os">
+        <div class="notif-loading"><i class="fas fa-spinner fa-spin"></i> Carregando regras...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal de edição de regra -->
+  <div class="notif-modal-overlay" id="notif-modal-overlay" style="display:none;">
+    <div class="notif-modal">
+      <div class="notif-modal-header">
+        <h3 id="notif-modal-titulo"><i class="fas fa-bell"></i> Editar Regra de Notificação</h3>
+        <button class="notif-modal-close" id="notif-modal-close"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="notif-modal-body">
+        <input type="hidden" id="notif-regra-id">
+        <input type="hidden" id="notif-regra-evento">
+
+        <div class="notif-form-row">
+          <label class="notif-toggle-label">
+            <span>Notificação ativa</span>
+            <div class="notif-toggle-wrap">
+              <input type="checkbox" id="notif-ativo" class="notif-toggle-input">
+              <span class="notif-toggle-slider"></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="notif-form-group">
+          <label class="notif-label">Canais de Envio</label>
+          <div class="notif-canais-grid">
+            <label class="notif-canal-item">
+              <input type="checkbox" name="canal" value="sistema" id="canal-sistema">
+              <span class="notif-canal-box"><i class="fas fa-desktop"></i><span>Sistema</span></span>
+            </label>
+            <label class="notif-canal-item">
+              <input type="checkbox" name="canal" value="email" id="canal-email">
+              <span class="notif-canal-box"><i class="fas fa-envelope"></i><span>E-mail</span></span>
+            </label>
+            <label class="notif-canal-item">
+              <input type="checkbox" name="canal" value="whatsapp" id="canal-whatsapp">
+              <span class="notif-canal-box"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></span>
+            </label>
+            <label class="notif-canal-item">
+              <input type="checkbox" name="canal" value="telegram" id="canal-telegram">
+              <span class="notif-canal-box"><i class="fab fa-telegram"></i><span>Telegram</span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="notif-form-group" id="notif-horas-group" style="display:none;">
+          <label class="notif-label">Alertar quando a O.S estiver aberta há mais de <strong>X horas</strong></label>
+          <div class="notif-input-suffix">
+            <input type="number" id="notif-horas-limite" class="notif-input" min="1" max="9999" step="0.5" placeholder="Ex: 24">
+            <span class="notif-suffix">horas</span>
+          </div>
+          <p class="notif-hint">O sistema verificará automaticamente e gerará um alerta por dia para cada O.S em aberto acima deste limite.</p>
+        </div>
+
+        <div class="notif-form-group" id="notif-prioridade-group" style="display:none;">
+          <label class="notif-label">Alertar quando a prioridade for</label>
+          <select id="notif-prioridade" class="notif-select">
+            <option value="">— Selecione —</option>
+            <option value="urgente">Urgente</option>
+            <option value="alta">Alta</option>
+            <option value="media">Média</option>
+            <option value="baixa">Baixa</option>
+          </select>
+        </div>
+
+        <div class="notif-form-group" id="notif-emails-group" style="display:none;">
+          <label class="notif-label">E-mails adicionais para notificação</label>
+          <input type="text" id="notif-emails" class="notif-input" placeholder="email1@dominio.com, email2@dominio.com">
+          <p class="notif-hint">Separe múltiplos e-mails com vírgula.</p>
+        </div>
+
+        <div class="notif-form-group">
+          <label class="notif-label">Usuários que receberão esta notificação</label>
+          <div class="notif-usuarios-lista" id="notif-usuarios-lista">
+            <div class="notif-loading"><i class="fas fa-spinner fa-spin"></i> Carregando usuários...</div>
+          </div>
+          <p class="notif-hint">Se nenhum usuário for selecionado, todos os administradores e gerentes serão notificados.</p>
+        </div>
+
+        <div class="notif-form-group">
+          <label class="notif-label">Título da notificação</label>
+          <input type="text" id="notif-titulo-tpl" class="notif-input" placeholder="Ex: Nova O.S criada: {numero}">
+          <p class="notif-hint">Variáveis: <code>{numero}</code> <code>{titulo}</code> <code>{prioridade}</code> <code>{departamento}</code> <code>{atendente}</code> <code>{criado_por}</code> <code>{horas}</code></p>
+        </div>
+
+        <div class="notif-form-group">
+          <label class="notif-label">Mensagem da notificação</label>
+          <textarea id="notif-corpo-tpl" class="notif-textarea" rows="3" placeholder="Descreva a mensagem..."></textarea>
+        </div>
+      </div>
+      <div class="notif-modal-footer">
+        <button class="notif-btn-cancelar" id="notif-btn-cancelar"><i class="fas fa-times"></i> Cancelar</button>
+        <button class="notif-btn-salvar" id="notif-btn-salvar"><i class="fas fa-save"></i> Salvar Configuração</button>
+      </div>
+    </div>
   </div>
 
 </div>
