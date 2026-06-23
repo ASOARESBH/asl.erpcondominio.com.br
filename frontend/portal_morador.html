@@ -189,6 +189,127 @@
         .nav-tab i      { font-size: .9rem; }
 
         /* ============================================================
+           MOBILE NAV — HAMBURGER MENU
+           ============================================================ */
+
+        /* Barra mobile: oculta em desktop */
+        #mobileNavBar {
+            display: none;
+            position: sticky; top: var(--header-h); z-index: 91;
+            background: var(--bg-card);
+            border-bottom: 2px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            height: 52px;
+            align-items: center;
+            padding: 0 1rem;
+            gap: .75rem;
+        }
+        #mobileNavBar.visible { display: flex !important; }
+
+        /* Indicador da aba atual */
+        .mobile-nav-current {
+            flex: 1;
+            display: flex; align-items: center; gap: .55rem;
+            font-size: .9rem; font-weight: 700;
+            color: var(--primary);
+            min-width: 0;
+        }
+        .mobile-nav-current i { font-size: .95rem; flex-shrink: 0; }
+        .mobile-nav-current span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Botão hambúrguer */
+        #btnMobileMenu {
+            background: var(--primary-light);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            border-radius: var(--radius-md);
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background .2s, transform .2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #btnMobileMenu:active { transform: scale(.93); }
+        #btnMobileMenu.open { background: var(--primary); color: #fff; }
+
+        /* Overlay escuro */
+        #mobileNavOverlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.45);
+            z-index: 92;
+            animation: fadeInOverlay .2s ease;
+        }
+        #mobileNavOverlay.show { display: block; }
+        @keyframes fadeInOverlay {
+            from { opacity: 0; } to { opacity: 1; }
+        }
+
+        /* Dropdown do menu */
+        #mobileNavDropdown {
+            display: none;
+            position: fixed;
+            top: calc(var(--header-h) + 52px);
+            left: 0; right: 0;
+            z-index: 93;
+            background: var(--bg-card);
+            border-bottom: 2px solid var(--border);
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+            padding: 1rem;
+            animation: slideDownMenu .22s ease-out;
+        }
+        #mobileNavDropdown.show { display: block; }
+        @keyframes slideDownMenu {
+            from { opacity: 0; transform: translateY(-12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Grid de itens do menu mobile */
+        .mobile-menu-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .6rem;
+        }
+
+        /* Item do menu mobile */
+        .mobile-menu-item {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: .4rem;
+            padding: .85rem .5rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-subtle);
+            cursor: pointer;
+            transition: all .18s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .mobile-menu-item:active { transform: scale(.94); }
+        .mobile-menu-item.active {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+        .mobile-menu-item i {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+        }
+        .mobile-menu-item.active i { color: var(--primary); }
+        .mobile-menu-item span {
+            font-size: .72rem; font-weight: 700;
+            color: var(--text-secondary);
+            text-align: center; line-height: 1.2;
+        }
+        .mobile-menu-item.active span { color: var(--primary); }
+        .mobile-menu-item-marketplace i { color: #7c3aed !important; }
+        .mobile-menu-item-marketplace.active { border-color: #7c3aed !important; background: #f5f3ff !important; }
+        .mobile-menu-item-marketplace.active i,
+        .mobile-menu-item-marketplace.active span { color: #7c3aed !important; }
+
+        /* ============================================================
            MAIN CONTENT
            ============================================================ */
         #mainContent {
@@ -828,9 +949,9 @@
                 max-height: 85vh; max-height: 85dvh;
             }
 
-            /* Nav tabs */
-            .nav-inner { padding: 0 .5rem; }
-            .nav-tab { padding: .8rem .85rem; font-size: .82rem; }
+            /* Nav desktop: oculto em mobile, substituído pelo hambúrguer */
+            #mainNav { display: none !important; }
+            #mobileNavBar { display: flex !important; }
 
             /* Marketplace */
             .mkt-grid { grid-template-columns: 1fr 1fr; }
@@ -893,8 +1014,8 @@
             .btn { padding: .65rem 1rem; font-size: .88rem; }
             .btn-sm { padding: .4rem .65rem; font-size: .8rem; }
 
-            .nav-tab { padding: .75rem .7rem; font-size: .78rem; }
-            .nav-tab i { font-size: .85rem; }
+            /* Nav mobile: ajuste de grid para 2 colunas em phone */
+            .mobile-menu-grid { grid-template-columns: repeat(4, 1fr); }
 
             .protocolo-card { padding: 1rem; }
 
@@ -948,10 +1069,11 @@
 
             .form-grid-3 { grid-template-columns: 1fr; }
 
-            /* Nav: apenas ícones */
-            .nav-tab span { display: none; }
-            .nav-tab i    { font-size: 1rem; }
-            .nav-tab      { padding: .75rem .9rem; }
+            /* Nav mobile: 2 colunas em telas muito pequenas */
+            .mobile-menu-grid { grid-template-columns: repeat(4, 1fr); }
+            .mobile-menu-item { padding: .7rem .4rem; }
+            .mobile-menu-item i { font-size: 1.15rem; }
+            .mobile-menu-item span { font-size: .68rem; }
 
             .mkt-detalhe-info { grid-template-columns: 1fr; }
 
@@ -1080,6 +1202,68 @@
         </button>
     </div>
 </nav>
+
+<!-- ================================================================
+     MOBILE NAV BAR (visível apenas em mobile ≤ 768px)
+     ================================================================ -->
+<div id="mobileNavBar" role="navigation" aria-label="Menu mobile">
+    <div class="mobile-nav-current">
+        <i class="fas fa-user" id="mobileNavIcon" aria-hidden="true"></i>
+        <span id="mobileNavLabel">Meu Perfil</span>
+    </div>
+    <button id="btnMobileMenu" onclick="toggleMobileMenu()" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileNavDropdown">
+        <i class="fas fa-th" id="iconMobileMenu"></i>
+    </button>
+</div>
+
+<!-- Overlay escuro ao abrir o menu mobile -->
+<div id="mobileNavOverlay" onclick="fecharMobileMenu()" aria-hidden="true"></div>
+
+<!-- Dropdown do menu mobile -->
+<div id="mobileNavDropdown" role="menu" aria-label="Navegação">
+    <div class="mobile-menu-grid">
+        <button class="mobile-menu-item active" id="mmi-perfil"
+            onclick="abrirAbaMobile('perfil', 'fa-user', 'Meu Perfil', this)" role="menuitem">
+            <i class="fas fa-user" aria-hidden="true"></i>
+            <span>Meu Perfil</span>
+        </button>
+        <button class="mobile-menu-item" id="mmi-visitantes"
+            onclick="abrirAbaMobile('visitantes', 'fa-users', 'Visitantes', this)" role="menuitem">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            <span>Visitantes</span>
+        </button>
+        <button class="mobile-menu-item" id="mmi-acessos"
+            onclick="abrirAbaMobile('acessos', 'fa-qrcode', 'Acessos', this)" role="menuitem">
+            <i class="fas fa-qrcode" aria-hidden="true"></i>
+            <span>Acessos</span>
+        </button>
+        <button class="mobile-menu-item" id="mmi-dependentes"
+            onclick="abrirAbaMobile('dependentes', 'fa-people-arrows', 'Dependentes', this)" role="menuitem">
+            <i class="fas fa-people-arrows" aria-hidden="true"></i>
+            <span>Dependentes</span>
+        </button>
+        <button class="mobile-menu-item" id="mmi-protocolos"
+            onclick="abrirAbaMobile('protocolos', 'fa-box', 'Protocolos', this)" role="menuitem">
+            <i class="fas fa-box" aria-hidden="true"></i>
+            <span>Protocolos</span>
+        </button>
+        <button class="mobile-menu-item" id="mmi-hidrometro"
+            onclick="abrirAbaMobile('hidrometro', 'fa-tint', 'Hidrômetro', this)" role="menuitem">
+            <i class="fas fa-tint" aria-hidden="true"></i>
+            <span>Hidrômetro</span>
+        </button>
+        <button class="mobile-menu-item" id="mmi-veiculos"
+            onclick="abrirAbaMobile('veiculos', 'fa-car', 'Veículos', this)" role="menuitem">
+            <i class="fas fa-car" aria-hidden="true"></i>
+            <span>Veículos</span>
+        </button>
+        <button class="mobile-menu-item mobile-menu-item-marketplace" id="mmi-marketplace"
+            onclick="abrirAbaMobile('marketplace', 'fa-store', 'Marketplace', this)" role="menuitem">
+            <i class="fas fa-store" aria-hidden="true"></i>
+            <span>Marketplace</span>
+        </button>
+    </div>
+</div>
 
 <!-- ================================================================
      MAIN CONTENT
@@ -1816,6 +2000,10 @@ function inicializarPortal() {
     nav.classList.add('visible');
     content.classList.add('visible');
 
+    // Mostrar barra de navegação mobile
+    const mobileBar = document.getElementById('mobileNavBar');
+    if (mobileBar) mobileBar.classList.add('visible');
+
     // Iniciar fade-out da tela de loading
     loading.classList.add('hide');
 
@@ -1839,6 +2027,9 @@ function abrirAba(aba, btnEl) {
 
     Portal.abaAtual = aba;
 
+    // Sincronizar indicador do menu mobile
+    sincronizarNavMobile(aba);
+
     const loaders = {
         perfil:      carregarPerfil,
         visitantes:  () => carregarVisitantes(),
@@ -1859,6 +2050,93 @@ function abrirAba(aba, btnEl) {
         btnEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   MENU MOBILE — HAMBURGER
+   ────────────────────────────────────────────────────────────────── */
+
+/** Mapa de abas: id → { icon, label } */
+const ABAS_INFO = {
+    perfil:      { icon: 'fa-user',          label: 'Meu Perfil'  },
+    visitantes:  { icon: 'fa-users',         label: 'Visitantes'  },
+    acessos:     { icon: 'fa-qrcode',        label: 'Acessos'     },
+    dependentes: { icon: 'fa-people-arrows', label: 'Dependentes' },
+    protocolos:  { icon: 'fa-box',           label: 'Protocolos'  },
+    hidrometro:  { icon: 'fa-tint',          label: 'Hidrômetro'  },
+    veiculos:    { icon: 'fa-car',           label: 'Veículos'    },
+    marketplace: { icon: 'fa-store',         label: 'Marketplace' }
+};
+
+/** Abre/fecha o dropdown do menu mobile */
+function toggleMobileMenu() {
+    const dropdown = document.getElementById('mobileNavDropdown');
+    const overlay  = document.getElementById('mobileNavOverlay');
+    const btn      = document.getElementById('btnMobileMenu');
+    const icon     = document.getElementById('iconMobileMenu');
+    const isOpen   = dropdown.classList.contains('show');
+
+    if (isOpen) {
+        fecharMobileMenu();
+    } else {
+        dropdown.classList.add('show');
+        overlay.classList.add('show');
+        btn.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        icon.className = 'fas fa-times';
+    }
+}
+
+/** Fecha o dropdown do menu mobile */
+function fecharMobileMenu() {
+    const dropdown = document.getElementById('mobileNavDropdown');
+    const overlay  = document.getElementById('mobileNavOverlay');
+    const btn      = document.getElementById('btnMobileMenu');
+    const icon     = document.getElementById('iconMobileMenu');
+
+    dropdown.classList.remove('show');
+    overlay.classList.remove('show');
+    btn.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+    icon.className = 'fas fa-th';
+}
+
+/** Navega para uma aba pelo menu mobile e fecha o dropdown */
+function abrirAbaMobile(aba, icone, label, btnEl) {
+    // Fechar o menu imediatamente
+    fecharMobileMenu();
+
+    // Atualizar indicador da aba atual na barra mobile
+    const navIcon  = document.getElementById('mobileNavIcon');
+    const navLabel = document.getElementById('mobileNavLabel');
+    if (navIcon)  navIcon.className  = 'fas ' + icone;
+    if (navLabel) navLabel.textContent = label;
+
+    // Marcar item ativo no dropdown
+    document.querySelectorAll('.mobile-menu-item').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    // Reutilizar a função de navegação existente (sem passar btnEl para não fazer scrollIntoView no nav desktop)
+    abrirAba(aba, null);
+}
+
+/** Atualiza o indicador mobile quando a aba é aberta pelo nav desktop */
+function sincronizarNavMobile(aba) {
+    const info = ABAS_INFO[aba];
+    if (!info) return;
+    const navIcon  = document.getElementById('mobileNavIcon');
+    const navLabel = document.getElementById('mobileNavLabel');
+    if (navIcon)  navIcon.className  = 'fas ' + info.icon;
+    if (navLabel) navLabel.textContent = info.label;
+    // Atualizar item ativo no dropdown
+    document.querySelectorAll('.mobile-menu-item').forEach(b => b.classList.remove('active'));
+    const mmi = document.getElementById('mmi-' + aba);
+    if (mmi) mmi.classList.add('active');
+}
+
+/** Fechar menu mobile ao pressionar Escape */
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') fecharMobileMenu();
+});
 
 /* ──────────────────────────────────────────────────────────────────
    ALERTA
