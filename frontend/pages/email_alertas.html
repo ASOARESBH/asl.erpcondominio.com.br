@@ -14,7 +14,7 @@
   <div class="page-card" style="padding:0;margin-bottom:0;overflow:hidden">
     <div class="tabs-container">
       <button class="tab-btn active" data-tab="provedor" onclick="EmailAlertasPage.trocarAba('provedor')">
-        <i class="fas fa-server"></i> Provedor SMTP
+        <i class="fas fa-plug"></i> Provedor de E-mail
       </button>
       <button class="tab-btn" data-tab="teste" onclick="EmailAlertasPage.trocarAba('teste')">
         <i class="fas fa-flask"></i> Testar Conexão
@@ -24,6 +24,9 @@
       </button>
       <button class="tab-btn" data-tab="logs" onclick="EmailAlertasPage.trocarAba('logs')">
         <i class="fas fa-list-alt"></i> Log de Envios
+      </button>
+      <button class="tab-btn" data-tab="docs" onclick="EmailAlertasPage.trocarAba('docs')">
+        <i class="fas fa-book"></i> Documentação
       </button>
     </div>
   </div>
@@ -57,6 +60,12 @@
         <h3><i class="fas fa-plug"></i> Provedor de E-mail</h3>
       </div>
 
+      <!-- Banner recomendação -->
+      <div class="provider-banner-info">
+        <i class="fas fa-star"></i>
+        <span>Recomendamos o <strong>Brevo</strong> como provedor padrão — gratuito até 300 e-mails/dia, sem necessidade de configurar servidor SMTP. <a onclick="EmailAlertasPage.trocarAba('docs')" class="banner-link">Ver documentação</a></span>
+      </div>
+
       <div class="email-provider-grid">
         <div class="email-provider-card active" data-email-provider="brevo"
              onclick="EmailAlertasPage.selecionarEmailProvider('brevo')">
@@ -77,6 +86,14 @@
           <div class="email-provider-nome">SMTP</div>
           <div class="email-provider-desc">Personalizado</div>
         </div>
+      </div>
+
+      <!-- Indicador da configuração ativa -->
+      <div id="provider-config-atual" style="display:none" class="provider-config-row">
+        <i class="fas fa-check-circle" style="color:#22c55e"></i>
+        <span style="font-size:13px;color:#475569">Configuração ativa:</span>
+        <span id="provider-config-badge" class="provider-badge-atual"></span>
+        <span id="provider-config-status" class="provider-badge-status"></span>
       </div>
 
       <!-- Presets SMTP — só visível em modo SMTP -->
@@ -203,12 +220,26 @@
         </div>
       </div>
 
+      <!-- Status (ativo/inativo) — comum a todos os providers -->
+      <div class="form-status-row">
+        <div>
+          <label class="form-label">Status da Configuração</label>
+          <select id="smtp-ativo" title="Status da configuração de e-mail">
+            <option value="1">Ativo — envios habilitados</option>
+            <option value="0">Inativo — envios desabilitados</option>
+          </select>
+        </div>
+      </div>
+
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
         <button class="btn-primary-modern" onclick="EmailAlertasPage.salvarSMTP()">
           <i class="fas fa-save"></i> Salvar Configuração
         </button>
         <button class="btn-secondary-modern" onclick="EmailAlertasPage.trocarAba('teste')">
           <i class="fas fa-flask"></i> Testar Conexão
+        </button>
+        <button class="btn-secondary-modern" onclick="EmailAlertasPage.recarregarConfig()">
+          <i class="fas fa-sync"></i> Recarregar
         </button>
       </div>
     </div>
@@ -334,6 +365,110 @@
     </div>
 
     <div class="pag-wrap" id="log-paginacao"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: DOCUMENTAÇÃO                                            -->
+  <!-- ============================================================ -->
+  <div id="tab-docs" class="tab-content">
+
+    <div class="page-card" style="margin-bottom:16px">
+      <div class="card-header-row">
+        <h3><i class="fas fa-book"></i> Como Configurar cada Provedor</h3>
+      </div>
+
+      <!-- Tabs de doc -->
+      <div class="docs-tabs-bar">
+        <button class="docs-tab-btn active" data-doc="brevo" onclick="EmailAlertasPage.trocarDocTab('brevo', this)">
+          📧 Brevo
+        </button>
+        <button class="docs-tab-btn" data-doc="resend" onclick="EmailAlertasPage.trocarDocTab('resend', this)">
+          ✉️ Resend
+        </button>
+        <button class="docs-tab-btn" data-doc="smtp" onclick="EmailAlertasPage.trocarDocTab('smtp', this)">
+          🖥️ SMTP Personalizado
+        </button>
+      </div>
+
+      <!-- Brevo -->
+      <div class="docs-panel active" id="doc-panel-brevo">
+        <div class="docs-alert-info">
+          <i class="fas fa-gift"></i>
+          <span><strong>Gratuito:</strong> até 300 e-mails/dia e 9.000/mês. Sem necessidade de configurar servidor SMTP.</span>
+        </div>
+        <div class="docs-step"><div class="docs-step-num">1</div><div>Acesse <strong>app.brevo.com</strong> e crie uma conta gratuita.</div></div>
+        <div class="docs-step"><div class="docs-step-num">2</div><div>No menu superior, clique no seu nome → <strong>SMTP &amp; API</strong>.</div></div>
+        <div class="docs-step"><div class="docs-step-num">3</div><div>Vá em <strong>API Keys</strong> → <strong>Create a new API key</strong>.</div></div>
+        <div class="docs-step"><div class="docs-step-num">4</div><div>Copie a chave gerada e cole no campo <strong>API Key</strong> da aba Provedor de E-mail.</div></div>
+        <div class="docs-step"><div class="docs-step-num">5</div><div>Em <strong>Senders → Add a new sender</strong>, verifique o e-mail que usará como remetente.</div></div>
+        <pre class="docs-code-block">Endpoint: https://api.brevo.com/v3/smtp/email
+Auth:     Header → api-key: SUA_API_KEY
+Grátis:   300 e-mails/dia · 9.000/mês · sem cartão de crédito</pre>
+        <div class="docs-action-row">
+          <button type="button" class="btn-secondary-modern btn-sm" onclick="EmailAlertasPage.selecionarEmailProvider('brevo');EmailAlertasPage.trocarAba('provedor')">
+            <i class="fas fa-arrow-left"></i> Configurar Brevo agora
+          </button>
+        </div>
+      </div>
+
+      <!-- Resend -->
+      <div class="docs-panel" id="doc-panel-resend">
+        <div class="docs-alert-info">
+          <i class="fas fa-gift"></i>
+          <span><strong>Gratuito:</strong> até 3.000 e-mails/mês no plano free. API moderna com alta entregabilidade.</span>
+        </div>
+        <div class="docs-step"><div class="docs-step-num">1</div><div>Acesse <strong>resend.com</strong> e crie uma conta.</div></div>
+        <div class="docs-step"><div class="docs-step-num">2</div><div>Vá em <strong>API Keys</strong> → <strong>Create API Key</strong> e copie a chave.</div></div>
+        <div class="docs-step"><div class="docs-step-num">3</div><div>Em <strong>Domains</strong>, adicione e verifique o seu domínio de envio (verificação via DNS).</div></div>
+        <div class="docs-step"><div class="docs-step-num">4</div><div>Use um e-mail do domínio verificado no campo <strong>E-mail Remetente</strong>.</div></div>
+        <pre class="docs-code-block">Endpoint: https://api.resend.com/emails
+Auth:     Header → Authorization: Bearer SUA_API_KEY
+Grátis:   3.000 e-mails/mês · 1 domínio personalizado</pre>
+        <div class="docs-action-row">
+          <button type="button" class="btn-secondary-modern btn-sm" onclick="EmailAlertasPage.selecionarEmailProvider('resend');EmailAlertasPage.trocarAba('provedor')">
+            <i class="fas fa-arrow-left"></i> Configurar Resend agora
+          </button>
+        </div>
+      </div>
+
+      <!-- SMTP -->
+      <div class="docs-panel" id="doc-panel-smtp">
+        <div class="docs-alert-warning">
+          <i class="fas fa-exclamation-triangle"></i>
+          <span>SMTP é um fallback opcional. Para produção em condomínios, prefira <strong>Brevo</strong> ou <strong>Resend</strong> — sem bloqueio de porta 587 por ISP.</span>
+        </div>
+
+        <h4 class="docs-sub-titulo">HostGator / cPanel</h4>
+        <pre class="docs-code-block">Servidor:  mail.seudominio.com.br
+Porta:     465 (SSL)  ou  587 (TLS)
+Segurança: SSL para 465  /  TLS para 587
+Usuário:   email@seudominio.com.br
+Senha:     senha da caixa de e-mail</pre>
+
+        <h4 class="docs-sub-titulo docs-sub-titulo--gap">Gmail (Senha de Aplicativo)</h4>
+        <div class="docs-alert-warning docs-alert-warning--sm">
+          <i class="fas fa-info-circle"></i>
+          <span>Requer <strong>Verificação em 2 etapas</strong> ativa e uma <strong>Senha de Aplicativo</strong> gerada em Conta Google → Segurança.</span>
+        </div>
+        <pre class="docs-code-block">Servidor:  smtp.gmail.com
+Porta:     587
+Segurança: TLS
+Usuário:   seuemail@gmail.com
+Senha:     senha de app de 16 dígitos (não a senha normal)</pre>
+
+        <h4 class="docs-sub-titulo docs-sub-titulo--gap">Outlook / Office 365</h4>
+        <pre class="docs-code-block">Servidor:  smtp.office365.com
+Porta:     587
+Segurança: TLS (STARTTLS)
+Usuário:   seuemail@outlook.com
+Senha:     senha da conta Microsoft</pre>
+        <div class="docs-action-row">
+          <button type="button" class="btn-secondary-modern btn-sm" onclick="EmailAlertasPage.selecionarEmailProvider('smtp');EmailAlertasPage.trocarAba('provedor')">
+            <i class="fas fa-arrow-left"></i> Configurar SMTP agora
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============================================================ -->

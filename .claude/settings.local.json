@@ -10,7 +10,8 @@
       "WebFetch(domain:device.report)",
       "WebFetch(domain:idcloud.com.br)",
       "Bash(xargs grep *)",
-      "Bash(find c:\\\\\\\\xampp\\\\\\\\htdocs\\\\\\\\dashboard\\\\\\\\asl.erpcondominio.com.br -type d -name \"*financ*\" -o -type d -name \"*payment*\" -o -type d -name \"*transac*\")"
+      "Bash(find c:\\\\\\\\xampp\\\\\\\\htdocs\\\\\\\\dashboard\\\\\\\\asl.erpcondominio.com.br -type d -name \"*financ*\" -o -type d -name \"*payment*\" -o -type d -name \"*transac*\")",
+      "Bash(Remove-Item \"c:\\\\xampp\\\\htdocs\\\\dashboard\\\\asl.erpcondominio.com.br\\\\frontend\\\\config_smtp.html\" -Force)"
     ]
   }
 }

@@ -282,7 +282,8 @@ function _smtp_salvar($db) {
     $de_nome    = mysqli_real_escape_string($db, $_POST['smtp_de_nome']  ?? 'Sistema ERP');
     $seguranca  = in_array($_POST['smtp_seguranca'] ?? 'tls', ['tls','ssl','none'])
                   ? $_POST['smtp_seguranca'] : 'tls';
-    $timeout    = (int)($_POST['timeout'] ?? 30);
+    $timeout    = (int)($_POST['timeout']    ?? 30);
+    $smtp_ativo = isset($_POST['smtp_ativo']) && $_POST['smtp_ativo'] === '0' ? 0 : 1;
     $nova_senha = $_POST['smtp_senha'] ?? '';
 
     // Campos API
@@ -335,7 +336,7 @@ function _smtp_salvar($db) {
             provedor='$provedor', smtp_host='$host', smtp_port=$port,
             smtp_usuario='$usuario', smtp_senha='$senha_final',
             smtp_de_email='$de_email', smtp_de_nome='$de_nome',
-            smtp_seguranca='$seguranca', timeout=$timeout, smtp_ativo=1
+            smtp_seguranca='$seguranca', timeout=$timeout, smtp_ativo=$smtp_ativo
             WHERE id=$id";
     } else {
         $sql = "INSERT INTO configuracao_smtp
@@ -344,7 +345,7 @@ function _smtp_salvar($db) {
              smtp_de_email,smtp_de_nome,smtp_seguranca,timeout,smtp_ativo)
             VALUES ('$ep',$api_esc,$se_esc,$sn_esc,
              '$provedor','$host',$port,'$usuario','$senha_final',
-             '$de_email','$de_nome','$seguranca',$timeout,1)";
+             '$de_email','$de_nome','$seguranca',$timeout,$smtp_ativo)";
     }
 
     if (mysqli_query($db, $sql)) {

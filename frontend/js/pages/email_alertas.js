@@ -38,8 +38,10 @@ export function init() {
         selecionarProvedor,
         salvarSMTP,
         testarSMTP,
+        recarregarConfig,
         toggleSenha,
         toggleApiKey,
+        trocarDocTab,
         filtrarAlertas,
         toggleAlerta,
         abrirModalAlerta,
@@ -229,6 +231,10 @@ async function _carregarSMTP() {
             const seg = document.getElementById('smtp-seguranca');
             if (seg) seg.value = c.smtp_seguranca || 'tls';
 
+            // Status ativo/inativo
+            const ativoSel = document.getElementById('smtp-ativo');
+            if (ativoSel) ativoSel.value = c.smtp_ativo !== undefined ? String(c.smtp_ativo) : '1';
+
             _provedorSelecionado = c.provedor || 'custom';
             _renderizarProvedores();
 
@@ -239,6 +245,14 @@ async function _carregarSMTP() {
             if (badge) badge.style.display = 'flex';
             const badgeTxt = document.getElementById('smtp-status-badge-texto');
             if (badgeTxt) badgeTxt.textContent = (providerLabels[_emailProvider] || 'E-mail') + ' Configurado';
+
+            // Indicador da configuração atual
+            const configRow   = document.getElementById('provider-config-atual');
+            const configBadge = document.getElementById('provider-config-badge');
+            const configStatus = document.getElementById('provider-config-status');
+            if (configRow) configRow.style.display = 'flex';
+            if (configBadge) configBadge.textContent = providerLabels[_emailProvider] || _emailProvider;
+            if (configStatus) configStatus.textContent = c.smtp_ativo == 0 ? '— Inativo' : '';
 
             if (_emailProvider === 'brevo' || _emailProvider === 'resend') {
                 const label = providerLabels[_emailProvider];
@@ -288,6 +302,7 @@ async function salvarSMTP() {
     form.append('smtp_de_nome',   _get('smtp-de-nome'));
     form.append('smtp_seguranca', document.getElementById('smtp-seguranca')?.value || 'tls');
     form.append('timeout',        _get('smtp-timeout'));
+    form.append('smtp_ativo',     document.getElementById('smtp-ativo')?.value ?? '1');
 
     try {
         const d = await _fetchJson(API, { method: 'POST', body: form });
@@ -425,6 +440,19 @@ async function _renderizarResumoSMTP() {
     } catch (e) {
         el.innerHTML = `<div style="color:#dc2626;font-size:14px"><i class="fas fa-exclamation-triangle"></i> ${_esc(e.message)}</div>`;
     }
+}
+
+function recarregarConfig() {
+    _carregarSMTP();
+    _toast('Configuração recarregada.', 'info');
+}
+
+function trocarDocTab(doc, el) {
+    document.querySelectorAll('.page-email-alertas .docs-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.page-email-alertas .docs-panel').forEach(p => p.classList.remove('active'));
+    if (el) el.classList.add('active');
+    const panel = document.getElementById(`doc-panel-${doc}`);
+    if (panel) panel.classList.add('active');
 }
 
 function toggleSenha() {
