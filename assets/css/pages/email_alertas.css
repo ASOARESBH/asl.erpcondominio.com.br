@@ -857,6 +857,133 @@
 }
 
 /* ============================================================
+   SELETOR DE TIPO DE PROVEDOR (Brevo / Resend / SMTP)
+   ============================================================ */
+.page-email-alertas .email-provider-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.page-email-alertas .email-provider-card {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fff;
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.page-email-alertas .email-provider-card:hover {
+    border-color: #93c5fd;
+    background: #f0f9ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.1);
+}
+
+.page-email-alertas .email-provider-card.active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.page-email-alertas .email-provider-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.page-email-alertas .email-provider-nome {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 3px;
+}
+
+.page-email-alertas .email-provider-desc {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.page-email-alertas .email-provider-badge {
+    display: inline-block;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 6px;
+}
+
+@media (max-width: 480px) {
+    .page-email-alertas .email-provider-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   CAIXA DE INFO DA API KEY (criptografia)
+   ============================================================ */
+.page-email-alertas .api-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: #15803d;
+    line-height: 1.5;
+}
+
+.page-email-alertas .api-info-box i {
+    color: #16a34a;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   DOCUMENTAÇÃO DO PROVIDER (como obter API Key)
+   ============================================================ */
+.page-email-alertas .api-docs-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 20px;
+}
+
+.page-email-alertas .api-docs-titulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e3a8a;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 12px;
+}
+
+.page-email-alertas .api-docs-steps {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.page-email-alertas .api-docs-steps li {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 4px;
+}
+
+/* ============================================================
    RESPONSIVIDADE
    ============================================================ */
 @media (max-width: 768px) {

@@ -21,6 +21,7 @@ let _provedores          = [];
 let _alertas             = [];
 let _alertaAtual         = null;
 let _provedorSelecionado = 'custom';
+let _emailProvider       = 'brevo';
 let _logPagina           = 1;
 
 // ── Lifecycle: init / destroy ─────────────────────────────────────────────────
@@ -33,10 +34,12 @@ export function init() {
     // Expor API pública para handlers inline no HTML
     window.EmailAlertasPage = {
         trocarAba,
+        selecionarEmailProvider,
         selecionarProvedor,
         salvarSMTP,
         testarSMTP,
         toggleSenha,
+        toggleApiKey,
         filtrarAlertas,
         toggleAlerta,
         abrirModalAlerta,
@@ -59,6 +62,7 @@ export function destroy() {
     _alertas             = [];
     _alertaAtual         = null;
     _provedorSelecionado = 'custom';
+    _emailProvider       = 'brevo';
     _logPagina           = 1;
 }
 
@@ -161,12 +165,61 @@ function selecionarProvedor(id) {
     }
 }
 
+// ── Seleção de tipo de provedor (Brevo / Resend / SMTP) ──────────────────────
+function selecionarEmailProvider(provider) {
+    _emailProvider = provider;
+
+    document.querySelectorAll('.email-provider-card').forEach(c => {
+        c.classList.toggle('active', c.dataset.emailProvider === provider);
+    });
+
+    const camposApi   = document.getElementById('campos-api');
+    const camposSmtp  = document.getElementById('campos-smtp');
+    const smtpPresets = document.getElementById('smtp-presets-wrap');
+    const isApi = provider === 'brevo' || provider === 'resend';
+
+    if (camposApi)   camposApi.style.display   = isApi ? 'block' : 'none';
+    if (camposSmtp)  camposSmtp.style.display  = isApi ? 'none'  : 'block';
+    if (smtpPresets) smtpPresets.style.display = isApi ? 'none'  : 'block';
+
+    const docBrevo  = document.getElementById('api-docs-brevo');
+    const docResend = document.getElementById('api-docs-resend');
+    if (docBrevo)  docBrevo.style.display  = provider === 'brevo'  ? 'block' : 'none';
+    if (docResend) docResend.style.display = provider === 'resend' ? 'block' : 'none';
+}
+
+function toggleApiKey() {
+    const inp  = document.getElementById('api-key');
+    const icon = document.getElementById('api-key-icon');
+    if (!inp) return;
+    if (inp.type === 'password') { inp.type = 'text';     if (icon) icon.className = 'fas fa-eye-slash'; }
+    else                         { inp.type = 'password'; if (icon) icon.className = 'fas fa-eye'; }
+}
+
 // ── SMTP: Carregar ────────────────────────────────────────────────────────────
 async function _carregarSMTP() {
     try {
         const d = await _fetchJson(`${API}?acao=smtp_carregar`);
         if (d.sucesso && d.dados) {
             const c = d.dados;
+            const providerLabels = { brevo: 'Brevo API', resend: 'Resend API', smtp: 'SMTP' };
+
+            // Selecionar tipo de provedor e mostrar/ocultar seções
+            _emailProvider = c.email_provider || 'brevo';
+            selecionarEmailProvider(_emailProvider);
+
+            // Campos API (Brevo / Resend)
+            _val('api-key',      ''); // nunca pré-preencher
+            _val('sender-email', c.sender_email || '');
+            _val('sender-name',  c.sender_name  || '');
+            const maskEl = document.getElementById('api-key-mask');
+            if (maskEl) {
+                maskEl.textContent = c.api_key_mask
+                    ? `Chave atual: ${c.api_key_mask} — deixe em branco para manter`
+                    : 'Deixe em branco para manter a chave atual';
+            }
+
+            // Campos SMTP
             _val('smtp-host',     c.smtp_host     || '');
             _val('smtp-port',     c.smtp_port     || 587);
             _val('smtp-usuario',  c.smtp_usuario  || '');
@@ -184,37 +237,54 @@ async function _carregarSMTP() {
             if (icon) { icon.classList.add('configured'); icon.innerHTML = '<i class="fas fa-check-circle"></i>'; }
             const badge = document.getElementById('smtp-status-badge');
             if (badge) badge.style.display = 'flex';
-            _setText('smtp-status-titulo',  `SMTP: ${c.smtp_host}:${c.smtp_port}`);
-            _setText('smtp-status-detalhe', `Usuário: ${c.smtp_usuario} | De: ${c.smtp_de_nome} <${c.smtp_de_email}>`);
-            console.log('[EmailAlertas] SMTP carregado:', c.smtp_host);
+            const badgeTxt = document.getElementById('smtp-status-badge-texto');
+            if (badgeTxt) badgeTxt.textContent = (providerLabels[_emailProvider] || 'E-mail') + ' Configurado';
+
+            if (_emailProvider === 'brevo' || _emailProvider === 'resend') {
+                const label = providerLabels[_emailProvider];
+                _setText('smtp-status-titulo',  `${label}: ${c.sender_email || '—'}`);
+                _setText('smtp-status-detalhe', `Provedor: ${label} | Remetente: ${c.sender_name || '—'}`);
+            } else {
+                _setText('smtp-status-titulo',  `SMTP: ${c.smtp_host}:${c.smtp_port}`);
+                _setText('smtp-status-detalhe', `Usuário: ${c.smtp_usuario} | De: ${c.smtp_de_nome} <${c.smtp_de_email}>`);
+            }
+            console.log('[EmailAlertas] Provider carregado:', _emailProvider);
         } else {
-            console.log('[EmailAlertas] Nenhuma configuração SMTP.');
+            selecionarEmailProvider('brevo');
+            console.log('[EmailAlertas] Nenhuma configuração encontrada.');
         }
     } catch (e) {
         console.error('[EmailAlertas] Erro ao carregar SMTP:', e.message);
-        _toast('Erro ao carregar SMTP: ' + e.message, 'erro');
+        _toast('Erro ao carregar configuração: ' + e.message, 'erro');
     }
 }
 
 // ── SMTP: Salvar ──────────────────────────────────────────────────────────────
 async function salvarSMTP() {
-    const host    = _get('smtp-host');
-    const usuario = _get('smtp-usuario');
-    const deEmail = _get('smtp-de-email');
+    const isApi = _emailProvider === 'brevo' || _emailProvider === 'resend';
 
-    if (!host || !usuario || !deEmail) {
-        _toast('Preencha os campos obrigatórios: Host, Usuário e E-mail de Envio.', 'erro');
-        return;
+    if (isApi) {
+        if (!_get('sender-email')) { _toast('Informe o e-mail remetente.', 'erro'); return; }
+        if (!_get('sender-name'))  { _toast('Informe o nome do remetente.', 'erro'); return; }
+    } else {
+        if (!_get('smtp-host') || !_get('smtp-usuario') || !_get('smtp-de-email')) {
+            _toast('Preencha os campos obrigatórios: Host, Usuário e E-mail de Envio.', 'erro');
+            return;
+        }
     }
 
     const form = new FormData();
     form.append('acao',           'smtp_salvar');
+    form.append('email_provider', _emailProvider);
     form.append('provedor',       _provedorSelecionado);
-    form.append('smtp_host',      host);
+    form.append('api_key',        _get('api-key'));
+    form.append('sender_email',   _get('sender-email'));
+    form.append('sender_name',    _get('sender-name'));
+    form.append('smtp_host',      _get('smtp-host'));
     form.append('smtp_port',      _get('smtp-port'));
-    form.append('smtp_usuario',   usuario);
+    form.append('smtp_usuario',   _get('smtp-usuario'));
     form.append('smtp_senha',     _get('smtp-senha'));
-    form.append('smtp_de_email',  deEmail);
+    form.append('smtp_de_email',  _get('smtp-de-email'));
     form.append('smtp_de_nome',   _get('smtp-de-nome'));
     form.append('smtp_seguranca', document.getElementById('smtp-seguranca')?.value || 'tls');
     form.append('timeout',        _get('smtp-timeout'));
@@ -249,13 +319,16 @@ async function testarSMTP() {
             res.style.display = 'flex';
             if (d.sucesso) {
                 res.className = 'teste-resultado sucesso';
+                const providerInfo = d.dados?.provider
+                    ? `Provedor: <strong>${_esc(d.dados.provider)}</strong>`
+                    : (d.dados?.host ? `Host: ${_esc(d.dados.host)} | Porta: ${_esc(String(d.dados?.porta || ''))}` : '');
                 res.innerHTML = `
                     <i class="fas fa-check-circle"></i>
                     <div>
                         <div class="teste-resultado-titulo">E-mail enviado com sucesso!</div>
                         <div class="teste-resultado-detalhe">
-                            Verifique a caixa de entrada de <strong>${_esc(email)}</strong>.<br>
-                            Host: ${_esc(d.dados?.host || '')} | Porta: ${_esc(String(d.dados?.porta || ''))}
+                            Verifique a caixa de entrada de <strong>${_esc(email)}</strong>.
+                            ${providerInfo ? `<br>${providerInfo}` : ''}
                         </div>
                     </div>`;
             } else {
@@ -294,35 +367,59 @@ async function _renderizarResumoSMTP() {
         const d = await _fetchJson(`${API}?acao=smtp_carregar`);
         if (d.sucesso && d.dados) {
             const c = d.dados;
-            el.innerHTML = `
-                <div class="smtp-resumo-item">
-                    <div class="smtp-resumo-label">Provedor</div>
-                    <div class="smtp-resumo-valor">${_esc(c.provedor || 'custom')}</div>
-                </div>
-                <div class="smtp-resumo-item">
-                    <div class="smtp-resumo-label">Host / Porta</div>
-                    <div class="smtp-resumo-valor">${_esc(c.smtp_host)}:${_esc(String(c.smtp_port))}</div>
-                </div>
-                <div class="smtp-resumo-item">
-                    <div class="smtp-resumo-label">Usuário</div>
-                    <div class="smtp-resumo-valor">${_esc(c.smtp_usuario)}</div>
-                </div>
-                <div class="smtp-resumo-item">
-                    <div class="smtp-resumo-label">Remetente</div>
-                    <div class="smtp-resumo-valor">${_esc(c.smtp_de_nome)} &lt;${_esc(c.smtp_de_email)}&gt;</div>
-                </div>
-                <div class="smtp-resumo-item">
-                    <div class="smtp-resumo-label">Segurança</div>
-                    <div class="smtp-resumo-valor">${_esc((c.smtp_seguranca || 'tls').toUpperCase())}</div>
-                </div>
-                <div class="smtp-resumo-item">
-                    <div class="smtp-resumo-label">Timeout</div>
-                    <div class="smtp-resumo-valor">${_esc(String(c.timeout || 30))}s</div>
-                </div>`;
+            const providerLabels = { brevo: 'Brevo API', resend: 'Resend API', smtp: 'SMTP Personalizado' };
+            const provider = c.email_provider || 'smtp';
+            const isApi    = provider === 'brevo' || provider === 'resend';
+
+            if (isApi) {
+                el.innerHTML = `
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Provedor</div>
+                        <div class="smtp-resumo-valor">${_esc(providerLabels[provider] || provider)}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">E-mail Remetente</div>
+                        <div class="smtp-resumo-valor">${_esc(c.sender_email || '—')}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Nome Remetente</div>
+                        <div class="smtp-resumo-valor">${_esc(c.sender_name || '—')}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">API Key</div>
+                        <div class="smtp-resumo-valor">${_esc(c.api_key_mask || '— não configurada —')}</div>
+                    </div>`;
+            } else {
+                el.innerHTML = `
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Provedor</div>
+                        <div class="smtp-resumo-valor">${_esc(c.provedor || 'custom')}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Host / Porta</div>
+                        <div class="smtp-resumo-valor">${_esc(c.smtp_host)}:${_esc(String(c.smtp_port))}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Usuário</div>
+                        <div class="smtp-resumo-valor">${_esc(c.smtp_usuario)}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Remetente</div>
+                        <div class="smtp-resumo-valor">${_esc(c.smtp_de_nome)} &lt;${_esc(c.smtp_de_email)}&gt;</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Segurança</div>
+                        <div class="smtp-resumo-valor">${_esc((c.smtp_seguranca || 'tls').toUpperCase())}</div>
+                    </div>
+                    <div class="smtp-resumo-item">
+                        <div class="smtp-resumo-label">Timeout</div>
+                        <div class="smtp-resumo-valor">${_esc(String(c.timeout || 30))}s</div>
+                    </div>`;
+            }
         } else {
             el.innerHTML = `<div class="smtp-resumo-item" style="grid-column:1/-1">
                 <div class="smtp-resumo-valor" style="color:#dc2626">
-                    <i class="fas fa-exclamation-triangle"></i> Nenhuma configuração SMTP encontrada.
+                    <i class="fas fa-exclamation-triangle"></i> Nenhuma configuração encontrada.
                 </div></div>`;
         }
     } catch (e) {

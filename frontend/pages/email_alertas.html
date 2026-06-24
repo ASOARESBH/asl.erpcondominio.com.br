@@ -42,32 +42,61 @@
           </div>
           <div>
             <div class="smtp-status-title" id="smtp-status-titulo">Nenhuma configuração ativa</div>
-            <div class="smtp-status-detail" id="smtp-status-detalhe">Configure um provedor SMTP para habilitar o envio de e-mails</div>
+            <div class="smtp-status-detail" id="smtp-status-detalhe">Configure um provedor para habilitar o envio de e-mails</div>
           </div>
         </div>
         <div id="smtp-status-badge" style="display:none">
-          <span class="badge-log enviado"><i class="fas fa-check-circle"></i> SMTP Configurado</span>
+          <span class="badge-log enviado"><i class="fas fa-check-circle"></i> <span id="smtp-status-badge-texto">Configurado</span></span>
         </div>
       </div>
     </div>
 
-    <!-- Seleção de provedor -->
+    <!-- Seleção do TIPO de provedor (Brevo / Resend / SMTP) -->
     <div class="page-card" style="margin-bottom:16px">
       <div class="card-header-row">
-        <h3><i class="fas fa-plug"></i> Selecionar Provedor</h3>
+        <h3><i class="fas fa-plug"></i> Provedor de E-mail</h3>
       </div>
-      <div class="provedores-grid" id="provedores-grid">
-        <!-- Preenchido via JS -->
+
+      <div class="email-provider-grid">
+        <div class="email-provider-card active" data-email-provider="brevo"
+             onclick="EmailAlertasPage.selecionarEmailProvider('brevo')">
+          <div class="email-provider-icon">📧</div>
+          <div class="email-provider-nome">Brevo</div>
+          <div class="email-provider-desc">API REST oficial</div>
+          <span class="email-provider-badge">Padrão</span>
+        </div>
+        <div class="email-provider-card" data-email-provider="resend"
+             onclick="EmailAlertasPage.selecionarEmailProvider('resend')">
+          <div class="email-provider-icon">✉️</div>
+          <div class="email-provider-nome">Resend</div>
+          <div class="email-provider-desc">API REST moderna</div>
+        </div>
+        <div class="email-provider-card" data-email-provider="smtp"
+             onclick="EmailAlertasPage.selecionarEmailProvider('smtp')">
+          <div class="email-provider-icon">🖥️</div>
+          <div class="email-provider-nome">SMTP</div>
+          <div class="email-provider-desc">Personalizado</div>
+        </div>
+      </div>
+
+      <!-- Presets SMTP — só visível em modo SMTP -->
+      <div id="smtp-presets-wrap" style="display:none;margin-top:20px;border-top:1px solid #e2e8f0;padding-top:16px">
+        <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.4px">
+          <i class="fas fa-server"></i> Usar configuração pré-definida:
+        </div>
+        <div class="provedores-grid" id="provedores-grid">
+          <!-- Preenchido via JS -->
+        </div>
       </div>
     </div>
 
-    <!-- Formulário SMTP -->
+    <!-- Formulário do Provedor -->
     <div class="page-card">
       <div class="card-header-row">
-        <h3><i class="fas fa-cog"></i> Configuração SMTP</h3>
+        <h3><i class="fas fa-cog"></i> Configuração do Provedor</h3>
       </div>
 
-      <!-- Ajuda do provedor -->
+      <!-- Ajuda do provedor (SMTP presets) -->
       <div id="provedor-ajuda" class="provedor-ajuda-box" style="display:none">
         <i class="fas fa-info-circle"></i>
         <div>
@@ -78,52 +107,103 @@
         </div>
       </div>
 
-      <div class="form-grid-2">
-        <div>
-          <label class="form-label">Host SMTP *</label>
-          <input type="text" id="smtp-host" placeholder="smtp.gmail.com">
+      <!-- ── CAMPOS API (Brevo / Resend) ── -->
+      <div id="campos-api" style="display:none">
+        <div class="api-info-box">
+          <i class="fas fa-shield-alt"></i>
+          <span>A API Key será <strong>criptografada</strong> antes de ser armazenada. Nunca é exposta em texto puro.</span>
         </div>
-        <div>
-          <label class="form-label">Porta *</label>
-          <input type="number" id="smtp-port" placeholder="587" value="587">
-        </div>
-        <div>
-          <label class="form-label">Usuário / E-mail *</label>
-          <input type="email" id="smtp-usuario" placeholder="seu@email.com">
-        </div>
-        <div>
-          <label class="form-label">Senha / App Password *</label>
-          <div class="senha-wrap">
-            <input type="password" id="smtp-senha" placeholder="••••••••••••">
-            <button type="button" class="btn-toggle-senha" onclick="EmailAlertasPage.toggleSenha()">
-              <i class="fas fa-eye" id="smtp-senha-icon"></i>
-            </button>
+        <div class="form-grid-2">
+          <div style="grid-column:1/-1">
+            <label class="form-label">API Key <span style="color:#ef4444">*</span></label>
+            <div class="senha-wrap">
+              <input type="password" id="api-key" placeholder="Cole aqui sua API Key">
+              <button type="button" class="btn-toggle-senha" onclick="EmailAlertasPage.toggleApiKey()">
+                <i class="fas fa-eye" id="api-key-icon"></i>
+              </button>
+            </div>
+            <span class="input-hint" id="api-key-mask">Deixe em branco para manter a chave atual</span>
           </div>
-          <span class="input-hint">Deixe em branco para manter a senha atual</span>
+          <div>
+            <label class="form-label">E-mail Remetente <span style="color:#ef4444">*</span></label>
+            <input type="email" id="sender-email" placeholder="noreply@seudominio.com.br">
+          </div>
+          <div>
+            <label class="form-label">Nome Remetente <span style="color:#ef4444">*</span></label>
+            <input type="text" id="sender-name" placeholder="Serra da Liberdade">
+          </div>
         </div>
-        <div>
-          <label class="form-label">E-mail de Envio (De:) *</label>
-          <input type="email" id="smtp-de-email" placeholder="noreply@seudominio.com">
+
+        <!-- Docs rápidos (colapsável por JS ao trocar de provider) -->
+        <div id="api-docs-brevo" class="api-docs-box" style="display:none">
+          <div class="api-docs-titulo"><i class="fas fa-book"></i> Como obter a API Key do Brevo</div>
+          <ol class="api-docs-steps">
+            <li>Acesse <strong>app.brevo.com</strong> e crie uma conta gratuita (até 300 e-mails/dia).</li>
+            <li>Clique no seu nome → <strong>SMTP &amp; API</strong> → aba <strong>API Keys</strong>.</li>
+            <li>Clique em <strong>Create a new API key</strong>, copie e cole acima.</li>
+            <li>Em <strong>Senders → Add a new sender</strong> verifique o e-mail remetente.</li>
+          </ol>
         </div>
-        <div>
-          <label class="form-label">Nome do Remetente</label>
-          <input type="text" id="smtp-de-nome" placeholder="Sistema ERP" value="Sistema ERP">
-        </div>
-        <div>
-          <label class="form-label">Segurança</label>
-          <select id="smtp-seguranca">
-            <option value="tls">TLS (recomendado — porta 587)</option>
-            <option value="ssl">SSL (porta 465)</option>
-            <option value="none">Nenhuma (não recomendado)</option>
-          </select>
-        </div>
-        <div>
-          <label class="form-label">Timeout (segundos)</label>
-          <input type="number" id="smtp-timeout" value="30" min="5" max="120">
+        <div id="api-docs-resend" class="api-docs-box" style="display:none">
+          <div class="api-docs-titulo"><i class="fas fa-book"></i> Como obter a API Key do Resend</div>
+          <ol class="api-docs-steps">
+            <li>Acesse <strong>resend.com</strong> e crie uma conta (3.000 e-mails/mês grátis).</li>
+            <li>Vá em <strong>API Keys</strong> → <strong>Create API Key</strong>.</li>
+            <li>Em <strong>Domains</strong>, adicione e verifique seu domínio de envio.</li>
+            <li>Cole a API Key acima e use um e-mail do domínio verificado como remetente.</li>
+          </ol>
         </div>
       </div>
 
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+      <!-- ── CAMPOS SMTP ── -->
+      <div id="campos-smtp" style="display:none">
+        <div class="form-grid-2">
+          <div>
+            <label class="form-label">Host SMTP *</label>
+            <input type="text" id="smtp-host" placeholder="smtp.gmail.com">
+          </div>
+          <div>
+            <label class="form-label">Porta *</label>
+            <input type="number" id="smtp-port" placeholder="587" value="587">
+          </div>
+          <div>
+            <label class="form-label">Usuário / E-mail *</label>
+            <input type="email" id="smtp-usuario" placeholder="seu@email.com">
+          </div>
+          <div>
+            <label class="form-label">Senha / App Password *</label>
+            <div class="senha-wrap">
+              <input type="password" id="smtp-senha" placeholder="••••••••••••">
+              <button type="button" class="btn-toggle-senha" onclick="EmailAlertasPage.toggleSenha()">
+                <i class="fas fa-eye" id="smtp-senha-icon"></i>
+              </button>
+            </div>
+            <span class="input-hint">Deixe em branco para manter a senha atual</span>
+          </div>
+          <div>
+            <label class="form-label">E-mail de Envio (De:) *</label>
+            <input type="email" id="smtp-de-email" placeholder="noreply@seudominio.com">
+          </div>
+          <div>
+            <label class="form-label">Nome do Remetente</label>
+            <input type="text" id="smtp-de-nome" placeholder="Sistema ERP" value="Sistema ERP">
+          </div>
+          <div>
+            <label class="form-label">Segurança</label>
+            <select id="smtp-seguranca">
+              <option value="tls">TLS (recomendado — porta 587)</option>
+              <option value="ssl">SSL (porta 465)</option>
+              <option value="none">Nenhuma (não recomendado)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Timeout (segundos)</label>
+            <input type="number" id="smtp-timeout" value="30" min="5" max="120">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
         <button class="btn-primary-modern" onclick="EmailAlertasPage.salvarSMTP()">
           <i class="fas fa-save"></i> Salvar Configuração
         </button>
