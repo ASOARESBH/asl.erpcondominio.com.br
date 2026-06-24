@@ -64,19 +64,7 @@ class BrevoProvider implements EmailProviderInterface
 
     public function sendTest(string $to): array
     {
-        $result = $this->send(
-            $to,
-            'Destinatário de Teste',
-            'Teste de Configuração — Brevo API — ' . date('d/m/Y H:i'),
-            $this->testHtml($to)
-        );
-
-        return [
-            'success' => $result['success'],
-            'message' => $result['success']
-                ? "E-mail de teste enviado com sucesso para $to via Brevo!"
-                : 'Erro Brevo: ' . ($result['error'] ?? 'Erro desconhecido'),
-        ];
+        die('BREVO_PROVIDER_EXECUTADO');
     }
 
     public function validateConfiguration(): array
