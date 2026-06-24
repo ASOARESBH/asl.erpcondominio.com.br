@@ -6,6 +6,7 @@ require_once __DIR__ . '/EmailCrypto.php';
 require_once __DIR__ . '/BrevoProvider.php';
 require_once __DIR__ . '/ResendProvider.php';
 require_once __DIR__ . '/SmtpProvider.php';
+require_once __DIR__ . '/FallbackEmailProvider.php';
 
 /**
  * EmailProviderFactory
@@ -28,7 +29,10 @@ class EmailProviderFactory
     {
         $provider = $config['email_provider'] ?? 'smtp';
 
-        // Log de diagnóstico — visível nos logs de erro de e-mail
+        error_log('PASSOU_AQUI_4: EmailProviderFactory::fromConfig email_provider=' . $provider
+            . ' has_api_key=' . (!empty($config['api_key']) ? 'SIM' : 'NAO')
+            . ' smtp_host=' . ($config['smtp_host'] ?? ''));
+
         if (function_exists('email_error_log')) {
             email_error_log('INFO', 'EmailProviderFactory::fromConfig', [
                 'email_provider' => $provider,
@@ -89,6 +93,50 @@ class EmailProviderFactory
         }
 
         return self::fromConfig(mysqli_fetch_assoc($res));
+    }
+
+    /**
+     * Monta FallbackEmailProvider a partir da tabela email_providers.
+     * Tenta provedores em ordem de prioridade (1, 2, 3...).
+     * Fallback para fromDatabase() se a tabela não existir.
+     *
+     * @param \mysqli $db Conexão MySQL ativa
+     */
+    public static function fromDatabaseWithFallback(\mysqli $db): EmailProviderInterface
+    {
+        $res = mysqli_query(
+            $db,
+            "SELECT * FROM email_providers WHERE ativo = 1 ORDER BY prioridade ASC LIMIT 3"
+        );
+
+        if (!$res || mysqli_num_rows($res) === 0) {
+            // Tabela não existe ou vazia — usar provider único padrão
+            return self::fromDatabase($db);
+        }
+
+        $providers = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $config = [
+                'email_provider' => $row['provider'],
+                'api_key'        => $row['api_key']       ?? '',
+                'sender_email'   => $row['sender_email']  ?? '',
+                'sender_name'    => $row['sender_name']   ?? '',
+                'smtp_host'      => $row['smtp_host']     ?? '',
+                'smtp_port'      => $row['smtp_port']     ?? 587,
+                'smtp_usuario'   => $row['smtp_user']     ?? '',
+                'smtp_senha'     => $row['smtp_password'] ?? '',
+                'smtp_de_email'  => $row['sender_email']  ?? '',
+                'smtp_de_nome'   => $row['sender_name']   ?? '',
+                'smtp_seguranca' => 'tls',
+            ];
+            $providers[] = self::fromConfig($config);
+        }
+
+        if (count($providers) === 1) {
+            return $providers[0];
+        }
+
+        return new FallbackEmailProvider($providers);
     }
 
     private static function decryptKey(string $value): string

@@ -68,6 +68,8 @@ switch ($acao) {
     case 'log_limpar':       _log_limpar($conexao);       break;
     case 'provedores_listar':_provedores_listar();        break;
     case 'diagnostico':      _diagnostico($conexao);      break;
+    case 'dashboard_stats':  _dashboard_stats($conexao);  break;
+    case 'monitorar':        _monitorar($conexao);         break;
     default:
         retornar_json(false, "Ação '$acao' não reconhecida.");
 }
@@ -121,6 +123,47 @@ function _criar_tabelas($db) {
           AND (api_key IS NULL OR api_key = '')
           AND smtp_host    != ''
           AND smtp_usuario != ''");
+
+    // email_providers (fallback chain)
+    mysqli_query($db, "CREATE TABLE IF NOT EXISTS `email_providers` (
+        `id`               INT NOT NULL AUTO_INCREMENT,
+        `provider`         ENUM('brevo','resend','smtp') NOT NULL DEFAULT 'smtp',
+        `prioridade`       TINYINT UNSIGNED NOT NULL DEFAULT 1,
+        `ativo`            TINYINT(1) NOT NULL DEFAULT 1,
+        `api_key`          VARCHAR(1024) DEFAULT NULL,
+        `smtp_host`        VARCHAR(255) DEFAULT NULL,
+        `smtp_port`        SMALLINT UNSIGNED DEFAULT 587,
+        `smtp_user`        VARCHAR(255) DEFAULT NULL,
+        `smtp_password`    VARCHAR(255) DEFAULT NULL,
+        `sender_email`     VARCHAR(255) DEFAULT NULL,
+        `sender_name`      VARCHAR(255) DEFAULT NULL,
+        `status`           ENUM('ok','error','untested') NOT NULL DEFAULT 'untested',
+        `ultima_validacao` TIMESTAMP NULL DEFAULT NULL,
+        `data_criacao`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `data_atualizacao` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_prioridade` (`prioridade`),
+        KEY `idx_ativo`      (`ativo`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // email_delivery_logs (log detalhado com fallback_chain)
+    mysqli_query($db, "CREATE TABLE IF NOT EXISTS `email_delivery_logs` (
+        `id`             INT NOT NULL AUTO_INCREMENT,
+        `provider_usado` VARCHAR(50) NOT NULL,
+        `fallback_chain` TEXT DEFAULT NULL,
+        `destinatario`   VARCHAR(255) NOT NULL,
+        `assunto`        VARCHAR(500) DEFAULT NULL,
+        `status`         ENUM('enviado','erro','fallback','pendente') NOT NULL DEFAULT 'enviado',
+        `erro`           TEXT DEFAULT NULL,
+        `tempo_execucao` DECIMAL(8,3) DEFAULT NULL,
+        `message_id`     VARCHAR(255) DEFAULT NULL,
+        `response_code`  SMALLINT DEFAULT NULL,
+        `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `idx_created_at` (`created_at`),
+        KEY `idx_status`     (`status`),
+        KEY `idx_provider`   (`provider_usado`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
     // email_alertas
     mysqli_query($db, "CREATE TABLE IF NOT EXISTS `email_alertas` (
@@ -368,14 +411,13 @@ function _smtp_salvar($db) {
 // SMTP — TESTAR CONEXÃO
 // ============================================================
 function _smtp_testar($db) {
+    error_log('PASSOU_AQUI_1: _smtp_testar() INICIADO em ' . __FILE__);
+
     $email_teste = $_POST['email_teste'] ?? '';
-    email_error_log('INFO', 'SMTP test started', [
-        'email_teste' => $email_teste,
-    ]);
+    email_error_log('INFO', 'SMTP test started', ['email_teste' => $email_teste]);
+
     if (empty($email_teste) || !filter_var($email_teste, FILTER_VALIDATE_EMAIL)) {
-        email_error_log('WARNING', 'SMTP test rejected: invalid destination', [
-            'email_teste' => $email_teste,
-        ]);
+        email_error_log('WARNING', 'SMTP test rejected: invalid destination', ['email_teste' => $email_teste]);
         retornar_json(false, 'Informe um e-mail válido para o teste.');
     }
 
@@ -390,10 +432,14 @@ function _smtp_testar($db) {
         retornar_json(false, 'Nenhuma configuração de e-mail ativa encontrada. Salve a configuração primeiro.');
     }
 
+    error_log('PASSOU_AQUI_2: config carregada email_provider=' . ($cfg['email_provider'] ?? 'NULL')
+        . ' api_key_tem=' . (!empty($cfg['api_key']) ? 'SIM' : 'NAO')
+        . ' smtp_host=' . ($cfg['smtp_host'] ?? ''));
+
     // Tentar enviar usando EmailSender
     if (!file_exists(__DIR__ . '/EmailSender.php')) {
         email_error_log('ERROR', 'SMTP test failed: EmailSender.php not found', [
-            'path' => __DIR__ . '/EmailSender.php',
+            'path'        => __DIR__ . '/EmailSender.php',
             'email_teste' => $email_teste,
         ]);
         retornar_json(false, 'Classe EmailSender não encontrada. Verifique se o PHPMailer está instalado.');
@@ -401,32 +447,21 @@ function _smtp_testar($db) {
 
     try {
         require_once __DIR__ . '/EmailSender.php';
+        error_log('PASSOU_AQUI_2B: EmailSender.php carregado, instanciando...');
         $sender = new EmailSender($db, true);
-        $resultado = $sender->enviar(
-            $email_teste,
-            'Teste de Conexão SMTP — ' . date('d/m/Y H:i'),
-            '<div style="font-family:Arial,sans-serif;padding:24px;background:#f8fafc;border-radius:8px">
-                <h2 style="color:#1e3a8a">✅ Conexão SMTP funcionando!</h2>
-                <p style="color:#334155">Este é um e-mail de teste enviado pelo sistema ERP Serra da Liberdade.</p>
-                <p style="color:#64748b;font-size:13px">Enviado em: ' . date('d/m/Y H:i:s') . '</p>
-            </div>'
-        );
+        error_log('PASSOU_AQUI_2C: EmailSender instanciado, chamando enviarTeste()');
+
+        // Usa enviarTeste() — delega ao sendTest() do provider correto (Brevo/Resend/SMTP)
+        $sender->enviarTeste($email_teste);
 
         // Registrar no log
         $dest = mysqli_real_escape_string($db, $email_teste);
         mysqli_query($db, "INSERT INTO email_log (alerta_codigo,destinatario,assunto,tipo,status)
-            VALUES ('smtp.teste','$dest','Teste de Conexão SMTP','teste','enviado')");
+            VALUES ('smtp.teste','$dest','Teste de Configuração','teste','enviado')");
 
-        email_error_log('INFO', 'SMTP test sent successfully', [
-            'email_teste' => $email_teste,
-            'smtp' => [
-                'host' => $cfg['smtp_host'],
-                'port' => $cfg['smtp_port'],
-                'usuario' => $cfg['smtp_usuario'] ?? null,
-                'de_email' => $cfg['smtp_de_email'] ?? null,
-                'seguranca' => $cfg['smtp_seguranca'] ?? null,
-                'timeout' => $cfg['timeout'] ?? null,
-            ],
+        email_error_log('INFO', 'Email test sent successfully', [
+            'email_teste'   => $email_teste,
+            'email_provider' => $cfg['email_provider'] ?? 'smtp',
         ]);
 
         $provider = $cfg['email_provider'] ?? 'smtp';
@@ -437,28 +472,20 @@ function _smtp_testar($db) {
             'porta'        => ($provider === 'smtp') ? ($cfg['smtp_port'] ?? null) : null,
         ]);
     } catch (Throwable $e) {
-        // Registrar erro no log
-        $dest  = mysqli_real_escape_string($db, $email_teste);
-        $erro  = mysqli_real_escape_string($db, $e->getMessage());
+        $dest = mysqli_real_escape_string($db, $email_teste);
+        $erro = mysqli_real_escape_string($db, $e->getMessage());
         mysqli_query($db, "INSERT INTO email_log (alerta_codigo,destinatario,assunto,tipo,status,erro_mensagem)
-            VALUES ('smtp.teste','$dest','Teste de Conexão SMTP','teste','erro','$erro')");
+            VALUES ('smtp.teste','$dest','Teste de Configuração','teste','erro','$erro')");
 
-        email_error_log_exception('ERROR', 'SMTP test failed', $e, [
-            'email_teste' => $email_teste,
-            'smtp' => [
-                'host' => $cfg['smtp_host'] ?? null,
-                'port' => $cfg['smtp_port'] ?? null,
-                'usuario' => $cfg['smtp_usuario'] ?? null,
-                'de_email' => $cfg['smtp_de_email'] ?? null,
-                'seguranca' => $cfg['smtp_seguranca'] ?? null,
-                'timeout' => $cfg['timeout'] ?? null,
-            ],
-            'mysql_error_log_insert' => mysqli_error($db),
+        email_error_log_exception('ERROR', 'Email test failed', $e, [
+            'email_teste'    => $email_teste,
+            'email_provider' => $cfg['email_provider'] ?? 'smtp',
+            'smtp_host'      => $cfg['smtp_host'] ?? null,
         ]);
 
         retornar_json(false, 'Falha no envio: ' . $e->getMessage(), [
-            'host'  => $cfg['smtp_host'],
-            'porta' => $cfg['smtp_port'],
+            'host'  => $cfg['smtp_host'] ?? null,
+            'porta' => $cfg['smtp_port'] ?? null,
             'erro'  => $e->getMessage(),
         ]);
     }
@@ -713,4 +740,262 @@ function _provedores_listar() {
         ],
     ];
     retornar_json(true, 'OK', ['provedores' => $provedores]);
+}
+
+// ============================================================
+// DASHBOARD — ESTATÍSTICAS DE SAÚDE DO SERVIÇO
+// ============================================================
+function _dashboard_stats($db) {
+    $hoje = date('Y-m-d');
+
+    // Estatísticas de envio do dia (email_log)
+    $resEnviados = mysqli_query($db,
+        "SELECT COUNT(*) AS total FROM email_log
+         WHERE DATE(created_at) = '$hoje' AND status = 'enviado'"
+    );
+    $enviados = $resEnviados ? (int) mysqli_fetch_assoc($resEnviados)['total'] : 0;
+
+    $resFalhas = mysqli_query($db,
+        "SELECT COUNT(*) AS total FROM email_log
+         WHERE DATE(created_at) = '$hoje' AND status != 'enviado'"
+    );
+    $falhas = $resFalhas ? (int) mysqli_fetch_assoc($resFalhas)['total'] : 0;
+
+    $total = $enviados + $falhas;
+    $taxa  = $total > 0 ? round(($enviados / $total) * 100, 1) : null;
+
+    // Tempo médio de resposta (email_delivery_logs se existir)
+    $tempoMedio = null;
+    $resLog = mysqli_query($db, "SHOW TABLES LIKE 'email_delivery_logs'");
+    if ($resLog && mysqli_num_rows($resLog) > 0) {
+        $resT = mysqli_query($db,
+            "SELECT ROUND(AVG(tempo_execucao), 3) AS media FROM email_delivery_logs
+             WHERE DATE(created_at) = '$hoje' AND status = 'enviado'"
+        );
+        if ($resT) {
+            $row = mysqli_fetch_assoc($resT);
+            $tempoMedio = $row['media'] !== null ? (float) $row['media'] : null;
+        }
+    }
+
+    // Provedor ativo e último teste
+    $resCfg = mysqli_query($db,
+        "SELECT email_provider, sender_email, sender_name, smtp_host, smtp_port,
+                smtp_ultimo_teste, smtp_ultimo_envio, smtp_status_teste
+         FROM configuracao_smtp WHERE smtp_ativo = 1 ORDER BY id DESC LIMIT 1"
+    );
+    $cfg = $resCfg ? mysqli_fetch_assoc($resCfg) : [];
+
+    // Coluna smtp_ultimo_teste pode não existir — tratar
+    $provedorAtivo = $cfg['email_provider'] ?? 'smtp';
+    $ultimoTeste   = $cfg['smtp_ultimo_teste'] ?? null;
+    $ultimoEnvio   = $cfg['smtp_ultimo_envio'] ?? null;
+    $statusTeste   = $cfg['smtp_status_teste'] ?? null;
+
+    // Último envio real (email_log)
+    $resUltimoEnvio = mysqli_query($db,
+        "SELECT created_at, status FROM email_log ORDER BY id DESC LIMIT 1"
+    );
+    if ($resUltimoEnvio && mysqli_num_rows($resUltimoEnvio) > 0) {
+        $ue = mysqli_fetch_assoc($resUltimoEnvio);
+        $ultimoEnvio = $ue['created_at'];
+    }
+
+    retornar_json(true, 'OK', [
+        'provedor_ativo'   => $provedorAtivo,
+        'sender_email'     => $cfg['sender_email']  ?? $cfg['smtp_de_email'] ?? null,
+        'sender_name'      => $cfg['sender_name']   ?? $cfg['smtp_de_nome']  ?? null,
+        'smtp_host'        => $cfg['smtp_host']     ?? null,
+        'ultimo_teste'     => $ultimoTeste,
+        'ultimo_envio'     => $ultimoEnvio,
+        'status_teste'     => $statusTeste,
+        'enviados_hoje'    => $enviados,
+        'falhas_hoje'      => $falhas,
+        'taxa_entrega'     => $taxa,
+        'tempo_medio_s'    => $tempoMedio,
+    ]);
+}
+
+// ============================================================
+// MONITORAMENTO — VERIFICAR AMBIENTE
+// ============================================================
+function _monitorar($db) {
+    $resultados = [];
+
+    // 1. Verificar configuração Brevo (API Key presente)
+    $resCfg = mysqli_query($db,
+        "SELECT email_provider, api_key, smtp_host, smtp_port, smtp_usuario, smtp_senha, sender_email
+         FROM configuracao_smtp WHERE smtp_ativo = 1 ORDER BY id DESC LIMIT 1"
+    );
+    $cfg = $resCfg ? mysqli_fetch_assoc($resCfg) : [];
+    $provider = $cfg['email_provider'] ?? 'smtp';
+
+    // API Brevo
+    $apiKey = '';
+    if (!empty($cfg['api_key'])) {
+        require_once __DIR__ . '/email/EmailCrypto.php';
+        try { $apiKey = EmailCrypto::decrypt($cfg['api_key']); } catch (\Throwable $e) { $apiKey = $cfg['api_key']; }
+    }
+
+    if ($provider === 'brevo' || !empty($apiKey)) {
+        $t0 = microtime(true);
+        $ch = curl_init('https://api.brevo.com/v3/account');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_HTTPHEADER     => ['api-key: ' . $apiKey, 'Accept: application/json'],
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        $ch = null;
+        $elapsed = round(microtime(true) - $t0, 3);
+        $ok   = ($code === 200);
+        $body = $ok ? json_decode($resp, true) : null;
+        $resultados[] = [
+            'servico'  => 'Brevo API',
+            'status'   => $ok ? 'ok' : 'erro',
+            'latencia' => $elapsed,
+            'detalhe'  => $ok
+                ? 'Conta: ' . ($body['companyName'] ?? $body['email'] ?? 'autenticado')
+                : "HTTP $code" . ($err ? " — $err" : ''),
+        ];
+    }
+
+    // API Resend
+    if ($provider === 'resend' && !empty($apiKey)) {
+        $t0 = microtime(true);
+        $ch = curl_init('https://api.resend.com/domains');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $apiKey, 'Accept: application/json'],
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err  = curl_error($ch);
+        $ch = null;
+        $elapsed = round(microtime(true) - $t0, 3);
+        $ok = ($code === 200);
+        $resultados[] = [
+            'servico'  => 'Resend API',
+            'status'   => $ok ? 'ok' : 'erro',
+            'latencia' => $elapsed,
+            'detalhe'  => $ok ? 'Autenticação OK' : "HTTP $code" . ($err ? " — $err" : ''),
+        ];
+    }
+
+    // SMTP (porta acessível)
+    $smtpHost = $cfg['smtp_host'] ?? '';
+    $smtpPort = (int) ($cfg['smtp_port'] ?? 587);
+    if (!empty($smtpHost)) {
+        $t0 = microtime(true);
+        $conn = @fsockopen($smtpHost, $smtpPort, $errno, $errstr, 5);
+        $elapsed = round(microtime(true) - $t0, 3);
+        $ok = is_resource($conn);
+        if ($ok) fclose($conn);
+        $resultados[] = [
+            'servico'  => "SMTP ($smtpHost:$smtpPort)",
+            'status'   => $ok ? 'ok' : 'erro',
+            'latencia' => $elapsed,
+            'detalhe'  => $ok ? 'Porta acessível' : "Não conectou — $errstr ($errno)",
+        ];
+    }
+
+    // DNS — resolver o sender_email domain
+    $senderEmail = $cfg['sender_email'] ?? '';
+    $domain = '';
+    if ($senderEmail && strpos($senderEmail, '@') !== false) {
+        $domain = substr($senderEmail, strpos($senderEmail, '@') + 1);
+    } elseif (!empty($smtpHost)) {
+        $parts = explode('.', $smtpHost);
+        if (count($parts) >= 2) {
+            $domain = implode('.', array_slice($parts, -2));
+        }
+    }
+
+    if ($domain) {
+        // MX Record
+        $t0 = microtime(true);
+        $mxOk = checkdnsrr($domain, 'MX');
+        $elapsed = round(microtime(true) - $t0, 3);
+        $resultados[] = [
+            'servico'  => 'DNS MX (' . $domain . ')',
+            'status'   => $mxOk ? 'ok' : 'aviso',
+            'latencia' => $elapsed,
+            'detalhe'  => $mxOk ? 'Registro MX encontrado' : 'Nenhum registro MX para ' . $domain,
+        ];
+
+        // SPF Record
+        $t0 = microtime(true);
+        $txtRecords = dns_get_record($domain, DNS_TXT);
+        $elapsed = round(microtime(true) - $t0, 3);
+        $spfFound = false;
+        $spfVal   = '';
+        if ($txtRecords) {
+            foreach ($txtRecords as $rec) {
+                if (isset($rec['txt']) && strpos($rec['txt'], 'v=spf1') === 0) {
+                    $spfFound = true;
+                    $spfVal   = substr($rec['txt'], 0, 80);
+                    break;
+                }
+            }
+        }
+        $resultados[] = [
+            'servico'  => 'SPF (' . $domain . ')',
+            'status'   => $spfFound ? 'ok' : 'aviso',
+            'latencia' => $elapsed,
+            'detalhe'  => $spfFound ? $spfVal : 'Registro SPF não encontrado',
+        ];
+
+        // DMARC Record
+        $t0 = microtime(true);
+        $dmarcRecords = @dns_get_record('_dmarc.' . $domain, DNS_TXT);
+        $elapsed = round(microtime(true) - $t0, 3);
+        $dmarcFound = false;
+        $dmarcVal   = '';
+        if ($dmarcRecords) {
+            foreach ($dmarcRecords as $rec) {
+                if (isset($rec['txt']) && strpos($rec['txt'], 'v=DMARC1') === 0) {
+                    $dmarcFound = true;
+                    $dmarcVal   = substr($rec['txt'], 0, 80);
+                    break;
+                }
+            }
+        }
+        $resultados[] = [
+            'servico'  => 'DMARC (' . $domain . ')',
+            'status'   => $dmarcFound ? 'ok' : 'aviso',
+            'latencia' => $elapsed,
+            'detalhe'  => $dmarcFound ? $dmarcVal : 'Registro DMARC não encontrado',
+        ];
+
+        // DKIM (verificação básica — chave pública padrão 'default._domainkey')
+        $t0 = microtime(true);
+        $dkimRecords = @dns_get_record('default._domainkey.' . $domain, DNS_TXT);
+        $elapsed = round(microtime(true) - $t0, 3);
+        $dkimFound = $dkimRecords && count($dkimRecords) > 0;
+        $resultados[] = [
+            'servico'  => 'DKIM (' . $domain . ')',
+            'status'   => $dkimFound ? 'ok' : 'aviso',
+            'latencia' => $elapsed,
+            'detalhe'  => $dkimFound
+                ? 'Registro DKIM encontrado (selector: default)'
+                : 'Selector "default" não encontrado — verifique o seletor correto no painel do provedor',
+        ];
+    }
+
+    $resumo = array_reduce($resultados, function ($carry, $item) {
+        if ($item['status'] === 'erro') $carry['erros']++;
+        elseif ($item['status'] === 'aviso') $carry['avisos']++;
+        else $carry['ok']++;
+        return $carry;
+    }, ['ok' => 0, 'avisos' => 0, 'erros' => 0]);
+
+    retornar_json(true, 'Monitoramento concluído', [
+        'resultados' => $resultados,
+        'resumo'     => $resumo,
+        'executado_em' => date('Y-m-d H:i:s'),
+        'dominio'    => $domain ?: null,
+    ]);
 }

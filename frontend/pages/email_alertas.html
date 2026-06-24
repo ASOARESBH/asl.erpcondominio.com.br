@@ -8,6 +8,76 @@
       <h1 class="page-title">E-mail e Alertas</h1>
       <p class="page-subtitle">Configure o servidor de envio, provedores e alertas automáticos do sistema</p>
     </div>
+    <div style="margin-left:auto">
+      <button type="button" class="btn-secondary-modern btn-sm" onclick="EmailAlertasPage.carregarDashboard()" id="btn-refresh-dashboard" title="Atualizar painel">
+        <i class="fas fa-sync-alt"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD KPI ─────────────────────────────────────────── -->
+  <div class="email-dashboard-grid" id="email-dashboard">
+
+    <!-- Card: Provedor Ativo -->
+    <div class="page-card email-kpi-card" id="kpi-provedor">
+      <div class="email-kpi-header">
+        <span class="email-kpi-icon email-kpi-icon--blue"><i class="fas fa-plug"></i></span>
+        <span class="email-kpi-label">Provedor Ativo</span>
+      </div>
+      <div class="email-kpi-main" id="kpi-provedor-nome">—</div>
+      <div class="email-kpi-meta">
+        <span id="kpi-provedor-remetente" class="email-kpi-sub">Carregando...</span>
+      </div>
+      <div class="email-kpi-footer">
+        <span class="email-kpi-badge" id="kpi-provedor-badge">—</span>
+        <span class="email-kpi-date" id="kpi-provedor-ultimo-teste"></span>
+      </div>
+    </div>
+
+    <!-- Card: Saúde do Serviço -->
+    <div class="page-card email-kpi-card" id="kpi-saude">
+      <div class="email-kpi-header">
+        <span class="email-kpi-icon email-kpi-icon--green"><i class="fas fa-heartbeat"></i></span>
+        <span class="email-kpi-label">Saúde do Serviço</span>
+      </div>
+      <div class="email-kpi-main" id="kpi-saude-status">—</div>
+      <div class="email-kpi-meta">
+        <span class="email-kpi-sub">Último envio: <span id="kpi-saude-ultimo-envio">—</span></span>
+      </div>
+      <div class="email-kpi-footer">
+        <button class="btn-link-inline" onclick="EmailAlertasPage.trocarAba('monitoramento')">
+          <i class="fas fa-stethoscope"></i> Ver diagnóstico completo
+        </button>
+      </div>
+    </div>
+
+    <!-- Card: Estatísticas -->
+    <div class="page-card email-kpi-card" id="kpi-stats">
+      <div class="email-kpi-header">
+        <span class="email-kpi-icon email-kpi-icon--purple"><i class="fas fa-chart-bar"></i></span>
+        <span class="email-kpi-label">Estatísticas de Hoje</span>
+      </div>
+      <div class="email-stats-row">
+        <div class="email-stat-item">
+          <span class="email-stat-num email-stat-num--green" id="kpi-enviados">—</span>
+          <span class="email-stat-desc">Enviados</span>
+        </div>
+        <div class="email-stat-sep"></div>
+        <div class="email-stat-item">
+          <span class="email-stat-num email-stat-num--red" id="kpi-falhas">—</span>
+          <span class="email-stat-desc">Falhas</span>
+        </div>
+        <div class="email-stat-sep"></div>
+        <div class="email-stat-item">
+          <span class="email-stat-num email-stat-num--blue" id="kpi-taxa">—</span>
+          <span class="email-stat-desc">Taxa entrega</span>
+        </div>
+      </div>
+      <div class="email-kpi-footer">
+        <span class="email-kpi-sub">Tempo médio: <span id="kpi-tempo">—</span></span>
+      </div>
+    </div>
+
   </div>
 
   <!-- ── ABAS ─────────────────────────────────────────────────── -->
@@ -27,6 +97,9 @@
       </button>
       <button class="tab-btn" data-tab="docs" onclick="EmailAlertasPage.trocarAba('docs')">
         <i class="fas fa-book"></i> Documentação
+      </button>
+      <button class="tab-btn" data-tab="monitoramento" onclick="EmailAlertasPage.trocarAba('monitoramento')">
+        <i class="fas fa-stethoscope"></i> Monitoramento
       </button>
     </div>
   </div>
@@ -469,6 +542,62 @@ Senha:     senha da conta Microsoft</pre>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: MONITORAMENTO                                           -->
+  <!-- ============================================================ -->
+  <div id="tab-monitoramento" class="tab-content">
+
+    <div class="page-card" style="margin-bottom:16px">
+      <div class="card-header-row">
+        <h3><i class="fas fa-stethoscope"></i> Verificar Ambiente de E-mail</h3>
+        <button type="button" class="btn-primary-modern" id="btn-monitorar" onclick="EmailAlertasPage.executarMonitoramento()">
+          <i class="fas fa-play-circle"></i> Verificar Ambiente
+        </button>
+      </div>
+      <p style="color:#64748b;font-size:13px;margin-top:8px">
+        Verifica conectividade com as APIs (Brevo/Resend), porta SMTP, registros DNS, SPF, DMARC e DKIM do domínio remetente.
+      </p>
+    </div>
+
+    <!-- Resultado do monitoramento -->
+    <div id="monitoramento-resultado" style="display:none">
+
+      <!-- Resumo -->
+      <div class="page-card email-monitor-resumo" id="monitor-resumo-card" style="margin-bottom:16px">
+        <div class="email-monitor-resumo-items">
+          <div class="email-monitor-resumo-item">
+            <span class="email-monitor-resumo-num email-stat-num--green" id="monitor-ok">0</span>
+            <span class="email-monitor-resumo-label">OK</span>
+          </div>
+          <div class="email-stat-sep"></div>
+          <div class="email-monitor-resumo-item">
+            <span class="email-monitor-resumo-num" style="color:#f59e0b" id="monitor-avisos">0</span>
+            <span class="email-monitor-resumo-label">Avisos</span>
+          </div>
+          <div class="email-stat-sep"></div>
+          <div class="email-monitor-resumo-item">
+            <span class="email-monitor-resumo-num email-stat-num--red" id="monitor-erros">0</span>
+            <span class="email-monitor-resumo-label">Erros</span>
+          </div>
+        </div>
+        <span class="email-kpi-sub" id="monitor-timestamp"></span>
+      </div>
+
+      <!-- Cards de resultado por serviço -->
+      <div class="email-monitor-grid" id="monitor-cards">
+        <!-- preenchido via JS -->
+      </div>
+
+    </div>
+
+    <!-- Estado vazio inicial -->
+    <div id="monitoramento-vazio" class="empty-state">
+      <i class="fas fa-stethoscope" style="font-size:2.5rem;color:#cbd5e1;margin-bottom:12px"></i>
+      <p style="color:#94a3b8">Clique em <strong>Verificar Ambiente</strong> para iniciar o diagnóstico.</p>
+    </div>
+
   </div>
 
   <!-- ============================================================ -->

@@ -35,6 +35,7 @@ class BrevoProvider implements EmailProviderInterface
         string $htmlBody,
         array  $attachments = []
     ): array {
+        error_log('PASSOU_AQUI_BREVO_SEND: senderEmail=' . $this->senderEmail . ' apiKey_tem=' . (!empty($this->apiKey) ? 'SIM' : 'NAO'));
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
             return $this->failure("E-mail destinatário inválido: $to");
         }
@@ -64,7 +65,20 @@ class BrevoProvider implements EmailProviderInterface
 
     public function sendTest(string $to): array
     {
-        die('BREVO_PROVIDER_EXECUTADO');
+        error_log('PASSOU_AQUI_5: BrevoProvider::sendTest() chamado para ' . $to);
+        $result = $this->send(
+            $to,
+            'Destinatário de Teste',
+            'Teste de Configuração — Brevo API — ' . date('d/m/Y H:i'),
+            $this->testHtml($to)
+        );
+
+        return [
+            'success' => $result['success'],
+            'message' => $result['success']
+                ? "E-mail de teste enviado com sucesso para $to via Brevo!"
+                : 'Erro Brevo: ' . ($result['error'] ?? 'Erro desconhecido'),
+        ];
     }
 
     public function validateConfiguration(): array

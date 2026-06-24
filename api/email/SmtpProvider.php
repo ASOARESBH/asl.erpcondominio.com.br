@@ -33,6 +33,7 @@ class SmtpProvider implements EmailProviderInterface
         string $htmlBody,
         array  $attachments = []
     ): array {
+        error_log('PASSOU_AQUI_SMTP_SEND: host=' . ($this->config['smtp_host'] ?? 'N/A') . ' usuario=' . ($this->config['smtp_usuario'] ?? 'N/A'));
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
             return $this->failure("E-mail destinatário inválido: $to");
         }
@@ -41,6 +42,7 @@ class SmtpProvider implements EmailProviderInterface
         $lastError = null;
 
         foreach ($hosts as $host) {
+            $mail = null;
             try {
                 $mail = $this->buildMailer($host);
                 $mail->addAddress($to, $toName ?: $to);
@@ -65,9 +67,11 @@ class SmtpProvider implements EmailProviderInterface
                     'error'         => null,
                 ];
             } catch (PHPMailerException $e) {
-                $lastError = $mail->ErrorInfo ?: $e->getMessage();
+                $lastError = ($mail !== null ? $mail->ErrorInfo : null) ?: $e->getMessage();
                 email_error_log('ERROR', 'SmtpProvider::send falhou', ['host' => $host, 'error' => $lastError]);
-                $mail->smtpClose();
+                if ($mail !== null) {
+                    $mail->smtpClose();
+                }
             }
         }
 

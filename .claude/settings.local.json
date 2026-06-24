@@ -23,7 +23,11 @@
       "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/ResendProvider.php\")",
       "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/SmtpProvider.php\")",
       "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/EmailSender.php\")",
-      "PowerShell(php --version)"
+      "PowerShell(php --version)",
+      "Bash(php -l api/api_email_alertas.php)",
+      "Bash(php -l api/email/EmailProviderFactory.php)",
+      "Bash(php -l api/email/FallbackEmailProvider.php)",
+      "Bash(php -l api/EmailSender.php)"
     ]
   }
 }

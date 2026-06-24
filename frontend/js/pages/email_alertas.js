@@ -30,6 +30,7 @@ export function init() {
     _setupTabs();
     _carregarProvedores();
     _carregarSMTP();
+    carregarDashboard();
 
     // Expor API pública para handlers inline no HTML
     window.EmailAlertasPage = {
@@ -54,6 +55,8 @@ export function init() {
         carregarLogs,
         limparLogs,
         _setLogPagina,
+        carregarDashboard,
+        executarMonitoramento,
     };
 }
 
@@ -107,8 +110,9 @@ function trocarAba(aba) {
     if (content) content.classList.add('active');
 
     if (aba === 'alertas' && _alertas.length === 0) _carregarAlertas();
-    if (aba === 'logs')    carregarLogs();
-    if (aba === 'teste')   _renderizarResumoSMTP();
+    if (aba === 'logs')          carregarLogs();
+    if (aba === 'teste')         _renderizarResumoSMTP();
+    if (aba === 'monitoramento') _renderizarMonitoramentoVazio();
 }
 
 // ── Provedores ────────────────────────────────────────────────────────────────
@@ -748,6 +752,124 @@ async function limparLogs() {
         _toast(d.mensagem, d.sucesso ? 'sucesso' : 'erro');
         if (d.sucesso) carregarLogs();
     } catch (e) { _toast('Erro: ' + e.message, 'erro'); }
+}
+
+// ── Dashboard KPI ─────────────────────────────────────────────────────────────
+async function carregarDashboard() {
+    try {
+        const d = await _fetchJson(`${API}?acao=dashboard_stats`);
+        if (!d.sucesso) return;
+        const s = d.dados;
+
+        // Provedor ativo
+        const nomeProvider = { brevo: 'Brevo', resend: 'Resend', smtp: 'SMTP' };
+        _setText('kpi-provedor-nome', nomeProvider[s.provedor_ativo] || s.provedor_ativo || '—');
+        _setText('kpi-provedor-remetente',
+            s.sender_email ? `${s.sender_name || ''} <${s.sender_email}>`.trim() : (s.smtp_host || '—'));
+
+        const badgeEl = document.getElementById('kpi-provedor-badge');
+        if (badgeEl) {
+            const st = s.status_teste;
+            badgeEl.textContent = st === 'ok' ? 'Testado OK' : st === 'erro' ? 'Com Erro' : 'Não testado';
+            badgeEl.className = 'email-kpi-badge' +
+                (st === 'ok' ? ' email-kpi-badge--ok' : st === 'erro' ? ' email-kpi-badge--erro' : ' email-kpi-badge--inativo');
+        }
+
+        _setText('kpi-provedor-ultimo-teste',
+            s.ultimo_teste ? _formatDate(s.ultimo_teste) : '');
+
+        // Saúde: último envio
+        const ultimoEnvio = s.ultimo_envio ? _formatDate(s.ultimo_envio) : 'Nunca';
+        _setText('kpi-saude-ultimo-envio', ultimoEnvio);
+
+        const saude = document.getElementById('kpi-saude-status');
+        if (saude) {
+            const temErros = (s.falhas_hoje || 0) > 0;
+            const semDados = (s.enviados_hoje || 0) === 0 && (s.falhas_hoje || 0) === 0;
+            saude.textContent = semDados ? '—' : (temErros ? 'Com Erros' : 'Operacional');
+            saude.style.color = semDados ? '#94a3b8' : (temErros ? '#dc2626' : '#16a34a');
+        }
+
+        // Estatísticas
+        _setText('kpi-enviados', s.enviados_hoje ?? '0');
+        _setText('kpi-falhas',   s.falhas_hoje   ?? '0');
+        _setText('kpi-taxa',     s.taxa_entrega !== null && s.taxa_entrega !== undefined ? s.taxa_entrega + '%' : '—');
+        _setText('kpi-tempo',    s.tempo_medio_s !== null && s.tempo_medio_s !== undefined ? s.tempo_medio_s + 's' : '—');
+
+    } catch (e) {
+        console.warn('[EmailAlertas] Dashboard stats erro:', e.message);
+    }
+}
+
+function _formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso.replace(' ', 'T'));
+    if (isNaN(d)) return iso;
+    const hoje = new Date();
+    const mesmodia = d.toDateString() === hoje.toDateString();
+    if (mesmodia) return 'hoje ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) +
+        ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ── Monitoramento ─────────────────────────────────────────────────────────────
+function _renderizarMonitoramentoVazio() {
+    const res  = document.getElementById('monitoramento-resultado');
+    const vazio = document.getElementById('monitoramento-vazio');
+    if (res)   res.style.display = 'none';
+    if (vazio) vazio.style.display = 'block';
+}
+
+async function executarMonitoramento() {
+    const btn   = document.getElementById('btn-monitorar');
+    const res   = document.getElementById('monitoramento-resultado');
+    const vazio = document.getElementById('monitoramento-vazio');
+    const cards = document.getElementById('monitor-cards');
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...'; }
+    if (vazio) vazio.style.display = 'none';
+    if (res)   res.style.display = 'none';
+    if (cards) cards.innerHTML = '';
+
+    try {
+        const d = await _fetchJson(`${API}?acao=monitorar`);
+        if (!d.sucesso) throw new Error(d.mensagem || 'Erro no monitoramento');
+
+        const { resultados, resumo, executado_em } = d.dados;
+
+        // Resumo numérico
+        _setText('monitor-ok',     resumo.ok      ?? 0);
+        _setText('monitor-avisos', resumo.avisos   ?? 0);
+        _setText('monitor-erros',  resumo.erros    ?? 0);
+        _setText('monitor-timestamp', executado_em ? 'Verificado em: ' + executado_em : '');
+
+        // Cards de resultado
+        if (cards) {
+            cards.innerHTML = (resultados || []).map(item => {
+                const statusClass = item.status === 'ok' ? 'ok' : item.status === 'aviso' ? 'aviso' : 'erro';
+                const icon = item.status === 'ok'
+                    ? 'fas fa-check-circle'
+                    : item.status === 'aviso' ? 'fas fa-exclamation-triangle' : 'fas fa-times-circle';
+                const lat = item.latencia !== undefined ? ` (${item.latencia}s)` : '';
+                return `<div class="monitor-card monitor-card--${statusClass}">
+                    <div class="monitor-card-icon"><i class="${icon}"></i></div>
+                    <div class="monitor-card-body">
+                        <div class="monitor-card-servico">${_esc(item.servico)}</div>
+                        <div class="monitor-card-detalhe">${_esc(item.detalhe || '')}</div>
+                        <div class="monitor-card-latencia">${lat}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        if (res) res.style.display = 'block';
+
+    } catch (e) {
+        _toast('Erro no monitoramento: ' + e.message, 'erro');
+        if (vazio) vazio.style.display = 'block';
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play-circle"></i> Verificar Ambiente'; }
+    }
 }
 
 // ── Helpers DOM ───────────────────────────────────────────────────────────────

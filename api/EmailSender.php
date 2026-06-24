@@ -162,7 +162,11 @@ class EmailSender
         }
 
         $this->config   = mysqli_fetch_assoc($res);
+        error_log('PASSOU_AQUI_3: EmailSender::carregarConfiguracao email_provider=' . ($this->config['email_provider'] ?? 'NULL')
+            . ' api_key_tem=' . (!empty($this->config['api_key']) ? 'SIM' : 'NAO')
+            . ' smtp_host=' . ($this->config['smtp_host'] ?? ''));
         $this->provider = EmailProviderFactory::fromConfig($this->config);
+        error_log('PASSOU_AQUI_3B: Provider instanciado: ' . get_class($this->provider));
     }
 
     private function resolverTemplateRecuperacao(string $nome, string $token): array
