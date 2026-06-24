@@ -67,6 +67,7 @@ switch ($acao) {
     case 'log_listar':       _log_listar($conexao);       break;
     case 'log_limpar':       _log_limpar($conexao);       break;
     case 'provedores_listar':_provedores_listar();        break;
+    case 'diagnostico':      _diagnostico($conexao);      break;
     default:
         retornar_json(false, "Ação '$acao' não reconhecida.");
 }
@@ -110,8 +111,16 @@ function _criar_tabelas($db) {
         mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `sender_email` VARCHAR(255) DEFAULT NULL AFTER `api_key`");
     if (!in_array('sender_name', $cols))
         mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `sender_name` VARCHAR(255) DEFAULT NULL AFTER `sender_email`");
-    // Instalações existentes com SMTP configurado → preservar como 'smtp'
-    mysqli_query($db, "UPDATE configuracao_smtp SET email_provider='smtp' WHERE email_provider='brevo' AND smtp_host!='' AND smtp_usuario!=''");
+    // Migração de proteção: instalações LEGADAS com SMTP puro que receberam o DEFAULT 'brevo'
+    // automaticamente ao receber a nova coluna email_provider.
+    // CRÍTICO: só atualiza linhas SEM api_key — uma linha com api_key foi explicitamente
+    // configurada como Brevo/Resend REST API e JAMAIS deve ser rebaixada para smtp.
+    mysqli_query($db, "UPDATE configuracao_smtp
+        SET email_provider = 'smtp'
+        WHERE email_provider = 'brevo'
+          AND (api_key IS NULL OR api_key = '')
+          AND smtp_host    != ''
+          AND smtp_usuario != ''");
 
     // email_alertas
     mysqli_query($db, "CREATE TABLE IF NOT EXISTS `email_alertas` (
@@ -559,6 +568,93 @@ function _log_limpar($db) {
     mysqli_query($db, "DELETE FROM email_log WHERE data_envio < DATE_SUB(NOW(), INTERVAL $dias DAY)");
     $afetados = mysqli_affected_rows($db);
     retornar_json(true, "$afetados registro(s) removido(s).", ['removidos' => $afetados]);
+}
+
+// ============================================================
+// DIAGNÓSTICO — mostra exatamente qual provider será usado
+// ============================================================
+function _diagnostico($db) {
+    require_once __DIR__ . '/email/EmailCrypto.php';
+    require_once __DIR__ . '/email/EmailProviderInterface.php';
+    require_once __DIR__ . '/email/BrevoProvider.php';
+    require_once __DIR__ . '/email/ResendProvider.php';
+    require_once __DIR__ . '/email/SmtpProvider.php';
+    require_once __DIR__ . '/email/EmailProviderFactory.php';
+
+    $res = mysqli_query($db, "SELECT * FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
+    $cfg = $res ? mysqli_fetch_assoc($res) : null;
+
+    if (!$cfg) {
+        retornar_json(false, 'Nenhuma configuração encontrada.', ['db_row' => null]);
+    }
+
+    $emailProvider  = $cfg['email_provider'] ?? '(nulo)';
+    $provedor       = $cfg['provedor']        ?? '(nulo)';
+    $smtpHost       = $cfg['smtp_host']       ?? '';
+    $smtpUser       = $cfg['smtp_usuario']    ?? '';
+    $hasApiKey      = !empty($cfg['api_key']);
+    $hasSenderEmail = !empty($cfg['sender_email']);
+    $hasSenderName  = !empty($cfg['sender_name']);
+    $ativo          = (int)($cfg['smtp_ativo'] ?? 1);
+
+    // Simula a decisão da Factory
+    $providerClass = match ($emailProvider) {
+        'brevo'  => 'BrevoProvider',
+        'resend' => 'ResendProvider',
+        default  => 'SmtpProvider',
+    };
+
+    // Verifica o que o UPDATE de migração faria agora
+    $migrationWouldReset = (
+        $emailProvider === 'brevo'
+        && !$hasApiKey
+        && $smtpHost !== ''
+        && $smtpUser !== ''
+    );
+
+    // Mask da API Key
+    $apiKeyMask = '';
+    if ($hasApiKey) {
+        try {
+            $plain      = EmailCrypto::decrypt($cfg['api_key']);
+            $apiKeyMask = EmailCrypto::mask($plain);
+        } catch (Throwable $e) {
+            $apiKeyMask = '••••••••';
+        }
+    }
+
+    $warnings = [];
+    if ($emailProvider === 'brevo' && !$hasApiKey) {
+        $warnings[] = 'email_provider=brevo mas api_key está VAZIA — Brevo API não funcionará.';
+    }
+    if ($emailProvider === 'brevo' && !$hasSenderEmail) {
+        $warnings[] = 'email_provider=brevo mas sender_email está NULL — campo obrigatório.';
+    }
+    if ($emailProvider === 'brevo' && !$hasSenderName) {
+        $warnings[] = 'email_provider=brevo mas sender_name está NULL — campo obrigatório.';
+    }
+    if ($emailProvider === 'smtp' && empty($smtpHost)) {
+        $warnings[] = 'email_provider=smtp mas smtp_host está vazio.';
+    }
+
+    retornar_json(true, 'Diagnóstico completo', [
+        'db_email_provider'       => $emailProvider,
+        'db_provedor_legado'      => $provedor,
+        'factory_instanciaria'    => $providerClass,
+        'db_smtp_host'            => $smtpHost,
+        'db_smtp_usuario'         => $smtpUser,
+        'db_smtp_ativo'           => $ativo,
+        'has_api_key'             => $hasApiKey,
+        'api_key_mask'            => $apiKeyMask,
+        'has_sender_email'        => $hasSenderEmail,
+        'sender_email'            => $cfg['sender_email'],
+        'has_sender_name'         => $hasSenderName,
+        'sender_name'             => $cfg['sender_name'],
+        'migration_reset_ativo'   => $migrationWouldReset,
+        'migration_protegida'     => !$migrationWouldReset,
+        'warnings'                => $warnings,
+        'status'                  => empty($warnings) ? 'OK' : 'ATENÇÃO',
+    ]);
 }
 
 // ============================================================

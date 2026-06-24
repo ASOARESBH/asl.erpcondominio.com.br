@@ -19,7 +19,12 @@ use PHPMailer\PHPMailer\Exception as PHPMailerException;
  */
 class SmtpProvider implements EmailProviderInterface
 {
-    public function __construct(private readonly array $config) {}
+    private array $config;
+
+    public function __construct(array $config)
+    {
+        $this->config = $config;
+    }
 
     public function send(
         string $to,

@@ -11,7 +11,19 @@
       "WebFetch(domain:idcloud.com.br)",
       "Bash(xargs grep *)",
       "Bash(find c:\\\\\\\\xampp\\\\\\\\htdocs\\\\\\\\dashboard\\\\\\\\asl.erpcondominio.com.br -type d -name \"*financ*\" -o -type d -name \"*payment*\" -o -type d -name \"*transac*\")",
-      "Bash(Remove-Item \"c:\\\\xampp\\\\htdocs\\\\dashboard\\\\asl.erpcondominio.com.br\\\\frontend\\\\config_smtp.html\" -Force)"
+      "Bash(Remove-Item \"c:\\\\xampp\\\\htdocs\\\\dashboard\\\\asl.erpcondominio.com.br\\\\frontend\\\\config_smtp.html\" -Force)",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/api_email_alertas.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/api_smtp.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/EmailProviderFactory.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/BrevoProvider.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/ResendProvider.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/SmtpProvider.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/EmailSender.php\")",
+      "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/BrevoProvider.php\")",
+      "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/ResendProvider.php\")",
+      "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/email/SmtpProvider.php\")",
+      "PowerShell(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/EmailSender.php\")",
+      "PowerShell(php --version)"
     ]
   }
 }

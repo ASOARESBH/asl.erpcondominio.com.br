@@ -13,6 +13,10 @@ require_once __DIR__ . '/SmtpProvider.php';
  * Lê a coluna `email_provider` da configuração e instancia
  * o provider correto. Suporta retrocompatibilidade com
  * instalações que já têm SMTP configurado.
+ *
+ * CAMPO AUTORITATIVO: `email_provider` (não `provedor`).
+ *   - `provedor`      → preset SMTP histórico (gmail, outlook, brevo-relay, etc.)
+ *   - `email_provider`→ transporte real: 'brevo'|'resend'|'smtp'
  */
 class EmailProviderFactory
 {
@@ -24,23 +28,49 @@ class EmailProviderFactory
     {
         $provider = $config['email_provider'] ?? 'smtp';
 
+        // Log de diagnóstico — visível nos logs de erro de e-mail
+        if (function_exists('email_error_log')) {
+            email_error_log('INFO', 'EmailProviderFactory::fromConfig', [
+                'email_provider' => $provider,
+                'provedor'       => $config['provedor'] ?? '—',
+                'has_api_key'    => !empty($config['api_key']),
+                'smtp_host'      => $config['smtp_host'] ?? '',
+            ]);
+        }
+
         switch ($provider) {
             case 'brevo':
+                $apiKey = self::decryptKey($config['api_key'] ?? '');
+                if (empty($apiKey)) {
+                    // API Key ausente — log de alerta claro
+                    if (function_exists('email_error_log')) {
+                        email_error_log('WARNING', 'BrevoProvider: api_key vazia — verifique a configuração no painel', []);
+                    }
+                }
                 return new BrevoProvider(
-                    self::decryptKey($config['api_key'] ?? ''),
+                    $apiKey,
                     $config['sender_email'] ?? $config['smtp_de_email'] ?? '',
                     $config['sender_name']  ?? $config['smtp_de_nome']  ?? ''
                 );
 
             case 'resend':
+                $apiKey = self::decryptKey($config['api_key'] ?? '');
+                if (empty($apiKey)) {
+                    if (function_exists('email_error_log')) {
+                        email_error_log('WARNING', 'ResendProvider: api_key vazia — verifique a configuração no painel', []);
+                    }
+                }
                 return new ResendProvider(
-                    self::decryptKey($config['api_key'] ?? ''),
+                    $apiKey,
                     $config['sender_email'] ?? $config['smtp_de_email'] ?? '',
                     $config['sender_name']  ?? $config['smtp_de_nome']  ?? ''
                 );
 
             case 'smtp':
             default:
+                if ($provider !== 'smtp' && function_exists('email_error_log')) {
+                    email_error_log('WARNING', "EmailProviderFactory: provider '$provider' desconhecido, usando SmtpProvider", []);
+                }
                 return new SmtpProvider($config);
         }
     }

@@ -115,10 +115,14 @@ function _garantir_tabela($db) {
         mysqli_query($db, "ALTER TABLE `configuracao_smtp` " . implode(', ', $alter));
     }
 
-    // Migração de dados: instalações existentes com SMTP → marcar como 'smtp'
+    // Migração de proteção: instalações LEGADAS com SMTP puro que receberam o DEFAULT 'brevo'
+    // automaticamente ao receber a nova coluna email_provider.
+    // CRÍTICO: só atualiza linhas SEM api_key — uma linha com api_key foi explicitamente
+    // configurada como Brevo/Resend REST API e JAMAIS deve ser rebaixada para smtp.
     mysqli_query($db, "UPDATE configuracao_smtp
         SET email_provider = 'smtp'
         WHERE email_provider = 'brevo'
+          AND (api_key IS NULL OR api_key = '')
           AND smtp_host    != ''
           AND smtp_usuario != ''");
 }

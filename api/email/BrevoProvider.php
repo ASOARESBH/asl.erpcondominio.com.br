@@ -17,11 +17,16 @@ class BrevoProvider implements EmailProviderInterface
     private const API_URL = 'https://api.brevo.com/v3/smtp/email';
     private const TIMEOUT = 30;
 
-    public function __construct(
-        private readonly string $apiKey,
-        private readonly string $senderEmail,
-        private readonly string $senderName
-    ) {}
+    private string $apiKey;
+    private string $senderEmail;
+    private string $senderName;
+
+    public function __construct(string $apiKey, string $senderEmail, string $senderName)
+    {
+        $this->apiKey      = $apiKey;
+        $this->senderEmail = $senderEmail;
+        $this->senderName  = $senderName;
+    }
 
     public function send(
         string $to,
@@ -110,7 +115,7 @@ class BrevoProvider implements EmailProviderInterface
         $body     = (string) curl_exec($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlErr  = curl_error($ch);
-        curl_close($ch);
+        $ch       = null; // libera o handle (curl_close depreciado no PHP 8.x)
 
         if ($curlErr) {
             return $this->failure("cURL error: $curlErr", 0);
