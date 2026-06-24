@@ -99,11 +99,29 @@
                     <i class="fas fa-wrench"></i> Ordens de Serviço
                 </a>
             </li>
-            <!-- Checklists (movido de Administrativo) -->
-            <li>
-                <a href="#" data-page="checklists" class="nav-link nav-sublink">
+            <!-- Checklists + Inventário (submenu nível 2) -->
+            <li class="nav-item submenu-container">
+                <a href="#" class="nav-link nav-sublink submenu-toggle" data-toggle="submenu" data-target="submenu-checklists">
                     <i class="fas fa-clipboard-check"></i> Checklists
+                    <i class="fas fa-chevron-right submenu-arrow" style="margin-left:auto;font-size:10px;transition:transform 0.2s;"></i>
                 </a>
+                <ul class="submenu-content submenu-level2" id="submenu-checklists">
+                    <li>
+                        <a href="#" data-page="checklists" class="nav-link nav-sublink nav-sublink-2">
+                            <i class="fas fa-list-check"></i> Checklists
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="inventario" class="nav-link nav-sublink nav-sublink-2">
+                            <i class="fas fa-boxes"></i> Inventário
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" data-page="relatorios_inventario" class="nav-link nav-sublink nav-sublink-2">
+                            <i class="fas fa-chart-bar"></i> Relatórios
+                        </a>
+                    </li>
+                </ul>
             </li>
         </ul>
     </li>
@@ -142,8 +160,8 @@
                 </a>
             </li>
             <li>
-                <a href="#" data-page="inventario" class="nav-link nav-sublink">
-                    <i class="fas fa-boxes"></i> Inventário
+                <a href="#" data-page="documentos" class="nav-link nav-sublink">
+                    <i class="fas fa-folder-open"></i> Documentos
                 </a>
             </li>
             <li>

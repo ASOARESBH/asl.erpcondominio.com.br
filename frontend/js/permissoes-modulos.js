@@ -57,6 +57,7 @@
         eventos:                'eventos',
         fornecedores:           'fornecedores',
         cadastro_fornecedor_admin: 'fornecedores',
+        documentos:             'documentos',
 
         // Manutenção (inclui checklists movido de Administrativo)
         checklists:             'checklists',

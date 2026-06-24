@@ -1,0 +1,526 @@
+<!-- page: documentos | css: documentos -->
+<div id="page-metadata" data-title="Documentos (GED)" data-icon="fa-folder-open" style="display:none;"></div>
+
+<div class="page-wrapper page-documentos">
+
+  <!-- ── PAGE HEADER ──────────────────────────────────────────── -->
+  <div class="page-header">
+    <div class="page-header-icon"><i class="fas fa-folder-open"></i></div>
+    <div>
+      <h1 class="page-title">Documentos</h1>
+      <p class="page-subtitle">Gestão Eletrônica de Documentos — organize, compartilhe e rastreie com segurança</p>
+    </div>
+    <div class="page-header-actions">
+      <button type="button" class="btn-primary-modern" onclick="DocumentosPage.abrirModalDoc()" data-perm="criar">
+        <i class="fas fa-plus"></i> Novo Documento
+      </button>
+    </div>
+  </div>
+
+  <!-- ── KPI CARDS ─────────────────────────────────────────────── -->
+  <div class="docs-stats-grid" id="docs-kpi-grid">
+    <div class="page-card docs-kpi-card">
+      <div class="docs-kpi-icon docs-kpi-icon--blue"><i class="fas fa-file-alt"></i></div>
+      <div class="docs-kpi-body">
+        <div class="docs-kpi-label">Total de Documentos</div>
+        <div class="docs-kpi-value" id="kpi-total-docs">—</div>
+      </div>
+    </div>
+    <div class="page-card docs-kpi-card">
+      <div class="docs-kpi-icon docs-kpi-icon--green"><i class="fas fa-download"></i></div>
+      <div class="docs-kpi-body">
+        <div class="docs-kpi-label">Total Downloads</div>
+        <div class="docs-kpi-value" id="kpi-total-dl">—</div>
+      </div>
+    </div>
+    <div class="page-card docs-kpi-card">
+      <div class="docs-kpi-icon docs-kpi-icon--purple"><i class="fas fa-eye"></i></div>
+      <div class="docs-kpi-body">
+        <div class="docs-kpi-label">Visualizações</div>
+        <div class="docs-kpi-value" id="kpi-total-vis">—</div>
+      </div>
+    </div>
+    <div class="page-card docs-kpi-card">
+      <div class="docs-kpi-icon docs-kpi-icon--orange"><i class="fas fa-link"></i></div>
+      <div class="docs-kpi-body">
+        <div class="docs-kpi-label">Links Ativos</div>
+        <div class="docs-kpi-value" id="kpi-links">—</div>
+      </div>
+    </div>
+    <div class="page-card docs-kpi-card">
+      <div class="docs-kpi-icon docs-kpi-icon--red"><i class="fas fa-calendar-times"></i></div>
+      <div class="docs-kpi-body">
+        <div class="docs-kpi-label">Expirados</div>
+        <div class="docs-kpi-value" id="kpi-exp">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ABAS ─────────────────────────────────────────────────── -->
+  <div class="page-card" style="padding:0;margin-bottom:0;overflow:hidden">
+    <div class="tabs-container">
+      <button class="tab-btn active" data-tab="documentos" onclick="DocumentosPage.trocarAba('documentos')">
+        <i class="fas fa-file-alt"></i> Documentos
+      </button>
+      <button class="tab-btn" data-tab="departamentos" onclick="DocumentosPage.trocarAba('departamentos')">
+        <i class="fas fa-building"></i> Departamentos
+      </button>
+      <button class="tab-btn" data-tab="grupos" onclick="DocumentosPage.trocarAba('grupos')">
+        <i class="fas fa-users"></i> Grupos
+      </button>
+      <button class="tab-btn" data-tab="pastas" onclick="DocumentosPage.trocarAba('pastas')">
+        <i class="fas fa-folder"></i> Pastas
+      </button>
+      <button class="tab-btn" data-tab="compartilhamentos" onclick="DocumentosPage.trocarAba('compartilhamentos')">
+        <i class="fas fa-share-alt"></i> Compartilhamentos
+      </button>
+      <button class="tab-btn" data-tab="rastreabilidade" onclick="DocumentosPage.trocarAba('rastreabilidade')">
+        <i class="fas fa-history"></i> Rastreabilidade
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: DOCUMENTOS                                              -->
+  <!-- ============================================================ -->
+  <div id="tab-documentos" class="tab-content active">
+
+    <!-- Filtros -->
+    <div class="page-card" style="margin-bottom:16px">
+      <div class="filter-bar">
+        <input type="text" id="doc-busca" placeholder="Buscar por nome, tags ou descrição..." oninput="DocumentosPage.buscarDocs()" style="min-width:240px">
+        <select id="doc-filtro-dep" onchange="DocumentosPage.buscarDocs()">
+          <option value="">Todos os Departamentos</option>
+        </select>
+        <select id="doc-filtro-status" onchange="DocumentosPage.buscarDocs()">
+          <option value="ativo">Ativos</option>
+          <option value="">Todos</option>
+          <option value="rascunho">Rascunhos</option>
+          <option value="inativo">Inativos</option>
+        </select>
+        <button type="button" class="btn btn-outline btn-xs" onclick="DocumentosPage.buscarDocs()">
+          <i class="fas fa-search"></i> Filtrar
+        </button>
+        <button type="button" class="btn btn-outline btn-xs" onclick="DocumentosPage.limparFiltrosDocs()">
+          <i class="fas fa-times"></i> Limpar
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabela -->
+    <div class="page-card" style="padding:0;overflow:hidden">
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Documento</th>
+              <th>Departamento</th>
+              <th>Grupo</th>
+              <th>Status</th>
+              <th>Downloads</th>
+              <th>Visualizações</th>
+              <th>Data</th>
+              <th style="width:120px">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="docs-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="pag-wrap" id="docs-paginacao"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: DEPARTAMENTOS                                           -->
+  <!-- ============================================================ -->
+  <div id="tab-departamentos" class="tab-content">
+    <div class="page-card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <h3 style="margin:0"><i class="fas fa-building"></i> Departamentos</h3>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.abrirModalDep()" data-perm="criar">
+          <i class="fas fa-plus"></i> Novo Departamento
+        </button>
+      </div>
+    </div>
+    <div class="docs-dep-grid" id="deps-grid">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: GRUPOS                                                  -->
+  <!-- ============================================================ -->
+  <div id="tab-grupos" class="tab-content">
+    <div class="page-card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <h3 style="margin:0"><i class="fas fa-users"></i> Grupos de Acesso</h3>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.abrirModalGrupo()" data-perm="criar">
+          <i class="fas fa-plus"></i> Novo Grupo
+        </button>
+      </div>
+    </div>
+    <div class="page-card" style="padding:0;overflow:hidden">
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Tipo de Acesso</th>
+              <th>Usuários</th>
+              <th>Moradores</th>
+              <th style="width:120px">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="grupos-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: PASTAS                                                  -->
+  <!-- ============================================================ -->
+  <div id="tab-pastas" class="tab-content">
+    <div class="page-card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <h3 style="margin:0"><i class="fas fa-folder"></i> Pastas</h3>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.abrirModalPasta()" data-perm="criar">
+          <i class="fas fa-plus"></i> Nova Pasta
+        </button>
+      </div>
+    </div>
+    <div class="page-card" style="padding:0;overflow:hidden">
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Departamento</th>
+              <th>Pasta Pai</th>
+              <th>Documentos</th>
+              <th style="width:100px">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="pastas-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: COMPARTILHAMENTOS                                       -->
+  <!-- ============================================================ -->
+  <div id="tab-compartilhamentos" class="tab-content">
+    <div class="page-card" style="padding:0;overflow:hidden">
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead>
+            <tr>
+              <th>Documento</th>
+              <th>URL</th>
+              <th>Acessos</th>
+              <th>Expira</th>
+              <th>Status</th>
+              <th style="width:100px">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="comp-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ABA: RASTREABILIDADE                                         -->
+  <!-- ============================================================ -->
+  <div id="tab-rastreabilidade" class="tab-content">
+    <div class="page-card" style="margin-bottom:16px">
+      <div class="filter-bar">
+        <select id="rastro-tipo" onchange="DocumentosPage.carregarRastreabilidade()">
+          <option value="acessos">Acessos</option>
+          <option value="logs">Logs de Operações</option>
+        </select>
+        <button type="button" class="btn btn-outline btn-xs" onclick="DocumentosPage.carregarRastreabilidade()">
+          <i class="fas fa-sync"></i> Atualizar
+        </button>
+      </div>
+    </div>
+    <div class="page-card" style="padding:0;overflow:hidden">
+      <div class="docs-table-wrap">
+        <table class="docs-table">
+          <thead id="rastro-thead">
+            <tr>
+              <th>Data/Hora</th>
+              <th>Documento</th>
+              <th>Tipo</th>
+              <th>Origem</th>
+              <th>Usuário / IP</th>
+              <th>Navegador</th>
+            </tr>
+          </thead>
+          <tbody id="rastro-tbody">
+            <tr><td colspan="6" style="text-align:center;padding:40px;color:#94a3b8"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="pag-wrap" id="rastro-paginacao"></div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: DOCUMENTO                                             -->
+  <!-- ============================================================ -->
+  <div id="modal-doc" class="modal-overlay">
+    <div class="modal-box modal-box--lg">
+      <div class="modal-header">
+        <h3><i class="fas fa-file-alt"></i> <span id="modal-doc-titulo">Novo Documento</span></h3>
+        <button type="button" class="modal-close" onclick="DocumentosPage.fecharModalDoc()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="doc-id">
+        <div class="form-grid-2">
+          <div style="grid-column:1/-1">
+            <label class="form-label">Nome do Documento <span style="color:#ef4444">*</span></label>
+            <input type="text" id="doc-nome" placeholder="Nome do documento">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Descrição</label>
+            <textarea id="doc-descricao" rows="3" placeholder="Descrição opcional"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Departamento</label>
+            <select id="doc-departamento"></select>
+          </div>
+          <div>
+            <label class="form-label">Pasta</label>
+            <select id="doc-pasta"><option value="">Sem pasta</option></select>
+          </div>
+          <div>
+            <label class="form-label">Grupo de Acesso</label>
+            <select id="doc-grupo"></select>
+          </div>
+          <div>
+            <label class="form-label">Status</label>
+            <select id="doc-status">
+              <option value="ativo">Ativo</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Data de Publicação</label>
+            <input type="date" id="doc-data-pub">
+          </div>
+          <div>
+            <label class="form-label">Data de Expiração</label>
+            <input type="date" id="doc-data-exp">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Tags (separadas por vírgula)</label>
+            <input type="text" id="doc-tags" placeholder="estatuto, 2024, assembleia">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Arquivo <span style="font-size:11px;color:#64748b">(PDF, DOCX, XLSX, PPTX, PNG, JPG, ZIP — máx. 50 MB)</span></label>
+            <div class="docs-upload-area" id="docs-upload-area" onclick="document.getElementById('doc-arquivo').click()">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <span id="docs-upload-label">Clique ou arraste o arquivo aqui</span>
+              <input type="file" id="doc-arquivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.zip,.txt"
+                     style="display:none" onchange="DocumentosPage.onArquivoSelecionado(this)">
+            </div>
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Ou Link Externo (Google Drive, SharePoint, etc.)</label>
+            <input type="url" id="doc-link-externo" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary-modern" onclick="DocumentosPage.fecharModalDoc()">Cancelar</button>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.salvarDoc()" id="btn-salvar-doc">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: DEPARTAMENTO                                          -->
+  <!-- ============================================================ -->
+  <div id="modal-dep" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-building"></i> <span id="modal-dep-titulo">Novo Departamento</span></h3>
+        <button type="button" class="modal-close" onclick="DocumentosPage.fecharModalDep()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="dep-id">
+        <div class="form-grid-2">
+          <div style="grid-column:1/-1">
+            <label class="form-label">Nome <span style="color:#ef4444">*</span></label>
+            <input type="text" id="dep-nome" placeholder="Nome do departamento">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Descrição</label>
+            <textarea id="dep-descricao" rows="2" placeholder="Descrição opcional"></textarea>
+          </div>
+          <div>
+            <label class="form-label">Ícone (Font Awesome)</label>
+            <input type="text" id="dep-icone" placeholder="fas fa-folder" value="fas fa-folder">
+          </div>
+          <div>
+            <label class="form-label">Cor</label>
+            <input type="color" id="dep-cor" value="#2563eb" style="width:60px;height:38px;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary-modern" onclick="DocumentosPage.fecharModalDep()">Cancelar</button>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.salvarDep()">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: GRUPO                                                 -->
+  <!-- ============================================================ -->
+  <div id="modal-grupo" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-users"></i> <span id="modal-grupo-titulo">Novo Grupo</span></h3>
+        <button type="button" class="modal-close" onclick="DocumentosPage.fecharModalGrupo()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="grupo-id">
+        <div class="form-grid-2">
+          <div style="grid-column:1/-1">
+            <label class="form-label">Nome <span style="color:#ef4444">*</span></label>
+            <input type="text" id="grupo-nome" placeholder="Nome do grupo">
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Descrição</label>
+            <textarea id="grupo-descricao" rows="2" placeholder="Descrição opcional"></textarea>
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Tipo de Acesso</label>
+            <select id="grupo-tipo">
+              <option value="todos">Todos</option>
+              <option value="moradores">Moradores</option>
+              <option value="administradores">Administradores</option>
+              <option value="conselho">Conselho</option>
+              <option value="diretoria">Diretoria</option>
+              <option value="financeiro">Financeiro</option>
+              <option value="juridico">Jurídico</option>
+              <option value="portaria">Portaria</option>
+              <option value="manutencao">Manutenção</option>
+              <option value="prestadores">Prestadores</option>
+              <option value="visitantes">Visitantes</option>
+              <option value="personalizado">Personalizado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary-modern" onclick="DocumentosPage.fecharModalGrupo()">Cancelar</button>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.salvarGrupo()">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: PASTA                                                 -->
+  <!-- ============================================================ -->
+  <div id="modal-pasta" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-folder"></i> <span id="modal-pasta-titulo">Nova Pasta</span></h3>
+        <button type="button" class="modal-close" onclick="DocumentosPage.fecharModalPasta()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="pasta-id">
+        <div class="form-grid-2">
+          <div style="grid-column:1/-1">
+            <label class="form-label">Nome <span style="color:#ef4444">*</span></label>
+            <input type="text" id="pasta-nome" placeholder="Nome da pasta">
+          </div>
+          <div>
+            <label class="form-label">Departamento</label>
+            <select id="pasta-dep"></select>
+          </div>
+          <div>
+            <label class="form-label">Pasta Pai (opcional)</label>
+            <select id="pasta-pai"><option value="">Nenhuma (raiz)</option></select>
+          </div>
+          <div style="grid-column:1/-1">
+            <label class="form-label">Descrição</label>
+            <textarea id="pasta-desc" rows="2" placeholder="Descrição opcional"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary-modern" onclick="DocumentosPage.fecharModalPasta()">Cancelar</button>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.salvarPasta()">
+          <i class="fas fa-save"></i> Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: COMPARTILHAR DOCUMENTO                                -->
+  <!-- ============================================================ -->
+  <div id="modal-comp" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fas fa-share-alt"></i> Compartilhar Documento</h3>
+        <button type="button" class="modal-close" onclick="DocumentosPage.fecharModalComp()"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="comp-doc-id">
+        <div class="form-grid-2">
+          <div style="grid-column:1/-1">
+            <label class="form-label">Descrição do Link</label>
+            <input type="text" id="comp-desc" placeholder="Ex.: Enviado para assembleia">
+          </div>
+          <div>
+            <label class="form-label">Expira em</label>
+            <input type="datetime-local" id="comp-expira">
+          </div>
+          <div>
+            <label class="form-label">Limite de acessos (0 = ilimitado)</label>
+            <input type="number" id="comp-limite" value="0" min="0">
+          </div>
+        </div>
+        <div id="comp-link-gerado" style="display:none;margin-top:16px">
+          <div class="docs-link-gerado-box">
+            <label class="form-label" style="margin-bottom:6px">Link Gerado:</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="comp-link-url" readonly style="flex:1;background:#f8fafc">
+              <button type="button" class="btn-secondary-modern" onclick="DocumentosPage.copiarLink()">
+                <i class="fas fa-copy"></i> Copiar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary-modern" onclick="DocumentosPage.fecharModalComp()">Fechar</button>
+        <button type="button" class="btn-primary-modern" onclick="DocumentosPage.gerarLink()" id="btn-gerar-link">
+          <i class="fas fa-link"></i> Gerar Link
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .page-wrapper -->
