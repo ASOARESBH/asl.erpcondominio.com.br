@@ -385,3 +385,97 @@
     flex: 1 !important;
     color: #fff !important;
 }
+
+/* ============================================
+   HEADER SESSION GROUP (sino + sessão juntos)
+   ============================================ */
+#headerSessionGroup {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}
+
+/* Separador visual entre sino e perfil */
+#notif-bell-wrap + #userMiniProfile {
+    border-left: 1px solid #e2e8f0;
+    padding-left: 12px;
+    margin-left: 4px;
+}
+
+/* ============================================
+   SIDEBAR COLLAPSE BUTTON
+   ============================================ */
+#sidebarCollapseBtn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Sidebar recolhida: ocultar texto dos nav-links */
+.sidebar.collapsed .nav-link > span,
+.sidebar.collapsed .nav-link > *:not(i) {
+    display: none !important;
+}
+
+/* Sidebar recolhida: centralizar ícones */
+.sidebar.collapsed .nav-link {
+    justify-content: center !important;
+    padding: 12px 8px !important;
+    position: relative;
+}
+
+.sidebar.collapsed .nav-link i {
+    margin-right: 0 !important;
+    font-size: 1.2rem !important;
+    width: auto !important;
+}
+
+/* Sidebar recolhida: ocultar logo e mostrar só o botão */
+.sidebar.collapsed .sidebar-logo-container {
+    display: none !important;
+}
+
+/* Sidebar recolhida: ajustar header */
+.sidebar.collapsed .sidebar-header {
+    padding: 12px 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+}
+
+/* Sidebar recolhida: ocultar submenus */
+.sidebar.collapsed .submenu-content {
+    display: none !important;
+}
+
+.sidebar.collapsed .submenu-arrow {
+    display: none !important;
+}
+
+/* Sidebar recolhida: botão abrir chamado */
+.sidebar.collapsed .btn-abrir-chamado span {
+    display: none !important;
+}
+
+.sidebar.collapsed .btn-abrir-chamado {
+    justify-content: center !important;
+    padding: 0.65rem 0.5rem !important;
+}
+
+/* Tooltip ao passar o mouse nos itens recolhidos */
+.sidebar.collapsed .nav-link[data-label]:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #1e293b;
+    color: #f1f5f9;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    pointer-events: none;
+}

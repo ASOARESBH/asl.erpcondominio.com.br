@@ -209,13 +209,20 @@ async function carregarChamados(pagina = 1) {
         document.getElementById('os-paginacao').innerHTML = '';
         return;
     }
-    tbody.innerHTML = lista.map(os => `
-        <tr>
-            <td><strong style="color:var(--os-primary)">${os.numero}</strong></td>
+    tbody.innerHTML = lista.map(os => {
+        const isPortal = os.origem_portal === 'portal_morador';
+        const precisaAssumir = isPortal && !os.assumido_por_id;
+        const trStyle = isPortal ? 'background:linear-gradient(90deg,#fff7ed 0,transparent 8px);border-left:3px solid #d97706;' : '';
+        return `
+        <tr style="${trStyle}">
+            <td>
+                <strong style="color:var(--os-primary)">${os.numero}</strong>
+                ${isPortal ? `<div style="margin-top:.2rem"><span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.68rem;font-weight:700;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:10px;padding:.1rem .45rem;"><i class="fas fa-mobile-alt"></i> Portal</span></div>` : ''}
+                ${precisaAssumir ? `<div style="margin-top:.2rem"><span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.68rem;font-weight:700;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:.1rem .45rem;"><i class="fas fa-exclamation-triangle"></i> Assumir</span></div>` : ''}
+            </td>
             <td>
                 <div style="font-weight:600">${os.titulo}</div>
                 ${os.assunto_nome ? `<div style="font-size:.78rem;color:#64748b">${os.assunto_nome}</div>` : ''}
-            </td>
             <td>
                 ${os.morador_nome || '—'}
                 ${os.morador_unidade ? `<div style="font-size:.78rem;color:#64748b">Unid. ${os.morador_unidade}</div>` : ''}
@@ -230,9 +237,11 @@ async function carregarChamados(pagina = 1) {
                 ${os.status !== 'finalizado' ? `<button class="os-btn-acao editar" onclick="osAbrirEditar(${os.id})" title="Editar"><i class="fas fa-edit"></i></button>` : ''}
                 <button class="os-btn-acao imprimir" onclick="osImprimir(${os.id})" title="Imprimir / Gerar PDF"><i class="fas fa-print"></i></button>
                 ${os.status !== 'finalizado' ? `<button class="os-btn-acao excluir" onclick="osExcluir(${os.id},'${os.numero}')" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
+                ${precisaAssumir ? `<button class="os-btn-acao" style="background:#d97706;color:#fff;border-color:#d97706" onclick="osAbrirAssumirPortal(${os.id})" title="Assumir OS do Portal"><i class="fas fa-hand-paper"></i></button>` : ''}
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 
     // Paginação
     renderizarPaginacao(res.dados.total, res.dados.por_pagina, pagina);
@@ -1311,3 +1320,84 @@ log('Destruindo módulo Ordens de Serviço');
  'limparMorador','limparOSPai'].forEach(k => { if (window[k]) delete window[k]; });
 if (window.OrdensServico) delete window.OrdensServico;
 }
+
+// ─── ASSUMIR OS DO PORTAL ──────────────────────────────────────────────────────
+// Nota: estas funções são expostas via window.* pois são chamadas inline no HTML
+function osAbrirAssumirPortal(id) {
+    const existente = document.getElementById('modalAssumirPortalOS');
+    if (existente) existente.remove();
+    const modalEl = document.createElement('div');
+    modalEl.id = 'modalAssumirPortalOS';
+    modalEl.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:1rem;';
+    modalEl.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:1.5rem;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;">
+                <i class="fas fa-hand-paper" style="color:#d97706;font-size:1.2rem;"></i>
+                <h3 style="margin:0;font-size:1.05rem;font-weight:700;">Assumir OS do Portal</h3>
+            </div>
+            <p style="font-size:.88rem;color:#64748b;margin:0 0 1rem;">
+                Ao assumir esta OS, você se torna o atendente responsável.
+                Classifique a prioridade e, se houver, informe a OS pai.
+            </p>
+            <div style="margin-bottom:.75rem;">
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem;">
+                    Prioridade <span style="color:#dc2626">*</span>
+                </label>
+                <select id="assumirPortalPrioridade" style="width:100%;padding:.5rem .75rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.9rem;">
+                    <option value="media">Média</option>
+                    <option value="baixa">Baixa</option>
+                    <option value="alta">Alta</option>
+                    <option value="urgente">Urgente</option>
+                </select>
+            </div>
+            <div style="margin-bottom:1.25rem;">
+                <label style="font-size:.82rem;font-weight:600;display:block;margin-bottom:.3rem;">Nº OS Pai (opcional)</label>
+                <input type="number" id="assumirPortalOSPai" placeholder="ID da OS pai (se houver)"
+                    style="width:100%;padding:.5rem .75rem;border:1.5px solid #e2e8f0;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+            </div>
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+                <button onclick="document.getElementById('modalAssumirPortalOS').remove()"
+                    style="padding:.5rem 1rem;border:1.5px solid #e2e8f0;border-radius:8px;background:transparent;cursor:pointer;font-size:.88rem;">
+                    Cancelar
+                </button>
+                <button id="btnConfirmarAssumirPortal" data-os-id="${id}"
+                    onclick="osConfirmarAssumirPortal(${id})"
+                    style="padding:.5rem 1.25rem;background:#d97706;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem;font-weight:700;">
+                    <i class="fas fa-check"></i> Assumir
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modalEl);
+}
+window.osAbrirAssumirPortal = osAbrirAssumirPortal;
+
+function osConfirmarAssumirPortal(id) {
+    const prioridade = document.getElementById('assumirPortalPrioridade')?.value || 'media';
+    const osPaiRaw   = document.getElementById('assumirPortalOSPai')?.value || '';
+    const osPaiId    = osPaiRaw ? parseInt(osPaiRaw) : null;
+    const btn = document.getElementById('btnConfirmarAssumirPortal');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assumindo...'; }
+
+    fetch(API_OS + '?acao=assumir_portal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, prioridade, os_pai_id: osPaiId })
+    })
+    .then(r => r.json())
+    .then(res => {
+        const modal = document.getElementById('modalAssumirPortalOS');
+        if (modal) modal.remove();
+        if (res.sucesso) {
+            mostrarToast(res.mensagem || 'OS assumida com sucesso!', 'success');
+            carregarChamados(state.paginaAtual || 1);
+        } else {
+            mostrarToast(res.mensagem || 'Erro ao assumir OS.', 'error');
+        }
+    })
+    .catch(e => {
+        log('Erro ao assumir OS do portal:', e);
+        mostrarToast('Erro de conexão. Tente novamente.', 'error');
+    });
+}
+window.osConfirmarAssumirPortal = osConfirmarAssumirPortal;

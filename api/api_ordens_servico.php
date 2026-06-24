@@ -247,6 +247,10 @@ function _os_garantir_tabelas($conn) {
         criado_por_id   INT DEFAULT NULL,
         criado_por_nome VARCHAR(255) DEFAULT NULL,
         observacao_finalizacao TEXT DEFAULT NULL,
+        origem_portal   VARCHAR(30) DEFAULT NULL COMMENT 'NULL=interno, portal_morador=aberto pelo portal',
+        assumido_por_id   INT DEFAULT NULL COMMENT 'Atendente que assumiu OS do portal',
+        assumido_por_nome VARCHAR(150) DEFAULT NULL,
+        data_assumido   DATETIME DEFAULT NULL,
         INDEX idx_status (status),
         INDEX idx_prioridade (prioridade),
         INDEX idx_departamento (departamento),
@@ -852,6 +856,44 @@ switch ($acao) {
         retornar_json(true, 'O.S finalizada com sucesso', ['erros_estoque' => $erros_estoque]);
         break;
 
+    // ─────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────
+    case 'assumir_portal':
+        // Atendente assume uma OS aberta pelo portal e classifica prioridade + OS pai
+        $dados       = array_merge($body, $_POST);
+        $id          = (int)($dados['id'] ?? $_GET['id'] ?? 0);
+        $prioridade  = trim($dados['prioridade'] ?? 'media');
+        $os_pai_id   = !empty($dados['os_pai_id']) ? (int)$dados['os_pai_id'] : null;
+        if (!$id) retornar_json(false, 'ID inválido');
+        if (!in_array($prioridade, ['baixa','media','alta','urgente'])) retornar_json(false, 'Prioridade inválida');
+        // Verificar se OS existe e é do portal
+        $res_os = $conn->query("SELECT id, status, origem_portal, assumido_por_id FROM os_chamados WHERE id = $id");
+        $os_row = $res_os ? $res_os->fetch_assoc() : null;
+        if (!$os_row) retornar_json(false, 'OS não encontrada');
+        if ($os_row['origem_portal'] !== 'portal_morador') retornar_json(false, 'Esta OS não foi aberta pelo portal do morador');
+        if ($os_row['assumido_por_id']) retornar_json(false, 'Esta OS já foi assumida por outro atendente');
+        $usuario = obterUsuarioAutenticado();
+        $assumido_id   = $usuario ? (int)$usuario['id'] : null;
+        $assumido_nome = $usuario ? $usuario['nome'] : 'Atendente';
+        if (!$assumido_id) retornar_json(false, 'Usuário não autenticado');
+        $stmt = $conn->prepare(
+            "UPDATE os_chamados SET
+                assumido_por_id = ?, assumido_por_nome = ?, data_assumido = NOW(),
+                prioridade = ?, os_pai_id = ?,
+                status = IF(status='aberto','andamento',status),
+                data_inicio = IF(data_inicio IS NULL, NOW(), data_inicio)
+             WHERE id = ?"
+        );
+        $stmt->bind_param('issii', $assumido_id, $assumido_nome, $prioridade, $os_pai_id, $id);
+        if (!$stmt->execute()) retornar_json(false, 'Erro ao assumir OS: ' . $conn->error);
+        // Registrar interação
+        $msg_assumiu = "OS assumida por {$assumido_nome}. Prioridade classificada como: {$prioridade}.";
+        $stmt_int = $conn->prepare("INSERT INTO os_interacoes (os_id, tipo, mensagem, usuario_id, usuario_nome) VALUES (?,'andamento',?,?,?)");
+        $stmt_int->bind_param('isis', $id, $msg_assumiu, $assumido_id, $assumido_nome);
+        $stmt_int->execute();
+        os_log('info', 'OS do portal assumida', ['os_id' => $id, 'atendente' => $assumido_nome, 'prioridade' => $prioridade]);
+        retornar_json(true, 'OS assumida com sucesso!', ['assumido_por' => $assumido_nome, 'prioridade' => $prioridade]);
+        break;
     // ─────────────────────────────────────────────────
     case 'vincular_chamado':
         $dados = array_merge($body, $_POST);

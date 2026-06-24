@@ -64,12 +64,19 @@
                 window.refazerInterfaceUI();
             }
 
+            // Restaurar estado collapsed do localStorage após recarregar o sidebar
+            const mainContent = document.querySelector('.main-content');
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                sidebar.classList.add('collapsed');
+                if (mainContent) mainContent.classList.add('sidebar-collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+                if (mainContent) mainContent.classList.remove('sidebar-collapsed');
+            }
+
             emitSidebarLoaded(sidebar);
 
-            window.toggleMenu = function () {
-                sidebar.classList.toggle('active');
-            };
-
+            // Fechar sidebar mobile ao clicar fora
             document.addEventListener('click', function (e) {
                 const toggle = document.querySelector('.menu-toggle');
                 if (
