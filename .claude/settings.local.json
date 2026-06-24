@@ -27,7 +27,10 @@
       "Bash(php -l api/api_email_alertas.php)",
       "Bash(php -l api/email/EmailProviderFactory.php)",
       "Bash(php -l api/email/FallbackEmailProvider.php)",
-      "Bash(php -l api/EmailSender.php)"
+      "Bash(php -l api/EmailSender.php)",
+      "Bash(php -l api/api_recuperar_senha.php)",
+      "Bash(php -l api/api_verificar_tipo_login.php)",
+      "Bash(php -l api/api_portal_morador.php)"
     ]
   }
 }

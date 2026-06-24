@@ -2382,6 +2382,11 @@ function inicializarPortal() {
     setTimeout(() => {
         loading.classList.add('gone');
         carregarPerfil();
+
+        // Detectar login com senha temporária e forçar troca
+        if (localStorage.getItem('morador_senha_temporaria') === '1') {
+            _ativarModoSenhaTemporaria();
+        }
     }, 500);
 }
 
@@ -2389,6 +2394,12 @@ function inicializarPortal() {
    NAVEGAÇÃO DE ABAS
    ────────────────────────────────────────────────────────────────── */
 function abrirAba(aba, btnEl) {
+    // Bloquear navegação enquanto senha temporária não for trocada
+    if (localStorage.getItem('morador_senha_temporaria') === '1' && aba !== 'perfil') {
+        mostrarAlerta('Você precisa trocar sua senha temporária antes de continuar.', 'warning');
+        return;
+    }
+
     document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
 
@@ -2675,13 +2686,67 @@ function alterarSenha(e) {
     .then(r => r.json())
     .then(data => {
         mostrarAlerta(data.mensagem, data.sucesso ? 'success' : 'error');
-        if (data.sucesso) document.getElementById('formSenha').reset();
+        if (data.sucesso) {
+            document.getElementById('formSenha').reset();
+            // Se estava em modo senha temporária, liberar o portal
+            if (localStorage.getItem('morador_senha_temporaria') === '1') {
+                _desativarModoSenhaTemporaria();
+            }
+        }
     })
     .catch(() => mostrarAlerta('Erro ao alterar senha.', 'error'))
     .finally(() => {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-key"></i> Alterar Senha';
     });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MODO SENHA TEMPORÁRIA
+   Ativado quando o morador entra com senha gerada pela recuperação.
+   Bloqueia a navegação até a troca ser feita.
+   ────────────────────────────────────────────────────────────────── */
+function _ativarModoSenhaTemporaria() {
+    // Forçar aba de perfil
+    const btnPerfil = document.querySelector('.nav-tab[onclick*="perfil"]')
+                   || document.querySelector('.nav-tab[data-aba="perfil"]');
+    abrirAba('perfil', btnPerfil);
+
+    // Criar aviso fixo no topo do conteúdo
+    const aviso = document.createElement('div');
+    aviso.id = 'aviso-senha-temp';
+    aviso.style.cssText = [
+        'background:#fef3c7',
+        'border-left:4px solid #f59e0b',
+        'border-radius:8px',
+        'padding:14px 18px',
+        'margin:0 0 18px',
+        'display:flex',
+        'align-items:center',
+        'gap:12px',
+        'font-size:.9rem',
+        'color:#92400e'
+    ].join(';');
+    aviso.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:1.2rem;flex-shrink:0;"></i>'
+        + '<span><strong>Você está usando uma senha temporária.</strong> '
+        + 'Por segurança, crie uma nova senha agora. '
+        + 'A navegação ficará bloqueada até a troca ser concluída.</span>';
+
+    const panel = document.getElementById('panel-perfil');
+    if (panel) panel.insertAdjacentElement('afterbegin', aviso);
+
+    // Scroll para o formulário de senha
+    setTimeout(function () {
+        const formSenha = document.getElementById('formSenha');
+        if (formSenha) formSenha.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 400);
+}
+
+function _desativarModoSenhaTemporaria() {
+    localStorage.removeItem('morador_senha_temporaria');
+    const aviso = document.getElementById('aviso-senha-temp');
+    if (aviso) aviso.remove();
+    mostrarAlerta('Senha alterada com sucesso! O portal está liberado.', 'success');
 }
 
 /* ──────────────────────────────────────────────────────────────────

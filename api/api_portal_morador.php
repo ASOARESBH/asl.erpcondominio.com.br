@@ -165,13 +165,29 @@ if ($action === 'perfil' && $metodo === 'PUT') {
             retornar_json(false, "Senha atual incorreta");
         }
         
-        // Atualizar para nova senha
+        // Atualizar para nova senha e limpar flag de senha temporária
         $senha_hash = password_hash($senha_nova, PASSWORD_DEFAULT);
-        $stmt = $conexao->prepare("UPDATE moradores SET senha = ? WHERE id = ?");
+        $stmt = $conexao->prepare(
+            "UPDATE moradores SET senha = ?, senha_temporaria = 0, data_atualizacao = NOW() WHERE id = ?"
+        );
         $stmt->bind_param("si", $senha_hash, $morador_id);
-        
+
         if ($stmt->execute()) {
-            registrar_log('SENHA_ALTERADA', "Morador alterou a senha", "Morador ID: {$morador_id}");
+            // Marcar como utilizada no log de recuperação (se houver registro pendente)
+            try {
+                $stmt_util = $conexao->prepare(
+                    "UPDATE senha_recuperacao_logs
+                     SET utilizada = 1, data_utilizacao = NOW()
+                     WHERE morador_id = ? AND utilizada = 0"
+                );
+                $stmt_util->bind_param('i', $morador_id);
+                $stmt_util->execute();
+                $stmt_util->close();
+            } catch (Exception $e) {
+                // Tabela pode não existir em instalações sem o módulo de recuperação
+            }
+
+            registrar_log('SENHA_TEMPORARIA_TROCADA', "Morador trocou senha temporária", "Morador ID: {$morador_id}");
             retornar_json(true, "Senha alterada com sucesso");
         } else {
             retornar_json(false, "Erro ao alterar senha");

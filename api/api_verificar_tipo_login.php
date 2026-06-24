@@ -261,6 +261,23 @@ try {
         $ip        = $_SERVER['REMOTE_ADDR'] ?? '';
         $ua        = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
+        // Verificar flag de senha temporária (coluna pode não existir em instalações antigas)
+        $senha_temporaria_flag = 0;
+        try {
+            $stmt_tmp = $conexao2->prepare(
+                "SELECT senha_temporaria FROM moradores WHERE id = ? LIMIT 1"
+            );
+            $stmt_tmp->bind_param('i', $dados_morador['id']);
+            $stmt_tmp->execute();
+            $res_tmp = $stmt_tmp->get_result();
+            if ($row_tmp = $res_tmp->fetch_assoc()) {
+                $senha_temporaria_flag = (int)($row_tmp['senha_temporaria'] ?? 0);
+            }
+            $stmt_tmp->close();
+        } catch (Exception $e) {
+            // Coluna ainda não existe — flag fica 0
+        }
+
         // Verificar se tabela sessoes_portal existe
         $tabela_existe = false;
         $chk = $conexao2->query("SHOW TABLES LIKE 'sessoes_portal'");
@@ -303,18 +320,20 @@ try {
         $_SESSION['login_timestamp'] = time();
         $_SESSION['tipo_usuario']    = 'morador';
 
-        registrar_log('LOGIN_MORADOR_SUCESSO', "Login Portal: {$email}", $dados_morador['nome']);
+        $log_tipo = $senha_temporaria_flag ? 'SENHA_TEMPORARIA_LOGIN' : 'LOGIN_MORADOR_SUCESSO';
+        registrar_log($log_tipo, "Login Portal: {$email}", $dados_morador['nome']);
         echo json_encode([
             'sucesso'  => true,
             'tipo'     => 'morador',
             'mensagem' => 'Login realizado com sucesso!',
             'dados'    => [
-                'token'      => $token,
-                'morador_id' => $dados_morador['id'],
-                'nome'       => $dados_morador['nome'],
-                'email'      => $dados_morador['email'],
-                'unidade'    => $dados_morador['unidade'],
-                'redirect'   => '/frontend/portal_morador.html'
+                'token'             => $token,
+                'morador_id'        => $dados_morador['id'],
+                'nome'              => $dados_morador['nome'],
+                'email'             => $dados_morador['email'],
+                'unidade'           => $dados_morador['unidade'],
+                'senha_temporaria'  => $senha_temporaria_flag,
+                'redirect'          => '/frontend/portal_morador.html'
             ]
         ], JSON_UNESCAPED_UNICODE);
         exit;

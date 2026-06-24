@@ -250,6 +250,91 @@
                 height: 100px;
             }
         }
+
+        /* ============================================
+           LINK ESQUECEU SENHA
+           ============================================ */
+        .link-esqueceu {
+            display: none; /* visível somente após 1ª falha */
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .link-esqueceu button {
+            background: none;
+            border: none;
+            color: var(--color-primary-600);
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-decoration: underline;
+            font-family: inherit;
+            padding: 0;
+        }
+
+        .link-esqueceu button:hover {
+            color: var(--color-primary-700);
+        }
+
+        /* ============================================
+           PAINEL DE RECUPERAÇÃO DE SENHA
+           ============================================ */
+        .recovery-panel {
+            display: none;
+            margin-top: 1.5rem;
+            padding: 1.25rem 1.5rem;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .recovery-panel h3 {
+            font-size: 1rem;
+            color: var(--color-text-primary);
+            margin-bottom: 0.4rem;
+        }
+
+        .recovery-panel p {
+            font-size: 0.85rem;
+            color: var(--color-text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .recovery-panel .form-group {
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-recovery {
+            width: 100%;
+            padding: 0.8rem;
+            background: #10b981;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-recovery:hover { background: #059669; }
+        .btn-recovery:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .btn-cancel-recovery {
+            width: 100%;
+            padding: 0.6rem;
+            background: none;
+            border: none;
+            color: var(--color-text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            font-family: inherit;
+        }
+
+        .btn-cancel-recovery:hover { color: var(--color-text-primary); }
     </style>
 </head>
 
@@ -300,6 +385,37 @@
                 <i class="fas fa-sign-in-alt"></i> Entrar
             </button>
         </form>
+
+        <!-- Link "Esqueceu sua senha?" — exibido após 1ª tentativa falha -->
+        <div class="link-esqueceu" id="linkEsqueceu">
+            <button type="button" onclick="RecuperacaoSenha.mostrarPainel()">
+                <i class="fas fa-key"></i> Esqueceu sua senha?
+            </button>
+        </div>
+
+        <!-- Painel de recuperação de senha -->
+        <div class="recovery-panel" id="painelRecuperacao">
+            <h3><i class="fas fa-lock-open"></i> Recuperar Senha</h3>
+            <p>Informe seu CPF ou e-mail cadastrado. Enviaremos uma senha temporária para o seu e-mail.</p>
+            <form id="formRecuperacao" onsubmit="RecuperacaoSenha.enviar(event)" novalidate>
+                <div class="form-group">
+                    <label for="recuperacaoCpfEmail">CPF ou E-mail</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-id-card"></i>
+                        <input type="text" id="recuperacaoCpfEmail"
+                               placeholder="Digite seu CPF ou e-mail"
+                               autocomplete="off"
+                               inputmode="email">
+                    </div>
+                </div>
+                <button type="submit" class="btn-recovery" id="btnRecuperar">
+                    <i class="fas fa-paper-plane"></i> Enviar Senha Temporária
+                </button>
+                <button type="button" class="btn-cancel-recovery" onclick="RecuperacaoSenha.ocultarPainel()">
+                    Cancelar
+                </button>
+            </form>
+        </div>
 
         <div class="footer">
             <p>&copy; 2025 Serra da Liberdade. Todos os direitos reservados.</p>
@@ -388,6 +504,8 @@
         const btnLogin  = document.getElementById('btnLogin');
         const alertBox  = document.getElementById('alertBox');
 
+        var _falhasLogin = 0;
+
         function mostrarAlerta(mensagem, tipo) {
             const icon = tipo === 'error' ? 'exclamation-circle' : 'check-circle';
             alertBox.innerHTML = `<i class="fas fa-${icon}"></i> ${mensagem}`;
@@ -396,6 +514,14 @@
             setTimeout(function () {
                 alertBox.style.display = 'none';
             }, 5000);
+
+            // Exibir link "Esqueceu sua senha?" após primeira falha
+            if (tipo === 'error') {
+                _falhasLogin++;
+                if (_falhasLogin >= 1) {
+                    document.getElementById('linkEsqueceu').style.display = 'block';
+                }
+            }
         }
 
         // ============================================================
@@ -529,6 +655,12 @@
                     localStorage.setItem('morador_nome',    data.dados.nome       || '');
                     localStorage.setItem('morador_unidade', data.dados.unidade    || '');
                     localStorage.setItem('morador_email',   data.dados.email      || '');
+                    // Flag de senha temporária: obriga troca imediata no portal
+                    if (data.dados.senha_temporaria) {
+                        localStorage.setItem('morador_senha_temporaria', '1');
+                    } else {
+                        localStorage.removeItem('morador_senha_temporaria');
+                    }
                 }
                 setTimeout(function() {
                     window.location.href = window.location.origin + '/frontend/portal_morador.html';
@@ -586,6 +718,69 @@
                 '4': 'Sessão expirada. Faça login novamente.'
             };
             if (msgs[erro]) mostrarAlerta(msgs[erro], 'error');
+        })();
+
+        // ============================================
+        // RECUPERAÇÃO DE SENHA
+        // ============================================
+        var RecuperacaoSenha = (function () {
+            var painel = null;
+            var link   = null;
+
+            function _init() {
+                painel = document.getElementById('painelRecuperacao');
+                link   = document.getElementById('linkEsqueceu');
+            }
+
+            function mostrarPainel() {
+                _init();
+                if (link)   link.style.display   = 'none';
+                if (painel) painel.style.display  = 'block';
+                var campo = document.getElementById('recuperacaoCpfEmail');
+                if (campo) campo.focus();
+            }
+
+            function ocultarPainel() {
+                _init();
+                if (painel) painel.style.display = 'none';
+                if (link)   link.style.display   = 'block';
+                var form = document.getElementById('formRecuperacao');
+                if (form) form.reset();
+            }
+
+            function enviar(e) {
+                e.preventDefault();
+                var cpfEmail = document.getElementById('recuperacaoCpfEmail').value.trim();
+                if (!cpfEmail) {
+                    mostrarAlerta('Informe seu CPF ou e-mail.', 'error');
+                    return;
+                }
+
+                var btn = document.getElementById('btnRecuperar');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> Enviando...';
+
+                fetch(window.location.origin + '/api/api_recuperar_senha.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cpf_email: cpfEmail })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    // Sempre exibe mensagem genérica (a API nunca informa se encontrou ou não)
+                    mostrarAlerta(data.mensagem || 'Verifique seu e-mail.', 'success');
+                    ocultarPainel();
+                })
+                .catch(function () {
+                    mostrarAlerta('Erro ao processar. Tente novamente.', 'error');
+                })
+                .finally(function () {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Senha Temporária';
+                });
+            }
+
+            return { mostrarPainel: mostrarPainel, ocultarPainel: ocultarPainel, enviar: enviar };
         })();
 
         // ============================================
