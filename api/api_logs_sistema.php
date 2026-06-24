@@ -118,6 +118,122 @@ if ($metodo === 'GET') {
         exit;
     }
     
+    // Ação: relatório com filtros de categoria, severidade, usuário/IP
+    if (isset($_GET['action']) && $_GET['action'] === 'relatorio') {
+        $categoria  = isset($_GET['categoria'])   ? trim($_GET['categoria'])   : '';
+        $severidade = isset($_GET['severidade'])  ? trim($_GET['severidade'])  : '';
+        $rtipo      = isset($_GET['tipo'])        ? trim($_GET['tipo'])        : '';
+        $rusuario   = isset($_GET['usuario'])     ? trim($_GET['usuario'])     : '';
+        $rdi        = isset($_GET['data_inicio']) ? trim($_GET['data_inicio']) : date('Y-m-d', strtotime('-30 days'));
+        $rdf        = isset($_GET['data_fim'])    ? trim($_GET['data_fim'])    : date('Y-m-d');
+        $rpag       = max(1, intval($_GET['pagina'] ?? 1));
+        $rlim       = min(9999, max(1, intval($_GET['limite'] ?? 50)));
+        $roff       = ($rpag - 1) * $rlim;
+
+        $categoria_map = [
+            'auth'       => ['LOGIN_SUCESSO','LOGIN_FALHA','LOGIN_ERRO','LOGIN_BLOQUEADO','LOGIN_CLIENT_ERROR'],
+            'acesso'     => ['ACESSO_NEGADO','ACESSO_RFID','ACESSO_NEGADO_RFID','IP_BLOQUEADO'],
+            'rfid'       => ['ACESSO_RFID','ACESSO_NEGADO_RFID'],
+            'sessao'     => ['SESSAO_VERIFICAR','SESSAO_RENOVADA'],
+            'dados'      => ['OBTER_DADOS_ERRO'],
+            'manutencao' => ['LIMPEZA_LOGS'],
+        ];
+
+        $where_parts = ['DATE(data_hora) BETWEEN ? AND ?'];
+        $params      = [$rdi, $rdf];
+        $types       = 'ss';
+
+        if (!empty($rtipo)) {
+            $where_parts[] = 'tipo = ?';
+            $params[]  = $rtipo;
+            $types    .= 's';
+        } else {
+            if (!empty($categoria) && isset($categoria_map[$categoria])) {
+                $ctypes = $categoria_map[$categoria];
+                $ph = implode(',', array_fill(0, count($ctypes), '?'));
+                $where_parts[] = "tipo IN ($ph)";
+                foreach ($ctypes as $ct) { $params[] = $ct; $types .= 's'; }
+            }
+            if (!empty($severidade)) {
+                if ($severidade === 'critico') {
+                    $where_parts[] = "tipo IN ('LOGIN_BLOQUEADO','ACESSO_NEGADO','ACESSO_NEGADO_RFID','IP_BLOQUEADO')";
+                } elseif ($severidade === 'erro') {
+                    $where_parts[] = "(tipo LIKE '%ERRO%' OR tipo LIKE '%FALHA%' OR tipo='LOGIN_CLIENT_ERROR')";
+                } elseif ($severidade === 'aviso') {
+                    $where_parts[] = "(tipo LIKE '%AVISO%' OR tipo='SESSAO_VERIFICAR')";
+                } elseif ($severidade === 'info') {
+                    $where_parts[] = "tipo IN ('LOGIN_SUCESSO','ACESSO_RFID','SESSAO_RENOVADA','LIMPEZA_LOGS')";
+                }
+            }
+        }
+        if (!empty($rusuario)) {
+            $where_parts[] = '(usuario LIKE ? OR ip LIKE ?)';
+            $params[] = "%{$rusuario}%";
+            $params[] = "%{$rusuario}%";
+            $types   .= 'ss';
+        }
+
+        $where = 'WHERE ' . implode(' AND ', $where_parts);
+
+        // Resumo por tipo
+        $stmt = $conexao->prepare("SELECT tipo, COUNT(*) as total, DATE_FORMAT(MAX(data_hora),'%d/%m/%Y %H:%i') as ultimo FROM logs_sistema $where GROUP BY tipo ORDER BY total DESC LIMIT 20");
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $resumo = [];
+        $r = $stmt->get_result();
+        while ($row = $r->fetch_assoc()) $resumo[] = $row;
+        $stmt->close();
+
+        // Timeline
+        $stmt = $conexao->prepare("SELECT DATE_FORMAT(data_hora,'%d/%m') as dia, COUNT(*) as total FROM logs_sistema $where GROUP BY DATE(data_hora) ORDER BY data_hora ASC LIMIT 30");
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $timeline = [];
+        $r = $stmt->get_result();
+        while ($row = $r->fetch_assoc()) $timeline[] = $row;
+        $stmt->close();
+
+        // Top usuários
+        $stmt = $conexao->prepare("SELECT usuario, COUNT(*) as total, DATE_FORMAT(MAX(data_hora),'%d/%m/%Y %H:%i') as ultimo_acesso FROM logs_sistema $where AND usuario IS NOT NULL GROUP BY usuario ORDER BY total DESC LIMIT 10");
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $top_usuarios = [];
+        $r = $stmt->get_result();
+        while ($row = $r->fetch_assoc()) $top_usuarios[] = $row;
+        $stmt->close();
+
+        // Contagem total
+        $stmt = $conexao->prepare("SELECT COUNT(*) as total FROM logs_sistema $where");
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $total_rel = (int)($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $stmt->close();
+
+        // Logs paginados
+        $params_l = array_merge($params, [$rlim, $roff]);
+        $types_l  = $types . 'ii';
+        $stmt = $conexao->prepare("SELECT id, tipo, descricao, usuario, ip, DATE_FORMAT(data_hora,'%d/%m/%Y %H:%i:%s') as data_hora_formatada FROM logs_sistema $where ORDER BY data_hora DESC LIMIT ? OFFSET ?");
+        $stmt->bind_param($types_l, ...$params_l);
+        $stmt->execute();
+        $logs_rel = [];
+        $r = $stmt->get_result();
+        while ($row = $r->fetch_assoc()) $logs_rel[] = $row;
+        $stmt->close();
+
+        retornar_json(true, 'Relatório gerado', [
+            'resumo_por_tipo' => $resumo,
+            'timeline'        => $timeline,
+            'top_usuarios'    => $top_usuarios,
+            'logs'            => $logs_rel,
+            'paginacao'       => [
+                'pagina_atual'    => $rpag,
+                'total_paginas'   => max(1, (int)ceil($total_rel / $rlim)),
+                'total_registros' => $total_rel,
+            ],
+        ]);
+        exit;
+    }
+
     // Calcular offset para paginação
     $offset = ($pagina - 1) * $limite;
     
