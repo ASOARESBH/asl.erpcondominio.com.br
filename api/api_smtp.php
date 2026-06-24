@@ -1,284 +1,284 @@
 <?php
 /**
- * API para gerenciamento de configurações SMTP
- * 
- * Utiliza a classe EmailSender para envio de e-mails
- * 
- * @author Sistema ERP Serra da Liberdade
- * @date 29/12/2025
+ * API de configuração SMTP / Providers de E-mail
+ *
+ * Ações:
+ *   GET  ?acao=buscar   — Carrega configuração atual (mascarando credenciais)
+ *   POST acao=salvar    — Salva configuração (criptografa API Key se necessário)
+ *   GET  ?acao=testar&email=... — Envia e-mail de teste
  */
 
-// Limpar qualquer output anterior
 ob_start();
-
-// Habilitar exibição de erros para debug (mas não exibir na tela)
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
-
-// Limpar output buffer antes de enviar JSON
 ob_clean();
 
-// Função para retornar JSON
+header('Content-Type: application/json; charset=utf-8');
+
+require_once 'config.php';
+require_once 'auth_helper.php';
+require_once __DIR__ . '/email/EmailCrypto.php';
+
 if (!function_exists('retornar_json')) {
     function retornar_json($sucesso, $mensagem, $dados = null) {
+        if (ob_get_length()) ob_clean();
         header('Content-Type: application/json; charset=utf-8');
-        $resposta = array('sucesso' => $sucesso, 'mensagem' => $mensagem);
-        if ($dados !== null) $resposta['dados'] = $dados;
-        echo json_encode($resposta, JSON_UNESCAPED_UNICODE);
+        $r = ['sucesso' => $sucesso, 'mensagem' => $mensagem];
+        if ($dados !== null) $r['dados'] = $dados;
+        echo json_encode($r, JSON_UNESCAPED_UNICODE);
         exit;
     }
 }
 
-header('Content-Type: application/json; charset=utf-8');
-require_once 'config.php';
-require_once 'auth_helper.php';
-
-// Log de início
-error_log("=== API SMTP CHAMADA ===");
-error_log("Método: " . $_SERVER['REQUEST_METHOD']);
-error_log("POST: " . print_r($_POST, true));
-error_log("GET: " . print_r($_GET, true));
-
-// Função para sanitizar entrada
 if (!function_exists('sanitizar')) {
-function sanitizar($conexao, $valor) {
-    return mysqli_real_escape_string($conexao, trim($valor));
-}
-}
-
-// Função para resposta JSON
-function resposta($sucesso, $mensagem, $dados = null) {
-    // Limpar qualquer output anterior
-    if (ob_get_length()) ob_clean();
-    
-    $response = [
-        'sucesso' => $sucesso,
-        'mensagem' => $mensagem,
-        'dados' => $dados
-    ];
-    error_log("Resposta: " . json_encode($response, JSON_UNESCAPED_UNICODE));
-    
-    // Garantir que só JSON seja enviado
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
-    exit;
+    function sanitizar($conexao, $valor) {
+        return mysqli_real_escape_string($conexao, trim($valor));
+    }
 }
 
-// Conectar ao banco
 $conexao = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if (!$conexao) {
-    error_log("Erro ao conectar ao banco: " . mysqli_connect_error());
-    resposta(false, 'Erro ao conectar ao banco de dados');
+    retornar_json(false, 'Erro ao conectar ao banco de dados');
 }
 mysqli_set_charset($conexao, 'utf8mb4');
-error_log("Conexão com banco estabelecida");
 
-// Verificar se a tabela existe
-$sql_check_table = "SHOW TABLES LIKE 'configuracao_smtp'";
-$resultado_check = mysqli_query($conexao, $sql_check_table);
+// Garante que a tabela existe e todas as colunas novas estão presentes
+_garantir_tabela($conexao);
 
-if (mysqli_num_rows($resultado_check) == 0) {
-    error_log("Tabela configuracao_smtp não existe, criando...");
-    
-    // Tentar criar a tabela automaticamente
-    $sql_create = "CREATE TABLE `configuracao_smtp` (
-      `id` int(11) NOT NULL AUTO_INCREMENT,
-      `smtp_host` varchar(255) NOT NULL,
-      `smtp_port` int(11) NOT NULL DEFAULT 587,
-      `smtp_usuario` varchar(255) NOT NULL,
-      `smtp_senha` varchar(255) NOT NULL,
-      `smtp_de_email` varchar(255) NOT NULL,
-      `smtp_de_nome` varchar(255) NOT NULL,
-      `smtp_seguranca` enum('tls','ssl','none') NOT NULL DEFAULT 'tls',
-      `smtp_ativo` tinyint(1) NOT NULL DEFAULT 1,
-      `data_criacao` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      `data_atualizacao` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-    
-    if (!mysqli_query($conexao, $sql_create)) {
-        error_log("Erro ao criar tabela: " . mysqli_error($conexao));
-        resposta(false, 'Tabela configuracao_smtp não existe e não foi possível criar');
-    }
-    error_log("Tabela criada com sucesso");
-}
-
-// Obter ação
 $acao = $_GET['acao'] ?? $_POST['acao'] ?? '';
-error_log("Ação solicitada: $acao");
 
 switch ($acao) {
     case 'buscar':
-        buscarConfig($conexao);
+        _buscar($conexao);
         break;
-    
     case 'salvar':
-        salvarConfig($conexao);
+        _salvar($conexao);
         break;
-    
     case 'testar':
-        testarSMTP($conexao);
+        _testar($conexao);
         break;
-    
     default:
-        error_log("Ação inválida: $acao");
-        resposta(false, 'Ação inválida');
+        retornar_json(false, "Ação '$acao' não reconhecida.");
 }
 
-// =====================================================
-// FUNÇÕES
-// =====================================================
+// =====================================================================
+// GARANTIA DE ESTRUTURA
+// =====================================================================
 
-function buscarConfig($conexao) {
-    error_log("Função buscarConfig chamada");
-    
-    $sql = "SELECT * FROM configuracao_smtp ORDER BY id DESC LIMIT 1";
-    $resultado = mysqli_query($conexao, $sql);
-    
-    if (!$resultado) {
-        error_log("Erro na query buscar: " . mysqli_error($conexao));
-        resposta(false, 'Erro ao buscar configuração');
+function _garantir_tabela($db) {
+    // Tabela base
+    mysqli_query($db, "CREATE TABLE IF NOT EXISTS `configuracao_smtp` (
+        `id`             INT(11) NOT NULL AUTO_INCREMENT,
+        `smtp_host`      VARCHAR(255) NOT NULL DEFAULT '',
+        `smtp_port`      INT(11) NOT NULL DEFAULT 587,
+        `smtp_usuario`   VARCHAR(255) NOT NULL DEFAULT '',
+        `smtp_senha`     VARCHAR(255) NOT NULL DEFAULT '',
+        `smtp_de_email`  VARCHAR(255) NOT NULL DEFAULT '',
+        `smtp_de_nome`   VARCHAR(255) NOT NULL DEFAULT 'Sistema ERP',
+        `smtp_seguranca` ENUM('tls','ssl','none') NOT NULL DEFAULT 'tls',
+        `smtp_ativo`     TINYINT(1) NOT NULL DEFAULT 1,
+        `data_criacao`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `data_atualizacao` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Migração incremental das colunas novas
+    $cols = [];
+    $res  = mysqli_query($db, "DESCRIBE configuracao_smtp");
+    while ($r = mysqli_fetch_assoc($res)) {
+        $cols[] = $r['Field'];
     }
-    
-    if (mysqli_num_rows($resultado) > 0) {
-        $dados = mysqli_fetch_assoc($resultado);
-        error_log("Configuração encontrada: ID " . $dados['id']);
-        resposta(true, 'Configuração carregada', $dados);
-    } else {
-        error_log("Nenhuma configuração encontrada");
-        resposta(true, 'Nenhuma configuração encontrada', null);
+
+    $alter = [];
+
+    if (!in_array('email_provider', $cols)) {
+        $alter[] = "ADD COLUMN `email_provider` ENUM('brevo','resend','smtp') NOT NULL DEFAULT 'brevo' AFTER `smtp_ativo`";
     }
+    if (!in_array('api_key', $cols)) {
+        $alter[] = "ADD COLUMN `api_key` VARCHAR(1024) DEFAULT NULL AFTER `email_provider`";
+    }
+    if (!in_array('sender_email', $cols)) {
+        $alter[] = "ADD COLUMN `sender_email` VARCHAR(255) DEFAULT NULL AFTER `api_key`";
+    }
+    if (!in_array('sender_name', $cols)) {
+        $alter[] = "ADD COLUMN `sender_name` VARCHAR(255) DEFAULT NULL AFTER `sender_email`";
+    }
+    if (!in_array('provedor', $cols)) {
+        $alter[] = "ADD COLUMN `provedor` VARCHAR(50) NOT NULL DEFAULT 'custom' AFTER `id`";
+    }
+    if (!in_array('timeout', $cols)) {
+        $alter[] = "ADD COLUMN `timeout` INT(11) NOT NULL DEFAULT 30 AFTER `smtp_seguranca`";
+    }
+
+    if (!empty($alter)) {
+        mysqli_query($db, "ALTER TABLE `configuracao_smtp` " . implode(', ', $alter));
+    }
+
+    // Migração de dados: instalações existentes com SMTP → marcar como 'smtp'
+    mysqli_query($db, "UPDATE configuracao_smtp
+        SET email_provider = 'smtp'
+        WHERE email_provider = 'brevo'
+          AND smtp_host    != ''
+          AND smtp_usuario != ''");
 }
 
-function salvarConfig($conexao) {
-    error_log("Função salvarConfig chamada");
-    
-    // Obter e sanitizar dados
-    $smtp_host = sanitizar($conexao, $_POST['smtp_host'] ?? '');
-    $smtp_port = intval($_POST['smtp_port'] ?? 587);
-    $smtp_usuario = sanitizar($conexao, $_POST['smtp_usuario'] ?? '');
-    $smtp_senha = sanitizar($conexao, $_POST['smtp_senha'] ?? '');
-    $smtp_de_email = sanitizar($conexao, $_POST['smtp_de_email'] ?? '');
-    $smtp_de_nome = sanitizar($conexao, $_POST['smtp_de_nome'] ?? '');
-    $smtp_seguranca = sanitizar($conexao, $_POST['smtp_seguranca'] ?? 'tls');
-    $smtp_ativo = intval($_POST['smtp_ativo'] ?? 1);
-    
-    error_log("Dados recebidos e sanitizados");
-    
-    // Validar campos obrigatórios
-    if (empty($smtp_host)) {
-        error_log("Validação falhou: smtp_host vazio");
-        resposta(false, 'Servidor SMTP é obrigatório');
-    }
-    
-    if (empty($smtp_usuario)) {
-        error_log("Validação falhou: smtp_usuario vazio");
-        resposta(false, 'Usuário/E-mail é obrigatório');
-    }
-    
-    if (empty($smtp_senha)) {
-        error_log("Validação falhou: smtp_senha vazio");
-        resposta(false, 'Senha/Token é obrigatório');
-    }
-    
-    if (empty($smtp_de_email)) {
-        error_log("Validação falhou: smtp_de_email vazio");
-        resposta(false, 'E-mail Remetente é obrigatório');
-    }
-    
-    if (empty($smtp_de_nome)) {
-        error_log("Validação falhou: smtp_de_nome vazio");
-        resposta(false, 'Nome Remetente é obrigatório');
-    }
-    
-    error_log("Validação OK");
-    
-    // Verificar se já existe configuração
-    $sql_check = "SELECT id FROM configuracao_smtp LIMIT 1";
-    $resultado = mysqli_query($conexao, $sql_check);
-    
-    if (!$resultado) {
-        error_log("Erro ao verificar configuração existente: " . mysqli_error($conexao));
-        resposta(false, 'Erro ao verificar configuração existente');
-    }
-    
-    $num_rows = mysqli_num_rows($resultado);
-    error_log("Registros existentes: $num_rows");
-    
-    if ($num_rows > 0) {
-        // Atualizar
-        $row = mysqli_fetch_assoc($resultado);
-        $id = $row['id'];
-        
-        error_log("Atualizando registro ID: $id");
-        
-        $sql = "UPDATE configuracao_smtp SET 
-                smtp_host = '$smtp_host',
-                smtp_port = $smtp_port,
-                smtp_usuario = '$smtp_usuario',
-                smtp_senha = '$smtp_senha',
-                smtp_de_email = '$smtp_de_email',
-                smtp_de_nome = '$smtp_de_nome',
-                smtp_seguranca = '$smtp_seguranca',
-                smtp_ativo = $smtp_ativo
-                WHERE id = $id";
-        
-        error_log("SQL UPDATE gerado");
-    } else {
-        // Inserir
-        error_log("Inserindo novo registro");
-        
-        $sql = "INSERT INTO configuracao_smtp 
-                (smtp_host, smtp_port, smtp_usuario, smtp_senha, smtp_de_email, smtp_de_nome, smtp_seguranca, smtp_ativo)
-                VALUES 
-                ('$smtp_host', $smtp_port, '$smtp_usuario', '$smtp_senha', '$smtp_de_email', '$smtp_de_nome', '$smtp_seguranca', $smtp_ativo)";
-        
-        error_log("SQL INSERT gerado");
-    }
-    
-    // Executar query
-    if (mysqli_query($conexao, $sql)) {
-        $id_salvo = ($num_rows > 0) ? $id : mysqli_insert_id($conexao);
-        error_log("Query executada com sucesso! ID: $id_salvo");
-        resposta(true, 'Configuração salva com sucesso', ['id' => $id_salvo]);
-    } else {
-        $erro = mysqli_error($conexao);
-        error_log("Erro ao executar query: $erro");
-        resposta(false, 'Erro ao salvar configuração: ' . $erro);
-    }
-}
+// =====================================================================
+// BUSCAR
+// =====================================================================
 
-function testarSMTP($conexao) {
-    error_log("Função testarSMTP chamada");
-    
-    $email_destino = $_GET['email'] ?? '';
-    
-    if (empty($email_destino) || !filter_var($email_destino, FILTER_VALIDATE_EMAIL)) {
-        error_log("Email inválido");
-        resposta(false, 'E-mail inválido');
-    }
-    
-    try {
-        // Usar a classe EmailSender
-        require_once 'EmailSender.php';
-        
-        $emailSender = new EmailSender($conexao);
-        $enviado = $emailSender->enviarTeste($email_destino);
-        
-        if ($enviado) {
-            error_log("Email de teste enviado com sucesso");
-            resposta(true, 'E-mail de teste enviado com sucesso!');
+function _buscar($db) {
+    $res  = mysqli_query($db, "SELECT * FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
+    $conf = $res ? mysqli_fetch_assoc($res) : null;
+
+    if ($conf) {
+        // Nunca devolver credenciais em texto puro
+        $conf['smtp_senha'] = '';
+
+        // API Key: mostrar apenas máscara
+        if (!empty($conf['api_key'])) {
+            try {
+                $plain              = EmailCrypto::decrypt($conf['api_key']);
+                $conf['api_key_mask'] = EmailCrypto::mask($plain);
+            } catch (Throwable $e) {
+                $conf['api_key_mask'] = '••••••••';
+            }
         } else {
-            error_log("Falha ao enviar email de teste");
-            resposta(false, 'Erro ao enviar e-mail de teste. Verifique as configurações.');
+            $conf['api_key_mask'] = '';
         }
-        
-    } catch (Exception $e) {
-        error_log("Exceção ao testar SMTP: " . $e->getMessage());
-        resposta(false, 'Erro ao enviar e-mail: ' . $e->getMessage());
+        $conf['api_key'] = ''; // nunca expõe a chave real
+    }
+
+    retornar_json(true, 'OK', $conf);
+}
+
+// =====================================================================
+// SALVAR
+// =====================================================================
+
+function _salvar($db) {
+    $emailProvider = $_POST['email_provider'] ?? 'smtp';
+    if (!in_array($emailProvider, ['brevo', 'resend', 'smtp'], true)) {
+        $emailProvider = 'smtp';
+    }
+
+    // Campos de API (Brevo / Resend)
+    $novaApiKey   = $_POST['api_key']     ?? '';
+    $senderEmail  = sanitizar($db, $_POST['sender_email'] ?? '');
+    $senderName   = sanitizar($db, $_POST['sender_name']  ?? '');
+
+    // Campos SMTP
+    $host      = sanitizar($db, $_POST['smtp_host']    ?? '');
+    $port      = (int) ($_POST['smtp_port']            ?? 587);
+    $usuario   = sanitizar($db, $_POST['smtp_usuario'] ?? '');
+    $novaSenha = $_POST['smtp_senha']                  ?? '';
+    $deEmail   = sanitizar($db, $_POST['smtp_de_email'] ?? '');
+    $deNome    = sanitizar($db, $_POST['smtp_de_nome']  ?? 'Sistema ERP');
+    $seguranca = in_array($_POST['smtp_seguranca'] ?? 'tls', ['tls','ssl','none'])
+                 ? $_POST['smtp_seguranca'] : 'tls';
+    $timeout   = (int) ($_POST['timeout'] ?? 30);
+    $provedor  = sanitizar($db, $_POST['provedor'] ?? 'custom');
+
+    // Validação por provider
+    if ($emailProvider === 'brevo' || $emailProvider === 'resend') {
+        if (empty($senderEmail) || !filter_var($senderEmail, FILTER_VALIDATE_EMAIL)) {
+            retornar_json(false, 'E-mail remetente inválido ou ausente.');
+        }
+        if (empty($senderName)) {
+            retornar_json(false, 'Nome do remetente é obrigatório.');
+        }
+    } else {
+        if (empty($host)) {
+            retornar_json(false, 'Servidor SMTP é obrigatório.');
+        }
+        if (empty($usuario)) {
+            retornar_json(false, 'Usuário/E-mail é obrigatório.');
+        }
+        if (empty($deEmail)) {
+            retornar_json(false, 'E-mail Remetente é obrigatório.');
+        }
+    }
+
+    // Busca configuração existente para preservar credenciais não alteradas
+    $res       = mysqli_query($db, "SELECT id, smtp_senha, api_key FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
+    $existente = $res ? mysqli_fetch_assoc($res) : null;
+
+    // Senha SMTP: preservar a atual se não foi informada nova
+    $senhaFinal = '';
+    if (!empty($novaSenha)) {
+        $senhaFinal = sanitizar($db, $novaSenha);
+    } elseif ($existente) {
+        $senhaFinal = sanitizar($db, $existente['smtp_senha']);
+    }
+
+    // API Key: criptografar se nova foi fornecida; preservar a existente caso contrário
+    $apiKeyFinal = '';
+    if (!empty($novaApiKey)) {
+        try {
+            $apiKeyFinal = EmailCrypto::encrypt($novaApiKey);
+        } catch (Throwable $e) {
+            $apiKeyFinal = sanitizar($db, $novaApiKey); // fallback: salva sem criptografia
+        }
+    } elseif ($existente && !empty($existente['api_key'])) {
+        $apiKeyFinal = sanitizar($db, $existente['api_key']);
+    }
+    $apiKeyEsc = $apiKeyFinal !== '' ? "'$apiKeyFinal'" : 'NULL';
+
+    $ep = sanitizar($db, $emailProvider);
+    $se = $senderEmail !== '' ? "'$senderEmail'" : 'NULL';
+    $sn = $senderName  !== '' ? "'$senderName'"  : 'NULL';
+
+    if ($existente) {
+        $id  = (int) $existente['id'];
+        $sql = "UPDATE configuracao_smtp SET
+            email_provider = '$ep', api_key = $apiKeyEsc,
+            sender_email = $se, sender_name = $sn,
+            provedor = '$provedor', smtp_host = '$host', smtp_port = $port,
+            smtp_usuario = '$usuario', smtp_senha = '$senhaFinal',
+            smtp_de_email = '$deEmail', smtp_de_nome = '$deNome',
+            smtp_seguranca = '$seguranca', timeout = $timeout, smtp_ativo = 1
+            WHERE id = $id";
+    } else {
+        $sql = "INSERT INTO configuracao_smtp
+            (email_provider, api_key, sender_email, sender_name, provedor,
+             smtp_host, smtp_port, smtp_usuario, smtp_senha,
+             smtp_de_email, smtp_de_nome, smtp_seguranca, timeout, smtp_ativo)
+            VALUES
+            ('$ep', $apiKeyEsc, $se, $sn, '$provedor',
+             '$host', $port, '$usuario', '$senhaFinal',
+             '$deEmail', '$deNome', '$seguranca', $timeout, 1)";
+    }
+
+    if (mysqli_query($db, $sql)) {
+        retornar_json(true, 'Configuração salva com sucesso!',
+            ['id' => $existente ? (int)$existente['id'] : mysqli_insert_id($db)]);
+    } else {
+        retornar_json(false, 'Erro ao salvar: ' . mysqli_error($db));
     }
 }
 
-mysqli_close($conexao);
-error_log("=== FIM API SMTP ===");
-?>
+// =====================================================================
+// TESTAR
+// =====================================================================
+
+function _testar($db) {
+    $emailDestino = trim($_GET['email'] ?? $_POST['email'] ?? '');
+
+    if (empty($emailDestino) || !filter_var($emailDestino, FILTER_VALIDATE_EMAIL)) {
+        retornar_json(false, 'E-mail de destino inválido.');
+    }
+
+    try {
+        require_once __DIR__ . '/EmailSender.php';
+        $sender  = new EmailSender($db, true);
+        $sender->enviarTeste($emailDestino);
+        $cfg     = $sender->getConfiguracao();
+
+        retornar_json(true, "E-mail de teste enviado para $emailDestino!", [
+            'destinatario' => $emailDestino,
+            'provider'     => $cfg['provider'],
+        ]);
+    } catch (Throwable $e) {
+        retornar_json(false, 'Falha no envio: ' . $e->getMessage());
+    }
+}

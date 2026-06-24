@@ -101,6 +101,17 @@ function _criar_tabelas($db) {
         mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `provedor` VARCHAR(50) NOT NULL DEFAULT 'custom' AFTER `id`");
     if (!in_array('timeout', $cols))
         mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `timeout` INT(11) NOT NULL DEFAULT 30 AFTER `smtp_seguranca`");
+    // Providers de e-mail (Brevo / Resend / SMTP)
+    if (!in_array('email_provider', $cols))
+        mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `email_provider` ENUM('brevo','resend','smtp') NOT NULL DEFAULT 'brevo' AFTER `smtp_ativo`");
+    if (!in_array('api_key', $cols))
+        mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `api_key` VARCHAR(1024) DEFAULT NULL AFTER `email_provider`");
+    if (!in_array('sender_email', $cols))
+        mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `sender_email` VARCHAR(255) DEFAULT NULL AFTER `api_key`");
+    if (!in_array('sender_name', $cols))
+        mysqli_query($db, "ALTER TABLE configuracao_smtp ADD COLUMN `sender_name` VARCHAR(255) DEFAULT NULL AFTER `sender_email`");
+    // Instalações existentes com SMTP configurado → preservar como 'smtp'
+    mysqli_query($db, "UPDATE configuracao_smtp SET email_provider='smtp' WHERE email_provider='brevo' AND smtp_host!='' AND smtp_usuario!=''");
 
     // email_alertas
     mysqli_query($db, "CREATE TABLE IF NOT EXISTS `email_alertas` (
@@ -149,6 +160,14 @@ function _criar_tabelas($db) {
         mysqli_query($db, "ALTER TABLE email_log ADD COLUMN `alerta_codigo` VARCHAR(80) DEFAULT NULL AFTER `id`");
     if (!in_array('dados_contexto', $cols2))
         mysqli_query($db, "ALTER TABLE email_log ADD COLUMN `dados_contexto` TEXT DEFAULT NULL AFTER `erro_mensagem`");
+    if (!in_array('provider', $cols2))
+        mysqli_query($db, "ALTER TABLE email_log ADD COLUMN `provider` VARCHAR(50) DEFAULT NULL AFTER `status`");
+    if (!in_array('message_id', $cols2))
+        mysqli_query($db, "ALTER TABLE email_log ADD COLUMN `message_id` VARCHAR(255) DEFAULT NULL AFTER `provider`");
+    if (!in_array('response_code', $cols2))
+        mysqli_query($db, "ALTER TABLE email_log ADD COLUMN `response_code` INT DEFAULT NULL AFTER `message_id`");
+    if (!in_array('erro_detalhado', $cols2))
+        mysqli_query($db, "ALTER TABLE email_log ADD COLUMN `erro_detalhado` TEXT DEFAULT NULL AFTER `response_code`");
 
     // Inserir alertas padrão
     _inserir_alertas_padrao($db);
@@ -222,12 +241,26 @@ function _inserir_alertas_padrao($db) {
 // SMTP — CARREGAR
 // ============================================================
 function _smtp_carregar($db) {
-    $res = mysqli_query($db, "SELECT * FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
+    $res    = mysqli_query($db, "SELECT * FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
     $config = $res ? mysqli_fetch_assoc($res) : null;
     if ($config) {
-        // Mascarar senha
+        // Mascarar senha SMTP
         $config['smtp_senha_mascarada'] = str_repeat('*', min(8, strlen($config['smtp_senha'])));
-        $config['smtp_senha'] = ''; // Nunca retornar senha
+        $config['smtp_senha'] = '';
+
+        // Mascarar API Key
+        if (!empty($config['api_key'])) {
+            require_once __DIR__ . '/email/EmailCrypto.php';
+            try {
+                $plain = EmailCrypto::decrypt($config['api_key']);
+                $config['api_key_mask'] = EmailCrypto::mask($plain);
+            } catch (Throwable $e) {
+                $config['api_key_mask'] = '••••••••';
+            }
+        } else {
+            $config['api_key_mask'] = '';
+        }
+        $config['api_key'] = ''; // nunca expor a chave real
     }
     retornar_json(true, 'OK', $config);
 }
@@ -236,10 +269,15 @@ function _smtp_carregar($db) {
 // SMTP — SALVAR
 // ============================================================
 function _smtp_salvar($db) {
-    $provedor   = mysqli_real_escape_string($db, $_POST['provedor']   ?? 'custom');
-    $host       = mysqli_real_escape_string($db, $_POST['smtp_host']  ?? '');
+    require_once __DIR__ . '/email/EmailCrypto.php';
+
+    $emailProvider = $_POST['email_provider'] ?? 'smtp';
+    if (!in_array($emailProvider, ['brevo','resend','smtp'], true)) $emailProvider = 'smtp';
+
+    $provedor   = mysqli_real_escape_string($db, $_POST['provedor']      ?? 'custom');
+    $host       = mysqli_real_escape_string($db, $_POST['smtp_host']     ?? '');
     $port       = (int)($_POST['smtp_port']  ?? 587);
-    $usuario    = mysqli_real_escape_string($db, $_POST['smtp_usuario'] ?? '');
+    $usuario    = mysqli_real_escape_string($db, $_POST['smtp_usuario']  ?? '');
     $de_email   = mysqli_real_escape_string($db, $_POST['smtp_de_email'] ?? '');
     $de_nome    = mysqli_real_escape_string($db, $_POST['smtp_de_nome']  ?? 'Sistema ERP');
     $seguranca  = in_array($_POST['smtp_seguranca'] ?? 'tls', ['tls','ssl','none'])
@@ -247,22 +285,53 @@ function _smtp_salvar($db) {
     $timeout    = (int)($_POST['timeout'] ?? 30);
     $nova_senha = $_POST['smtp_senha'] ?? '';
 
-    if (empty($host) || empty($usuario) || empty($de_email)) {
-        retornar_json(false, 'Preencha os campos obrigatórios: Host, Usuário e E-mail de Envio.');
+    // Campos API
+    $nova_api_key   = $_POST['api_key']     ?? '';
+    $sender_email   = mysqli_real_escape_string($db, $_POST['sender_email'] ?? '');
+    $sender_name    = mysqli_real_escape_string($db, $_POST['sender_name']  ?? '');
+
+    // Validação por provider
+    if ($emailProvider === 'brevo' || $emailProvider === 'resend') {
+        if (empty($sender_email) || !filter_var($sender_email, FILTER_VALIDATE_EMAIL))
+            retornar_json(false, 'E-mail remetente inválido ou ausente.');
+        if (empty($sender_name))
+            retornar_json(false, 'Nome do remetente é obrigatório.');
+    } else {
+        if (empty($host) || empty($usuario) || empty($de_email))
+            retornar_json(false, 'Preencha os campos obrigatórios: Host, Usuário e E-mail de Envio.');
     }
 
-    // Verificar se já existe configuração
-    $res = mysqli_query($db, "SELECT id, smtp_senha FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
+    // Busca registro existente
+    $res       = mysqli_query($db, "SELECT id, smtp_senha, api_key FROM configuracao_smtp ORDER BY id DESC LIMIT 1");
     $existente = $res ? mysqli_fetch_assoc($res) : null;
 
-    // Usar senha existente se não foi alterada
+    // Preservar senha se não alterada
     $senha_final = !empty($nova_senha)
         ? mysqli_real_escape_string($db, $nova_senha)
         : ($existente ? mysqli_real_escape_string($db, $existente['smtp_senha']) : '');
 
+    // Criptografar API Key se nova foi fornecida; preservar existente caso contrário
+    $api_key_final = '';
+    if (!empty($nova_api_key)) {
+        try {
+            $api_key_final = mysqli_real_escape_string($db, EmailCrypto::encrypt($nova_api_key));
+        } catch (Throwable $e) {
+            $api_key_final = mysqli_real_escape_string($db, $nova_api_key);
+        }
+    } elseif ($existente && !empty($existente['api_key'])) {
+        $api_key_final = mysqli_real_escape_string($db, $existente['api_key']);
+    }
+
+    $ep         = mysqli_real_escape_string($db, $emailProvider);
+    $api_esc    = $api_key_final !== '' ? "'$api_key_final'" : 'NULL';
+    $se_esc     = $sender_email  !== '' ? "'$sender_email'"  : 'NULL';
+    $sn_esc     = $sender_name   !== '' ? "'$sender_name'"   : 'NULL';
+
     if ($existente) {
-        $id = (int)$existente['id'];
+        $id  = (int)$existente['id'];
         $sql = "UPDATE configuracao_smtp SET
+            email_provider='$ep', api_key=$api_esc,
+            sender_email=$se_esc, sender_name=$sn_esc,
             provedor='$provedor', smtp_host='$host', smtp_port=$port,
             smtp_usuario='$usuario', smtp_senha='$senha_final',
             smtp_de_email='$de_email', smtp_de_nome='$de_nome',
@@ -270,12 +339,16 @@ function _smtp_salvar($db) {
             WHERE id=$id";
     } else {
         $sql = "INSERT INTO configuracao_smtp
-            (provedor,smtp_host,smtp_port,smtp_usuario,smtp_senha,smtp_de_email,smtp_de_nome,smtp_seguranca,timeout,smtp_ativo)
-            VALUES ('$provedor','$host',$port,'$usuario','$senha_final','$de_email','$de_nome','$seguranca',$timeout,1)";
+            (email_provider,api_key,sender_email,sender_name,
+             provedor,smtp_host,smtp_port,smtp_usuario,smtp_senha,
+             smtp_de_email,smtp_de_nome,smtp_seguranca,timeout,smtp_ativo)
+            VALUES ('$ep',$api_esc,$se_esc,$sn_esc,
+             '$provedor','$host',$port,'$usuario','$senha_final',
+             '$de_email','$de_nome','$seguranca',$timeout,1)";
     }
 
     if (mysqli_query($db, $sql)) {
-        retornar_json(true, 'Configuração SMTP salva com sucesso!');
+        retornar_json(true, 'Configuração salva com sucesso!');
     } else {
         retornar_json(false, 'Erro ao salvar: ' . mysqli_error($db));
     }
@@ -299,12 +372,12 @@ function _smtp_testar($db) {
     // Carregar configuração
     $res = mysqli_query($db, "SELECT * FROM configuracao_smtp WHERE smtp_ativo=1 ORDER BY id DESC LIMIT 1");
     $cfg = $res ? mysqli_fetch_assoc($res) : null;
-    if (!$cfg || empty($cfg['smtp_host'])) {
-        email_error_log('ERROR', 'SMTP test failed: no active SMTP configuration', [
+    if (!$cfg) {
+        email_error_log('ERROR', 'Email test failed: no active configuration', [
             'email_teste' => $email_teste,
             'mysql_error' => mysqli_error($db),
         ]);
-        retornar_json(false, 'Nenhuma configuração SMTP ativa encontrada. Salve a configuração primeiro.');
+        retornar_json(false, 'Nenhuma configuração de e-mail ativa encontrada. Salve a configuração primeiro.');
     }
 
     // Tentar enviar usando EmailSender
@@ -346,10 +419,12 @@ function _smtp_testar($db) {
             ],
         ]);
 
+        $provider = $cfg['email_provider'] ?? 'smtp';
         retornar_json(true, 'E-mail de teste enviado com sucesso para ' . $email_teste . '!', [
             'destinatario' => $email_teste,
-            'host'         => $cfg['smtp_host'],
-            'porta'        => $cfg['smtp_port'],
+            'provider'     => $provider,
+            'host'         => ($provider === 'smtp') ? ($cfg['smtp_host'] ?? null) : null,
+            'porta'        => ($provider === 'smtp') ? ($cfg['smtp_port'] ?? null) : null,
         ]);
     } catch (Throwable $e) {
         // Registrar erro no log
