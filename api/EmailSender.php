@@ -24,6 +24,9 @@ class EmailSender {
     private $config;
     private $mail;
     private $debug = false;
+    private $smtpDebugLines = [];
+    private $smtpTentativas = [];
+    private $debugAuthStage = null;
     
     /**
      * Construtor
@@ -71,6 +74,7 @@ class EmailSender {
             $this->mail->isSMTP();
             $this->mail->Host = $this->config['smtp_host'];
             $this->mail->SMTPAuth = true;
+            $this->mail->AuthType = 'LOGIN';
             $this->mail->Username = $this->config['smtp_usuario'];
             $this->mail->Password = $this->config['smtp_senha'];
             
@@ -96,11 +100,18 @@ class EmailSender {
             
             // Debug (se ativado)
             if ($this->debug) {
-                $this->mail->SMTPDebug = SMTP::DEBUG_SERVER;
+                $this->mail->SMTPDebug = SMTP::DEBUG_LOWLEVEL;
                 $this->mail->Debugoutput = function($str, $level) {
-                    email_error_log('DEBUG', 'PHPMailer debug output', [
+                    $linha = $this->sanitizarLinhaDebugSMTP($str);
+                    $this->smtpDebugLines[] = [
+                        'host' => $this->mail ? $this->mail->Host : ($this->config['smtp_host'] ?? null),
                         'level' => $level,
-                        'message' => $str,
+                        'message' => $linha,
+                    ];
+                    email_error_log('DEBUG', 'PHPMailer SMTP low-level debug', [
+                        'host' => $this->mail ? $this->mail->Host : ($this->config['smtp_host'] ?? null),
+                        'level' => $level,
+                        'message' => $linha,
                     ]);
                 };
             }
@@ -119,7 +130,108 @@ class EmailSender {
             throw new Exception("Erro ao inicializar PHPMailer: " . $e->getMessage());
         }
     }
-    
+
+    private function sanitizarLinhaDebugSMTP($linha) {
+        $linha = trim((string)$linha);
+
+        if (stripos($linha, 'AUTH PLAIN') !== false) {
+            return preg_replace('/AUTH PLAIN\s+\S+/i', 'AUTH PLAIN [REDACTED]', $linha);
+        }
+        if (stripos($linha, 'AUTH LOGIN') !== false) {
+            $this->debugAuthStage = 'username_prompt';
+            return $linha;
+        }
+        if (stripos($linha, '334 VXNlcm5hbWU6') !== false) {
+            $this->debugAuthStage = 'username_value';
+            return $linha;
+        }
+        if (stripos($linha, '334 UGFzc3dvcmQ6') !== false) {
+            $this->debugAuthStage = 'password_value';
+            return $linha;
+        }
+        if (stripos($linha, 'CLIENT -> SERVER:') !== false) {
+            if ($this->debugAuthStage === 'username_value') {
+                $this->debugAuthStage = null;
+                return 'CLIENT -> SERVER: [USERNAME_BASE64_REDACTED]';
+            }
+            if ($this->debugAuthStage === 'password_value') {
+                $this->debugAuthStage = null;
+                return 'CLIENT -> SERVER: [PASSWORD_BASE64_REDACTED]';
+            }
+        }
+
+        return $linha;
+    }
+
+    private function hostsSMTPParaTentativa() {
+        $principal = trim((string)$this->config['smtp_host']);
+        $hosts = [$principal];
+        $usuario = strtolower((string)$this->config['smtp_usuario']);
+        $isMicrosoft = strpos($principal, 'office365.com') !== false
+            || strpos($principal, 'outlook.com') !== false
+            || strpos($usuario, '@outlook.com') !== false
+            || strpos($usuario, '@hotmail.com') !== false
+            || strpos($usuario, '@live.com') !== false;
+
+        if ($isMicrosoft && strcasecmp($principal, 'smtp.office365.com') === 0) {
+            $hosts[] = 'smtp-mail.outlook.com';
+        } elseif ($isMicrosoft && strcasecmp($principal, 'smtp-mail.outlook.com') === 0) {
+            $hosts[] = 'smtp.office365.com';
+        }
+
+        return array_values(array_unique(array_filter($hosts)));
+    }
+
+    private function aplicarHostSMTP($host) {
+        $this->mail->Host = $host;
+        $this->mail->SMTPAuth = true;
+        $this->mail->AuthType = 'LOGIN';
+        $this->mail->Username = trim((string)$this->config['smtp_usuario']);
+        $this->mail->Password = (string)$this->config['smtp_senha'];
+        $this->debugAuthStage = null;
+    }
+
+    public function diagnosticoSMTP($hostAtual = null, $erroServidor = null) {
+        return [
+            'host' => $hostAtual ?: ($this->config['smtp_host'] ?? null),
+            'porta' => (int)($this->config['smtp_port'] ?? 0),
+            'seguranca' => $this->config['smtp_seguranca'] ?? null,
+            'usuario' => $this->config['smtp_usuario'] ?? null,
+            'senha_tamanho' => strlen((string)($this->config['smtp_senha'] ?? '')),
+            'auth_type' => 'LOGIN',
+            'smtp_auth' => true,
+            'timeout' => (int)($this->config['timeout'] ?? 30),
+            'resposta_servidor' => $erroServidor,
+            'tentativas' => $this->smtpTentativas,
+            'debug_tail' => array_slice($this->smtpDebugLines, -60),
+        ];
+    }
+
+    private function diagnosticarErroMicrosoft($erro) {
+        $erro = (string)$erro;
+        $regras = [
+            '535 5.7.3' => 'Autenticacao Microsoft recusada. Verifique usuario completo, senha de aplicativo e SMTP AUTH habilitado para a caixa postal.',
+            '535 5.7.57' => 'SMTP AUTH provavelmente esta desabilitado no tenant, na caixa postal ou por Security Defaults/Conditional Access.',
+            '535 5.7.139' => 'Autenticacao bloqueada por politica Microsoft, MFA/Modern Auth ou credencial basica nao aceita neste fluxo.',
+            '550' => 'Remetente/destinatario rejeitado. Confirme se smtp_de_email e igual ao usuario autenticado ou se a conta tem permissao Send As.',
+            '554' => 'Mensagem ou politica de envio rejeitada pelo servidor Microsoft.',
+        ];
+
+        foreach ($regras as $codigo => $mensagem) {
+            if (stripos($erro, $codigo) !== false) {
+                return ['codigo' => $codigo, 'mensagem' => $mensagem];
+            }
+        }
+        if (stripos($erro, 'TLS') !== false || stripos($erro, 'STARTTLS') !== false) {
+            return ['codigo' => 'TLS', 'mensagem' => 'Falha na negociacao TLS/STARTTLS. Verifique porta 587, OpenSSL do PHP e bloqueios da hospedagem.'];
+        }
+        if (stripos($erro, 'SMTP AUTH') !== false || stripos($erro, 'authentication unsuccessful') !== false) {
+            return ['codigo' => 'SMTP_AUTH', 'mensagem' => 'Falha de SMTP AUTH. Confirme se Authenticated SMTP esta habilitado e se a senha de aplicativo ainda e valida.'];
+        }
+
+        return ['codigo' => 'SMTP', 'mensagem' => 'Erro SMTP nao classificado. Consulte resposta_servidor e debug_tail.'];
+    }
+
     /**
      * Envia um e-mail
      * 
@@ -173,32 +285,65 @@ class EmailSender {
                 }
             }
             
-            // Enviar
-            $resultado = $this->mail->send();
-            
-            // Registrar no log
-            $this->registrarLog($destinatario, $assunto, 'enviado');
-            
-            return $resultado;
+            // Enviar com fallback automatico para hosts Microsoft.
+            $ultimoErro = null;
+            foreach ($this->hostsSMTPParaTentativa() as $hostSMTP) {
+                $this->aplicarHostSMTP($hostSMTP);
+                email_error_log('INFO', 'SMTP send attempt started', [
+                    'destinatario' => $destinatario,
+                    'assunto' => $assunto,
+                    'diagnostico_smtp' => $this->diagnosticoSMTP($hostSMTP),
+                ]);
+
+                try {
+                    $resultado = $this->mail->send();
+                    $this->smtpTentativas[] = [
+                        'host' => $hostSMTP,
+                        'status' => 'enviado',
+                    ];
+                    email_error_log('INFO', 'SMTP send attempt succeeded', [
+                        'destinatario' => $destinatario,
+                        'assunto' => $assunto,
+                        'diagnostico_smtp' => $this->diagnosticoSMTP($hostSMTP),
+                    ]);
+                    $this->registrarLog($destinatario, $assunto, 'enviado');
+                    return $resultado;
+                } catch (Exception $tentativaErro) {
+                    $ultimoErro = $tentativaErro;
+                    $respostaServidor = $this->mail->ErrorInfo ?: $tentativaErro->getMessage();
+                    $diagnosticoMicrosoft = $this->diagnosticarErroMicrosoft($respostaServidor);
+                    $this->smtpTentativas[] = [
+                        'host' => $hostSMTP,
+                        'status' => 'erro',
+                        'erro' => $respostaServidor,
+                        'diagnostico_microsoft' => $diagnosticoMicrosoft,
+                    ];
+                    email_error_log_exception('ERROR', 'SMTP send attempt failed', $tentativaErro, [
+                        'destinatario' => $destinatario,
+                        'assunto' => $assunto,
+                        'diagnostico_smtp' => $this->diagnosticoSMTP($hostSMTP, $respostaServidor),
+                        'diagnostico_microsoft' => $diagnosticoMicrosoft,
+                    ]);
+                    $this->mail->smtpClose();
+                }
+            }
+
+            throw new Exception($ultimoErro ? $ultimoErro->getMessage() : 'Falha desconhecida no envio SMTP');
             
         } catch (Exception $e) {
             // Registrar erro no log
             $this->registrarLog($destinatario, $assunto, 'erro', $e->getMessage());
+            $respostaServidor = $this->mail ? ($this->mail->ErrorInfo ?: $e->getMessage()) : $e->getMessage();
+            $diagnosticoMicrosoft = $this->diagnosticarErroMicrosoft($respostaServidor);
 
             email_error_log_exception('ERROR', 'Erro ao enviar e-mail', $e, [
                 'destinatario' => $destinatario,
                 'assunto' => $assunto,
                 'phpmailer_error' => $this->mail ? $this->mail->ErrorInfo : null,
-                'smtp' => [
-                    'host' => $this->config['smtp_host'] ?? null,
-                    'port' => $this->config['smtp_port'] ?? null,
-                    'usuario' => $this->config['smtp_usuario'] ?? null,
-                    'de_email' => $this->config['smtp_de_email'] ?? null,
-                    'seguranca' => $this->config['smtp_seguranca'] ?? null,
-                    'timeout' => $this->config['timeout'] ?? null,
-                ],
+                'diagnostico_smtp' => $this->diagnosticoSMTP(null, $respostaServidor),
+                'diagnostico_microsoft' => $diagnosticoMicrosoft,
             ]);
-            throw new Exception("Erro ao enviar e-mail: " . $this->mail->ErrorInfo);
+            throw new Exception("Erro ao enviar e-mail: " . $respostaServidor . " | " . $diagnosticoMicrosoft['mensagem']);
         }
     }
     

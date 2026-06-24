@@ -15,6 +15,10 @@ if (!function_exists('email_error_sanitize')) {
             $clean = [];
             foreach ($value as $key => $item) {
                 $keyText = strtolower((string)$key);
+                if (in_array($keyText, ['senha_tamanho', 'password_length'], true)) {
+                    $clean[$key] = email_error_sanitize($item);
+                    continue;
+                }
                 if (preg_match('/senha|password|pass|token|secret|authorization/', $keyText)) {
                     $clean[$key] = '[REDACTED]';
                     continue;
