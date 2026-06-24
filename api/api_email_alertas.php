@@ -20,6 +20,9 @@ ob_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
+require_once __DIR__ . '/email_error_logger.php';
+email_error_install_shutdown_handler();
+
 require_once 'config.php';
 require_once 'auth_helper.php';
 
@@ -283,7 +286,13 @@ function _smtp_salvar($db) {
 // ============================================================
 function _smtp_testar($db) {
     $email_teste = $_POST['email_teste'] ?? '';
+    email_error_log('INFO', 'SMTP test started', [
+        'email_teste' => $email_teste,
+    ]);
     if (empty($email_teste) || !filter_var($email_teste, FILTER_VALIDATE_EMAIL)) {
+        email_error_log('WARNING', 'SMTP test rejected: invalid destination', [
+            'email_teste' => $email_teste,
+        ]);
         retornar_json(false, 'Informe um e-mail válido para o teste.');
     }
 
@@ -291,17 +300,25 @@ function _smtp_testar($db) {
     $res = mysqli_query($db, "SELECT * FROM configuracao_smtp WHERE smtp_ativo=1 ORDER BY id DESC LIMIT 1");
     $cfg = $res ? mysqli_fetch_assoc($res) : null;
     if (!$cfg || empty($cfg['smtp_host'])) {
+        email_error_log('ERROR', 'SMTP test failed: no active SMTP configuration', [
+            'email_teste' => $email_teste,
+            'mysql_error' => mysqli_error($db),
+        ]);
         retornar_json(false, 'Nenhuma configuração SMTP ativa encontrada. Salve a configuração primeiro.');
     }
 
     // Tentar enviar usando EmailSender
     if (!file_exists(__DIR__ . '/EmailSender.php')) {
+        email_error_log('ERROR', 'SMTP test failed: EmailSender.php not found', [
+            'path' => __DIR__ . '/EmailSender.php',
+            'email_teste' => $email_teste,
+        ]);
         retornar_json(false, 'Classe EmailSender não encontrada. Verifique se o PHPMailer está instalado.');
     }
 
     try {
         require_once __DIR__ . '/EmailSender.php';
-        $sender = new EmailSender($db);
+        $sender = new EmailSender($db, true);
         $resultado = $sender->enviar(
             $email_teste,
             'Teste de Conexão SMTP — ' . date('d/m/Y H:i'),
@@ -317,17 +334,42 @@ function _smtp_testar($db) {
         mysqli_query($db, "INSERT INTO email_log (alerta_codigo,destinatario,assunto,tipo,status)
             VALUES ('smtp.teste','$dest','Teste de Conexão SMTP','teste','enviado')");
 
+        email_error_log('INFO', 'SMTP test sent successfully', [
+            'email_teste' => $email_teste,
+            'smtp' => [
+                'host' => $cfg['smtp_host'],
+                'port' => $cfg['smtp_port'],
+                'usuario' => $cfg['smtp_usuario'] ?? null,
+                'de_email' => $cfg['smtp_de_email'] ?? null,
+                'seguranca' => $cfg['smtp_seguranca'] ?? null,
+                'timeout' => $cfg['timeout'] ?? null,
+            ],
+        ]);
+
         retornar_json(true, 'E-mail de teste enviado com sucesso para ' . $email_teste . '!', [
             'destinatario' => $email_teste,
             'host'         => $cfg['smtp_host'],
             'porta'        => $cfg['smtp_port'],
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         // Registrar erro no log
         $dest  = mysqli_real_escape_string($db, $email_teste);
         $erro  = mysqli_real_escape_string($db, $e->getMessage());
         mysqli_query($db, "INSERT INTO email_log (alerta_codigo,destinatario,assunto,tipo,status,erro_mensagem)
             VALUES ('smtp.teste','$dest','Teste de Conexão SMTP','teste','erro','$erro')");
+
+        email_error_log_exception('ERROR', 'SMTP test failed', $e, [
+            'email_teste' => $email_teste,
+            'smtp' => [
+                'host' => $cfg['smtp_host'] ?? null,
+                'port' => $cfg['smtp_port'] ?? null,
+                'usuario' => $cfg['smtp_usuario'] ?? null,
+                'de_email' => $cfg['smtp_de_email'] ?? null,
+                'seguranca' => $cfg['smtp_seguranca'] ?? null,
+                'timeout' => $cfg['timeout'] ?? null,
+            ],
+            'mysql_error_log_insert' => mysqli_error($db),
+        ]);
 
         retornar_json(false, 'Falha no envio: ' . $e->getMessage(), [
             'host'  => $cfg['smtp_host'],

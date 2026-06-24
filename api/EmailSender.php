@@ -9,9 +9,10 @@
  * @date 29/12/2025
  */
 
-require_once 'PHPMailer/PHPMailer.php';
-require_once 'PHPMailer/SMTP.php';
-require_once 'PHPMailer/Exception.php';
+require_once __DIR__ . '/email_error_logger.php';
+require_once __DIR__ . '/../PHPMailer/PHPMailer.php';
+require_once __DIR__ . '/../PHPMailer/SMTP.php';
+require_once __DIR__ . '/../PHPMailer/Exception.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
@@ -81,6 +82,7 @@ class EmailSender {
             }
             
             $this->mail->Port = intval($this->config['smtp_port']);
+            $this->mail->Timeout = (int)($this->config['timeout'] ?? 30);
             
             // Charset e encoding
             $this->mail->CharSet = 'UTF-8';
@@ -96,11 +98,24 @@ class EmailSender {
             if ($this->debug) {
                 $this->mail->SMTPDebug = SMTP::DEBUG_SERVER;
                 $this->mail->Debugoutput = function($str, $level) {
-                    error_log("PHPMailer [$level]: $str");
+                    email_error_log('DEBUG', 'PHPMailer debug output', [
+                        'level' => $level,
+                        'message' => $str,
+                    ]);
                 };
             }
             
         } catch (Exception $e) {
+            email_error_log_exception('ERROR', 'Erro ao inicializar PHPMailer', $e, [
+                'smtp' => [
+                    'host' => $this->config['smtp_host'] ?? null,
+                    'port' => $this->config['smtp_port'] ?? null,
+                    'usuario' => $this->config['smtp_usuario'] ?? null,
+                    'de_email' => $this->config['smtp_de_email'] ?? null,
+                    'seguranca' => $this->config['smtp_seguranca'] ?? null,
+                    'timeout' => $this->config['timeout'] ?? null,
+                ],
+            ]);
             throw new Exception("Erro ao inicializar PHPMailer: " . $e->getMessage());
         }
     }
@@ -149,7 +164,11 @@ class EmailSender {
                     if (file_exists($anexo)) {
                         $this->mail->addAttachment($anexo);
                     } else {
-                        error_log("Anexo não encontrado: $anexo");
+                        email_error_log('WARNING', 'E-mail attachment not found', [
+                            'anexo' => $anexo,
+                            'destinatario' => $destinatario,
+                            'assunto' => $assunto,
+                        ]);
                     }
                 }
             }
@@ -165,8 +184,20 @@ class EmailSender {
         } catch (Exception $e) {
             // Registrar erro no log
             $this->registrarLog($destinatario, $assunto, 'erro', $e->getMessage());
-            
-            error_log("Erro ao enviar e-mail: " . $this->mail->ErrorInfo);
+
+            email_error_log_exception('ERROR', 'Erro ao enviar e-mail', $e, [
+                'destinatario' => $destinatario,
+                'assunto' => $assunto,
+                'phpmailer_error' => $this->mail ? $this->mail->ErrorInfo : null,
+                'smtp' => [
+                    'host' => $this->config['smtp_host'] ?? null,
+                    'port' => $this->config['smtp_port'] ?? null,
+                    'usuario' => $this->config['smtp_usuario'] ?? null,
+                    'de_email' => $this->config['smtp_de_email'] ?? null,
+                    'seguranca' => $this->config['smtp_seguranca'] ?? null,
+                    'timeout' => $this->config['timeout'] ?? null,
+                ],
+            ]);
             throw new Exception("Erro ao enviar e-mail: " . $this->mail->ErrorInfo);
         }
     }
