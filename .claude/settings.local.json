@@ -30,7 +30,10 @@
       "Bash(php -l api/EmailSender.php)",
       "Bash(php -l api/api_recuperar_senha.php)",
       "Bash(php -l api/api_verificar_tipo_login.php)",
-      "Bash(php -l api/api_portal_morador.php)"
+      "Bash(php -l api/api_portal_morador.php)",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/api_contas_bancarias.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/api_contas_receber.php\")",
+      "Bash(php -l \"c:/xampp/htdocs/dashboard/asl.erpcondominio.com.br/api/api_contas_pagar.php\")"
     ]
   }
 }

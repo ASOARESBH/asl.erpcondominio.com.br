@@ -137,6 +137,11 @@ switch ($acao) {
     case 'atualizar_movimentacao': _atualizar_movimentacao($db, $body); break;
     case 'excluir_movimentacao': _excluir_movimentacao($db, $body); break;
     case 'conciliar':            _conciliar($db, $body); break;
+    case 'conciliar_manual':     _conciliar_manual($db, $body); break;
+    case 'desfazer_conciliacao': _desfazer_conciliacao($db, $body); break;
+    case 'pendentes_conciliacao':_pendentes_conciliacao($db); break;
+    case 'candidatos_conciliacao':_candidatos_conciliacao($db); break;
+    case 'dashboard_financeiro': _dashboard_financeiro($db); break;
 
     // ── IMPORTAÇÃO OFX ───────────────────────────────
     case 'preview_ofx':         _preview_ofx($db); break;
@@ -327,14 +332,18 @@ function _criar_movimentacao($db, $body) {
     if ($valor <= 0) _json(false, 'valor deve ser maior que zero', null, 400);
 
     $stmt = $db->prepare("INSERT INTO movimentacoes_bancarias
-        (conta_id, tipo, valor, data_lancamento, descricao, checknum, categoria, origem, observacoes)
-        VALUES (?,?,?,?,?,?,?,'manual',?)");
-    $desc = $body['descricao'] ?? '';
-    $chk  = $body['checknum'] ?? null;
-    $cat  = $body['categoria'] ?? null;
-    $obs  = $body['observacoes'] ?? null;
-    $dt   = $body['data_lancamento'];
-    $stmt->bind_param('isdsssss', $conta_id, $body['tipo'], $valor, $dt, $desc, $chk, $cat, $obs);
+        (conta_id, tipo, valor, data_lancamento, descricao, favorecido, checknum, numero_documento,
+         categoria, centro_custo, status, origem, observacoes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,'pendente','manual',?)");
+    $desc    = $body['descricao']        ?? '';
+    $fav     = $body['favorecido']       ?? null;
+    $chk     = $body['checknum']         ?? null;
+    $numdoc  = $body['numero_documento'] ?? null;
+    $cat     = $body['categoria']        ?? null;
+    $ccusto  = $body['centro_custo']     ?? null;
+    $obs     = $body['observacoes']      ?? null;
+    $dt      = $body['data_lancamento'];
+    $stmt->bind_param('isdssssssss', $conta_id, $body['tipo'], $valor, $dt, $desc, $fav, $chk, $numdoc, $cat, $ccusto, $obs);
     if (!$stmt->execute()) _json(false, 'Erro ao criar movimentação: ' . $stmt->error);
     $novo_id = $db->insert_id;
     _recalcular_saldo($db, $conta_id);
@@ -346,20 +355,24 @@ function _atualizar_movimentacao($db, $body) {
     $id = intval($body['id'] ?? 0);
     if (!$id) _json(false, 'ID inválido', null, 400);
     $stmt = $db->prepare("UPDATE movimentacoes_bancarias SET
-        tipo=?, valor=?, data_lancamento=?, descricao=?, checknum=?, categoria=?, observacoes=?
+        tipo=?, valor=?, data_lancamento=?, descricao=?, favorecido=?,
+        checknum=?, numero_documento=?, categoria=?, centro_custo=?, status=?, observacoes=?
         WHERE id=?");
-    $valor        = abs((float)($body['valor'] ?? 0));
-    // bind_param exige variáveis (referências) — não expressões
-    $upd_tipo     = $body['tipo']             ?? '';
-    $upd_dt       = $body['data_lancamento']  ?? '';
-    $upd_desc     = $body['descricao']        ?? '';
-    $upd_chknum   = $body['checknum']         ?? '';
-    $upd_cat      = $body['categoria']        ?? '';
-    $upd_obs      = $body['observacoes']      ?? '';
-    $stmt->bind_param('sdsssssi',
+    $valor       = abs((float)($body['valor'] ?? 0));
+    $upd_tipo    = $body['tipo']             ?? '';
+    $upd_dt      = $body['data_lancamento']  ?? '';
+    $upd_desc    = $body['descricao']        ?? '';
+    $upd_fav     = $body['favorecido']       ?? '';
+    $upd_chknum  = $body['checknum']         ?? '';
+    $upd_numdoc  = $body['numero_documento'] ?? '';
+    $upd_cat     = $body['categoria']        ?? '';
+    $upd_ccusto  = $body['centro_custo']     ?? '';
+    $upd_status  = $body['status']           ?? 'pendente';
+    $upd_obs     = $body['observacoes']      ?? '';
+    $stmt->bind_param('sdsssssssssi',
         $upd_tipo, $valor, $upd_dt,
-        $upd_desc, $upd_chknum,
-        $upd_cat, $upd_obs, $id
+        $upd_desc, $upd_fav, $upd_chknum, $upd_numdoc,
+        $upd_cat, $upd_ccusto, $upd_status, $upd_obs, $id
     );
     if (!$stmt->execute()) _json(false, 'Erro ao atualizar: ' . $stmt->error);
     // Recalcular saldo da conta
@@ -410,7 +423,7 @@ function _preview_ofx($db) {
     if (!$conta_id) _json(false, 'conta_id obrigatório', null, 400);
 
     $conteudo = _ler_ofx($_FILES['ofx_file']['tmp_name']);
-    $parsed   = _parsear_ofx($conteudo);
+    $parsed   = _parsear_ofx_v2($conteudo);
 
     // Buscar último FITID importado para esta conta
     $ultimo = _buscar_ultimo_fitid($db, $conta_id);
@@ -463,51 +476,55 @@ function _importar_ofx($db) {
     if (!$r) _json(false, 'Conta não encontrada', null, 404);
 
     $conteudo = _ler_ofx($_FILES['ofx_file']['tmp_name']);
-    $parsed   = _parsear_ofx($conteudo);
+    $parsed   = _parsear_ofx_v2($conteudo);
 
     if (empty($parsed['transacoes'])) _json(false, 'Nenhuma transação encontrada no arquivo OFX');
 
-    // Buscar último FITID importado
     $ultimo_fitid = _buscar_ultimo_fitid($db, $conta_id);
 
     $importadas = 0; $duplicatas = 0; $erros = 0;
+    $conciliadas_auto = 0; $pendentes_conc = 0;
     $ultimo_fitid_novo = null; $ultima_data_nova = null;
-    $apos_ultimo = ($ultimo_fitid === null); // se nunca importou, importar tudo
+    $apos_ultimo = ($ultimo_fitid === null);
+    $ids_inseridos = [];
 
     $db->begin_transaction();
     try {
         $stmt = $db->prepare("INSERT IGNORE INTO movimentacoes_bancarias
-            (conta_id, fitid, tipo, valor, data_lancamento, descricao, checknum, origem, importacao_id)
-            VALUES (?,?,?,?,?,?,?,'ofx',?)");
+            (conta_id, fitid, tipo, valor, data_lancamento, descricao, favorecido, memo, checknum,
+             numero_documento, origem, importacao_id, status)
+            VALUES (?,?,?,?,?,?,?,?,?,?,'ofx',?,'pendente')");
 
         foreach ($parsed['transacoes'] as $t) {
-            // Pular até encontrar o último FITID importado
             if (!$apos_ultimo) {
                 if ($t['fitid'] === $ultimo_fitid) { $apos_ultimo = true; }
                 $duplicatas++;
                 continue;
             }
 
-            $tipo     = ($t['valor'] >= 0) ? 'credito' : 'debito';
-            $valor    = abs($t['valor']);
-            $imp_id   = 0; // será atualizado após inserir o histórico
-            // bind_param exige variáveis (referências) — não expressões
-            $t_fitid  = $t['fitid']    ?? '';
-            $t_data   = $t['data']     ?? '';
-            $t_memo   = $t['memo']     ?? '';
-            $t_chknum = $t['checknum'] ?? '';
+            $t_fitid   = $t['fitid']      ?? '';
+            $t_tipo    = $t['tipo']        ?? 'credito';
+            $t_valor   = abs((float)($t['valor'] ?? 0));
+            $t_data    = $t['data']        ?? date('Y-m-d');
+            $t_desc    = $t['memo']        ?: ($t['favorecido'] ?? '');
+            $t_fav     = $t['favorecido']  ?? '';
+            $t_memo    = $t['memo']        ?? '';
+            $t_chknum  = $t['checknum']    ?? '';
+            $t_numdoc  = $t['checknum']    ?? '';
+            $imp_id    = 0;
 
-            $stmt->bind_param('issdssis',
-                $conta_id, $t_fitid, $tipo, $valor,
-                $t_data, $t_memo, $t_chknum, $imp_id
+            $stmt->bind_param('issdssssssi',
+                $conta_id, $t_fitid, $t_tipo, $t_valor,
+                $t_data, $t_desc, $t_fav, $t_memo, $t_chknum, $t_numdoc, $imp_id
             );
             if ($stmt->execute()) {
                 if ($stmt->affected_rows > 0) {
                     $importadas++;
-                    $ultimo_fitid_novo = $t['fitid'];
-                    $ultima_data_nova  = $t['data'];
+                    $ids_inseridos[] = $db->insert_id;
+                    $ultimo_fitid_novo = $t_fitid;
+                    $ultima_data_nova  = $t_data;
                 } else {
-                    $duplicatas++; // UNIQUE KEY ignorou
+                    $duplicatas++;
                 }
             } else {
                 $erros++;
@@ -515,52 +532,83 @@ function _importar_ofx($db) {
         }
 
         // Registrar no histórico
-        $nome_arq = $_FILES['ofx_file']['name'];
-        $usuario  = $_SESSION['usuario_nome'] ?? 'sistema';
-        $stmt2 = $db->prepare("INSERT INTO historico_importacoes_ofx
-            (conta_id, nome_arquivo, banco_id_ofx, acct_id_ofx, dt_inicio_ofx, dt_fim_ofx,
-             ultimo_fitid, ultima_data, total_transacoes, importadas, duplicadas, saldo_final_ofx, importado_por)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $total = count($parsed['transacoes']);
-        $saldo = $parsed['saldo_final'];
-        // bind_param exige variáveis (referências), não expressões — atribuir antes
+        $nome_arq      = $_FILES['ofx_file']['name'];
+        $usuario       = $_SESSION['usuario_nome'] ?? 'sistema';
         $banco_id_ofx  = $parsed['banco_id']  ?? '';
         $acct_id_ofx   = $parsed['acct_id']   ?? '';
         $dt_inicio_ofx = $parsed['dt_inicio'] ?? '';
         $dt_fim_ofx    = $parsed['dt_fim']    ?? '';
         $fitid_final   = $ultimo_fitid_novo ?? $ultimo_fitid ?? '';
-        $saldo_final   = (float)$saldo;
-        $stmt2->bind_param('isssssssiiids',
+        $saldo_final   = (float)($parsed['saldo_final'] ?? 0);
+        $total         = count($parsed['transacoes']);
+        $formato_ofx   = $parsed['formato'] ?? 'sgml';
+
+        $stmt2 = $db->prepare("INSERT INTO historico_importacoes_ofx
+            (conta_id, nome_arquivo, banco_id_ofx, acct_id_ofx, dt_inicio_ofx, dt_fim_ofx,
+             ultimo_fitid, ultima_data, total_transacoes, importadas, duplicadas, saldo_final_ofx,
+             importado_por, conciliadas_auto, pendentes, formato_ofx)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $stmt2->bind_param('isssssssiiiidssi',
             $conta_id, $nome_arq, $banco_id_ofx, $acct_id_ofx,
             $dt_inicio_ofx, $dt_fim_ofx,
-            $fitid_final,
-            $ultima_data_nova,
-            $total, $importadas, $duplicatas, $saldo_final, $usuario
+            $fitid_final, $ultima_data_nova,
+            $total, $importadas, $duplicatas, $saldo_final, $usuario,
+            $conciliadas_auto, $pendentes_conc, $formato_ofx
         );
-        $stmt2->execute();
+        // Fallback: se colunas v2 ainda não existirem, insere sem elas
+        if (!$stmt2->execute()) {
+            $stmt2b = $db->prepare("INSERT INTO historico_importacoes_ofx
+                (conta_id, nome_arquivo, banco_id_ofx, acct_id_ofx, dt_inicio_ofx, dt_fim_ofx,
+                 ultimo_fitid, ultima_data, total_transacoes, importadas, duplicadas, saldo_final_ofx, importado_por)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt2b->bind_param('isssssssiiids',
+                $conta_id, $nome_arq, $banco_id_ofx, $acct_id_ofx,
+                $dt_inicio_ofx, $dt_fim_ofx,
+                $fitid_final, $ultima_data_nova,
+                $total, $importadas, $duplicatas, $saldo_final, $usuario
+            );
+            $stmt2b->execute();
+        }
         $imp_id_novo = $db->insert_id;
 
-        // Atualizar importacao_id nas movimentações recém-inseridas (se houver)
-        if ($importadas > 0 && $imp_id_novo) {
-            $db->query("UPDATE movimentacoes_bancarias SET importacao_id=$imp_id_novo
-                        WHERE conta_id=$conta_id AND importacao_id=0 AND origem='ofx'");
+        // Atualizar importacao_id nas inseridas
+        if ($importadas > 0 && $imp_id_novo && !empty($ids_inseridos)) {
+            $placeholders = implode(',', $ids_inseridos);
+            $db->query("UPDATE movimentacoes_bancarias SET importacao_id=$imp_id_novo WHERE id IN ($placeholders)");
         }
 
         $db->commit();
+
+        // Motor de conciliação pós-insert (fora da transaction para não bloquear)
+        foreach ($ids_inseridos as $mov_id) {
+            $res = _motor_conciliacao($db, $mov_id);
+            if ($res === true) $conciliadas_auto++;
+            else $pendentes_conc++;
+        }
+
+        // Atualizar contadores no histórico
+        if ($imp_id_novo && ($conciliadas_auto || $pendentes_conc)) {
+            $db->query("UPDATE historico_importacoes_ofx SET
+                conciliadas_auto=$conciliadas_auto, pendentes=$pendentes_conc
+                WHERE id=$imp_id_novo");
+        }
+
     } catch (Exception $e) {
         $db->rollback();
         _json(false, 'Erro durante importação: ' . $e->getMessage());
     }
 
-    // Recalcular saldo
     _recalcular_saldo($db, $conta_id);
 
     _json(true, 'Importação concluída', [
-        'importadas'  => $importadas,
-        'duplicatas'  => $duplicatas,
-        'erros'       => $erros,
-        'total_arq'   => count($parsed['transacoes']),
-        'ultimo_fitid'=> $ultimo_fitid_novo ?? $ultimo_fitid,
+        'importadas'       => $importadas,
+        'duplicatas'       => $duplicatas,
+        'erros'            => $erros,
+        'total_arq'        => count($parsed['transacoes']),
+        'ultimo_fitid'     => $ultimo_fitid_novo ?? $ultimo_fitid,
+        'conciliadas_auto' => $conciliadas_auto,
+        'pendentes'        => $pendentes_conc,
+        'formato_ofx'      => $parsed['formato'] ?? 'sgml',
     ]);
 }
 
@@ -696,10 +744,9 @@ function _buscar_ultimo_fitid($db, $conta_id) {
     return $r ? $r['ultimo_fitid'] : null;
 }
 
-/** Lê o arquivo OFX convertendo de ISO-8859-1 para UTF-8 */
+/** Lê o arquivo OFX convertendo para UTF-8 se necessário */
 function _ler_ofx($path) {
     $raw = file_get_contents($path);
-    // Detectar encoding pelo cabeçalho
     if (preg_match('/CHARSET:\s*1252/i', $raw) || preg_match('/ENCODING:\s*USASCII/i', $raw)) {
         $raw = mb_convert_encoding($raw, 'UTF-8', 'ISO-8859-1');
     }
@@ -707,59 +754,97 @@ function _ler_ofx($path) {
 }
 
 /**
- * Parseia OFX SGML (formato Bradesco e maioria dos bancos brasileiros)
- * Retorna array com: banco_id, acct_id, dt_inicio, dt_fim, saldo_final, transacoes[]
+ * Parser OFX v2 — suporta SGML (Bradesco/BB/Caixa/Santander) e XML (Itaú/Nubank)
  */
-function _parsear_ofx($conteudo) {
+function _parsear_ofx_v2($conteudo) {
     $result = [
         'banco_id'    => '',
         'acct_id'     => '',
         'dt_inicio'   => null,
         'dt_fim'      => null,
         'saldo_final' => 0.0,
+        'formato'     => 'sgml',
         'transacoes'  => [],
     ];
 
-    // Extrair campos de cabeçalho da conta
-    if (preg_match('/<BANKID>\s*([^\r\n<]+)/i', $conteudo, $m)) $result['banco_id'] = trim($m[1]);
+    if (preg_match('/<BANKID[>\s]/i', $conteudo, $m)) {
+        if (preg_match('/<BANKID>\s*([^\r\n<]+)/i', $conteudo, $m)) $result['banco_id'] = trim($m[1]);
+    }
     if (preg_match('/<ACCTID>\s*([^\r\n<]+)/i',  $conteudo, $m)) $result['acct_id']  = trim($m[1]);
-    if (preg_match('/<DTSTART>\s*(\d{8})/i',      $conteudo, $m)) $result['dt_inicio'] = _ofx_data($m[1]);
-    if (preg_match('/<DTEND>\s*(\d{8})/i',        $conteudo, $m)) $result['dt_fim']    = _ofx_data($m[1]);
-    if (preg_match('/<BALAMT>\s*([\d.,\-]+)/i',   $conteudo, $m)) {
+    if (preg_match('/<DTSTART[^>]*>\s*(\d{8})/i', $conteudo, $m)) $result['dt_inicio'] = _ofx_data($m[1]);
+    if (preg_match('/<DTEND[^>]*>\s*(\d{8})/i',   $conteudo, $m)) $result['dt_fim']    = _ofx_data($m[1]);
+    if (preg_match('/<BALAMT[^>]*>\s*([\d.,\-]+)/i', $conteudo, $m)) {
         $result['saldo_final'] = (float)str_replace(',', '.', $m[1]);
     }
 
-    // Extrair todas as transações
-    preg_match_all('/<STMTTRN>(.*?)<\/STMTTRN>/is', $conteudo, $blocos);
-    foreach ($blocos[1] as $bloco) {
-        $t = [];
-        if (preg_match('/<TRNTYPE>\s*([^\r\n<]+)/i', $bloco, $m)) $t['trntype']  = strtoupper(trim($m[1]));
-        if (preg_match('/<DTPOSTED>\s*(\d{8})/i',    $bloco, $m)) $t['data']     = _ofx_data($m[1]);
-        if (preg_match('/<TRNAMT>\s*([\d.,\-]+)/i',  $bloco, $m)) {
-            $t['valor'] = (float)str_replace(',', '.', trim($m[1]));
-        }
-        if (preg_match('/<FITID>\s*([^\r\n<]+)/i',   $bloco, $m)) $t['fitid']    = trim($m[1]);
-        if (preg_match('/<CHECKNUM>\s*([^\r\n<]+)/i',$bloco, $m)) $t['checknum'] = trim($m[1]);
-        if (preg_match('/<MEMO>\s*([^\r\n<]+)/i',    $bloco, $m)) $t['memo']     = trim($m[1]);
+    $is_xml = stripos($conteudo, '</STMTTRN>') !== false;
+    $result['formato'] = $is_xml ? 'xml' : 'sgml';
 
-        // Garantir que débitos sejam negativos
-        if (isset($t['trntype']) && $t['trntype'] === 'DEBIT' && isset($t['valor']) && $t['valor'] > 0) {
-            $t['valor'] = -$t['valor'];
+    if ($is_xml) {
+        preg_match_all('/<STMTTRN>(.*?)<\/STMTTRN>/is', $conteudo, $blocos);
+        foreach ($blocos[1] as $bloco) {
+            $t = _ofx_extrair_transacao_v2($bloco, true);
+            if ($t) $result['transacoes'][] = $t;
         }
-
-        if (!empty($t['fitid']) && isset($t['valor']) && isset($t['data'])) {
-            $result['transacoes'][] = [
-                'fitid'    => $t['fitid'],
-                'data'     => $t['data'],
-                'valor'    => $t['valor'],
-                'memo'     => $t['memo'] ?? '',
-                'checknum' => $t['checknum'] ?? null,
-                'trntype'  => $t['trntype'] ?? '',
-            ];
+    } else {
+        if (!preg_match('/<BANKTRANLIST>(.*?)(<\/BANKTRANLIST>|$)/is', $conteudo, $bm)) {
+            return $result;
+        }
+        $lista  = $bm[1];
+        $blocos = preg_split('/<STMTTRN>/i', $lista);
+        array_shift($blocos);
+        foreach ($blocos as $bloco) {
+            $bloco = preg_replace('/<\/STMTTRN>.*/is', '', $bloco);
+            $t = _ofx_extrair_transacao_v2($bloco, false);
+            if ($t) $result['transacoes'][] = $t;
         }
     }
 
     return $result;
+}
+
+function _ofx_extrair_transacao_v2(string $bloco, bool $xml): ?array {
+    $campo = function(string $tag) use ($bloco, $xml): string {
+        if ($xml) {
+            if (preg_match('/<' . $tag . '>(.*?)<\/' . $tag . '>/is', $bloco, $m)) return trim($m[1]);
+        } else {
+            if (preg_match('/<' . $tag . '>\s*([^\r\n<]+)/i', $bloco, $m)) return trim($m[1]);
+        }
+        return '';
+    };
+
+    $trntype  = strtoupper($campo('TRNTYPE'));
+    $raw_amt  = $campo('TRNAMT');
+    $fitid    = $campo('FITID');
+    if (!$fitid || $raw_amt === '') return null;
+
+    $valor_float = (float)str_replace(',', '.', $raw_amt);
+    $tipo  = ($trntype === 'CREDIT' || $valor_float > 0) ? 'credito' : 'debito';
+    $valor = abs($valor_float);
+
+    $dt_raw = preg_replace('/[^0-9]/', '', substr($campo('DTPOSTED'), 0, 8));
+    $data   = strlen($dt_raw) === 8 ? _ofx_data($dt_raw) : date('Y-m-d');
+
+    $name     = $campo('NAME');
+    $payee    = $campo('PAYEE');
+    $memo     = $campo('MEMO');
+    $checknum = $campo('CHECKNUM');
+
+    $favorecido = $name ?: $payee ?: _ofx_favorecido_do_memo($memo);
+
+    return compact('fitid','tipo','valor','data','favorecido','memo','payee','checknum');
+}
+
+function _ofx_favorecido_do_memo(string $memo): string {
+    if (!$memo) return '';
+    foreach (['PIX ','TED ','DOC ','TRANSF ','PGTO ','PAG '] as $pref) {
+        if (stripos($memo, $pref) === 0) {
+            $partes = preg_split('/\s+/', trim(substr($memo, strlen($pref))));
+            return implode(' ', array_slice($partes, 0, 4));
+        }
+    }
+    $partes = preg_split('/\s+/', $memo);
+    return implode(' ', array_slice($partes, 0, 4));
 }
 
 /** Converte data OFX (YYYYMMDD) para formato MySQL (YYYY-MM-DD) */
@@ -910,12 +995,335 @@ function _inserir_bancos_inline($db) {
 
 // =====================================================
 
+// =====================================================
+// CONCILIAÇÃO BANCÁRIA
+// =====================================================
+
+/**
+ * Motor de conciliação: tenta auto-conciliar uma movimentação.
+ * Retorna true se auto-conciliou, false se ficou pendente.
+ */
+function _motor_conciliacao($db, $mov_id): bool {
+    $mov = $db->query("SELECT * FROM movimentacoes_bancarias WHERE id=$mov_id")->fetch_assoc();
+    if (!$mov || $mov['status'] !== 'pendente') return false;
+
+    $tabela = $mov['tipo'] === 'credito' ? 'contas_receber' : 'contas_pagar';
+    $campo_valor = $tabela === 'contas_receber' ? 'valor_original' : 'valor_original';
+    $campo_fav   = $tabela === 'contas_receber' ? 'morador_nome' : 'favorecido';
+    $campo_data  = 'data_vencimento';
+    $campo_doc   = 'numero_documento';
+    $status_open = $tabela === 'contas_receber' ? "'PENDENTE'" : "'PENDENTE'";
+
+    $tol = $mov['valor'] * 0.05;
+    $v_min = $mov['valor'] - $tol;
+    $v_max = $mov['valor'] + $tol;
+    $dt    = $mov['data_lancamento'];
+
+    $sql = "SELECT * FROM $tabela
+            WHERE ativo=1 AND status IN ($status_open)
+              AND $campo_valor BETWEEN $v_min AND $v_max
+              AND $campo_data BETWEEN DATE_SUB('$dt', INTERVAL 30 DAY) AND DATE_ADD('$dt', INTERVAL 30 DAY)
+            LIMIT 20";
+    $res = $db->query($sql);
+    if (!$res) return false;
+
+    $melhor = null; $melhor_score = 0;
+    while ($t = $res->fetch_assoc()) {
+        $score = 0;
+        // Valor exato
+        if (abs($mov['valor'] - $t[$campo_valor]) < 0.01) $score += 40;
+        // Checknum = numero_documento
+        if (!empty($mov['checknum']) && !empty($t[$campo_doc]) &&
+            strtolower($mov['checknum']) === strtolower($t[$campo_doc])) $score += 25;
+        // Data
+        $diff = abs(strtotime($mov['data_lancamento']) - strtotime($t[$campo_data])) / 86400;
+        if ($diff <= 3)     $score += 20;
+        elseif ($diff <= 7) $score += 12;
+        // Favorecido
+        $fav_mov = strtolower(preg_replace('/[^a-z0-9 ]/i','', $mov['favorecido'] ?? ''));
+        $fav_tit = strtolower(preg_replace('/[^a-z0-9 ]/i','', $t[$campo_fav] ?? ''));
+        if ($fav_mov && $fav_tit) {
+            similar_text($fav_mov, $fav_tit, $pct);
+            if ($pct >= 80) $score += 15;
+        }
+        // Memo contém numero_documento
+        if (!empty($t[$campo_doc]) && stripos($mov['memo'] ?? '', $t[$campo_doc]) !== false) $score += 10;
+
+        if ($score > $melhor_score) { $melhor_score = $score; $melhor = $t; }
+    }
+
+    if ($melhor_score >= 80 && $melhor) {
+        return _conciliar_auto($db, $mov, $tabela, $melhor, $melhor_score);
+    }
+    return false;
+}
+
+function _conciliar_auto($db, array $mov, string $tabela, array $titulo, int $score): bool {
+    $tipo_titulo = $tabela === 'contas_receber' ? 'receber' : 'pagar';
+    $usuario     = $_SESSION['usuario_nome'] ?? 'sistema';
+
+    $db->begin_transaction();
+    try {
+        $db->query("UPDATE movimentacoes_bancarias SET status='conciliado' WHERE id={$mov['id']}");
+
+        $status_novo = $tabela === 'contas_receber' ? 'RECEBIDO' : 'PAGO';
+        $campo_data  = $tabela === 'contas_receber' ? 'data_recebimento' : 'data_pagamento';
+        $db->query("UPDATE $tabela SET status='$status_novo', $campo_data=CURDATE() WHERE id={$titulo['id']}");
+
+        $criterios = json_encode(['score' => $score, 'tipo' => 'automatica'], JSON_UNESCAPED_UNICODE);
+        $stmt = $db->prepare("INSERT INTO conciliacoes
+            (movimentacao_id, tipo_titulo, titulo_id, score, tipo_conciliacao, criterios, conciliado_por)
+            VALUES (?,?,?,?,?,?,?)");
+        $tipo_str = $tipo_titulo;
+        $stmt->bind_param('isiisss', $mov['id'], $tipo_str, $titulo['id'], $score, 'automatica', $criterios, $usuario);
+        // Silenciar se a tabela não existir
+        if (!$stmt->execute()) { $db->rollback(); return false; }
+
+        $conc_id = $db->insert_id;
+        $db->query("UPDATE movimentacoes_bancarias SET conciliacao_id=$conc_id WHERE id={$mov['id']}");
+        $db->commit();
+        return true;
+    } catch (Exception $e) {
+        $db->rollback();
+        return false;
+    }
+}
+
+function _conciliar_manual($db, array $body) {
+    verificarPermissao('gerente');
+    $mov_id      = intval($body['mov_id']      ?? 0);
+    $tipo_titulo = $body['tipo_titulo']         ?? '';
+    $titulo_id   = intval($body['titulo_id']   ?? 0);
+    if (!$mov_id || !$titulo_id || !in_array($tipo_titulo, ['receber','pagar'])) {
+        _json(false, 'Parâmetros inválidos', null, 400);
+    }
+
+    $tabela      = $tipo_titulo === 'receber' ? 'contas_receber' : 'contas_pagar';
+    $status_novo = $tipo_titulo === 'receber' ? 'RECEBIDO' : 'PAGO';
+    $campo_data  = $tipo_titulo === 'receber' ? 'data_recebimento' : 'data_pagamento';
+    $usuario     = $_SESSION['usuario_nome'] ?? 'sistema';
+
+    // Verificar que a movimentação não está já conciliada
+    $mov = $db->query("SELECT * FROM movimentacoes_bancarias WHERE id=$mov_id")->fetch_assoc();
+    if (!$mov) _json(false, 'Movimentação não encontrada', null, 404);
+    if ($mov['status'] === 'conciliado') _json(false, 'Movimentação já está conciliada');
+
+    $db->begin_transaction();
+    try {
+        $db->query("UPDATE movimentacoes_bancarias SET status='conciliado' WHERE id=$mov_id");
+        $db->query("UPDATE $tabela SET status='$status_novo', $campo_data=CURDATE() WHERE id=$titulo_id AND ativo=1");
+
+        $stmt = $db->prepare("INSERT INTO conciliacoes
+            (movimentacao_id, tipo_titulo, titulo_id, score, tipo_conciliacao, criterios, conciliado_por)
+            VALUES (?,?,?,0,'manual',NULL,?)");
+        $stmt->bind_param('isis', $mov_id, $tipo_titulo, $titulo_id, $usuario);
+        $stmt->execute();
+        $conc_id = $db->insert_id;
+
+        $db->query("UPDATE movimentacoes_bancarias SET conciliacao_id=$conc_id WHERE id=$mov_id");
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollback();
+        _json(false, 'Erro ao conciliar: ' . $e->getMessage());
+    }
+
+    registrar_log($db, 'CONCILIACAO_MANUAL', "mov_id=$mov_id, titulo=$tipo_titulo:$titulo_id", 'conciliacao', $mov_id);
+    _json(true, 'Conciliação realizada com sucesso', ['conciliacao_id' => $conc_id ?? 0]);
+}
+
+function _desfazer_conciliacao($db, array $body) {
+    verificarPermissao('gerente');
+    $conc_id = intval($body['conc_id'] ?? 0);
+    if (!$conc_id) _json(false, 'conc_id obrigatório', null, 400);
+
+    $conc = $db->query("SELECT * FROM conciliacoes WHERE id=$conc_id AND ativa=1")->fetch_assoc();
+    if (!$conc) _json(false, 'Conciliação não encontrada ou já desfeita', null, 404);
+
+    $tabela      = $conc['tipo_titulo'] === 'receber' ? 'contas_receber' : 'contas_pagar';
+    $campo_data  = $conc['tipo_titulo'] === 'receber' ? 'data_recebimento' : 'data_pagamento';
+    $usuario     = $_SESSION['usuario_nome'] ?? 'sistema';
+
+    $db->begin_transaction();
+    try {
+        $db->query("UPDATE movimentacoes_bancarias SET status='pendente', conciliacao_id=NULL WHERE id={$conc['movimentacao_id']}");
+        $db->query("UPDATE $tabela SET status='PENDENTE', $campo_data=NULL WHERE id={$conc['titulo_id']}");
+        $db->query("UPDATE conciliacoes SET ativa=0, desfeita_por='$usuario', desfeita_em=NOW() WHERE id=$conc_id");
+        $db->commit();
+    } catch (Exception $e) {
+        $db->rollback();
+        _json(false, 'Erro ao desfazer: ' . $e->getMessage());
+    }
+
+    _json(true, 'Conciliação desfeita');
+}
+
+function _pendentes_conciliacao($db) {
+    $conta_id = intval($_GET['conta_id'] ?? 0);
+    $tipo     = $_GET['tipo']    ?? '';
+    $dt_ini   = $_GET['dt_ini']  ?? '';
+    $dt_fim   = $_GET['dt_fim']  ?? '';
+    $busca    = $_GET['busca']   ?? '';
+    $limite   = min(intval($_GET['limite'] ?? 50), 200);
+    $offset   = intval($_GET['offset'] ?? 0);
+
+    $where = ["mb.status = 'pendente'"];
+    $params = []; $types = '';
+
+    if ($conta_id) { $where[] = 'mb.conta_id = ?'; $params[] = $conta_id; $types .= 'i'; }
+    if ($tipo)     { $where[] = 'mb.tipo = ?';      $params[] = $tipo;     $types .= 's'; }
+    if ($dt_ini)   { $where[] = 'mb.data_lancamento >= ?'; $params[] = $dt_ini; $types .= 's'; }
+    if ($dt_fim)   { $where[] = 'mb.data_lancamento <= ?'; $params[] = $dt_fim; $types .= 's'; }
+    if ($busca)    {
+        $where[] = '(mb.descricao LIKE ? OR mb.favorecido LIKE ?)';
+        $params[] = "%$busca%"; $params[] = "%$busca%"; $types .= 'ss';
+    }
+
+    $where_sql = implode(' AND ', $where);
+
+    // Subconsultas de candidatos
+    $sql = "SELECT mb.*,
+                cb.nome AS conta_nome,
+                (SELECT COUNT(*) FROM contas_receber cr
+                 WHERE cr.ativo=1 AND cr.status='PENDENTE'
+                   AND cr.valor_original BETWEEN mb.valor*0.95 AND mb.valor*1.05
+                   AND cr.data_vencimento BETWEEN DATE_SUB(mb.data_lancamento,INTERVAL 30 DAY) AND DATE_ADD(mb.data_lancamento,INTERVAL 30 DAY)
+                ) AS cand_receber,
+                (SELECT COUNT(*) FROM contas_pagar cp
+                 WHERE cp.ativo=1 AND cp.status='PENDENTE'
+                   AND cp.valor_original BETWEEN mb.valor*0.95 AND mb.valor*1.05
+                   AND cp.data_vencimento BETWEEN DATE_SUB(mb.data_lancamento,INTERVAL 30 DAY) AND DATE_ADD(mb.data_lancamento,INTERVAL 30 DAY)
+                ) AS cand_pagar
+            FROM movimentacoes_bancarias mb
+            JOIN contas_bancarias cb ON cb.id = mb.conta_id
+            WHERE $where_sql
+            ORDER BY mb.data_lancamento DESC, mb.id DESC
+            LIMIT ? OFFSET ?";
+    $params[] = $limite; $types .= 'i';
+    $params[] = $offset; $types .= 'i';
+
+    $stmt = $db->prepare($sql);
+    if ($types) $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $rows = [];
+    $res  = $stmt->get_result();
+    while ($r = $res->fetch_assoc()) {
+        $r['valor'] = (float)$r['valor'];
+        $rows[] = $r;
+    }
+
+    $types_c  = substr($types, 0, -2);
+    $params_c = array_slice($params, 0, -2);
+    $stmt2 = $db->prepare("SELECT COUNT(*) AS total FROM movimentacoes_bancarias mb WHERE $where_sql");
+    if ($types_c) $stmt2->bind_param($types_c, ...$params_c);
+    $stmt2->execute();
+    $total = $stmt2->get_result()->fetch_assoc()['total'] ?? 0;
+
+    _json(true, 'OK', ['movimentacoes' => $rows, 'total' => (int)$total]);
+}
+
+function _candidatos_conciliacao($db) {
+    $mov_id = intval($_GET['mov_id'] ?? 0);
+    if (!$mov_id) _json(false, 'mov_id obrigatório', null, 400);
+
+    $mov = $db->query("SELECT * FROM movimentacoes_bancarias WHERE id=$mov_id")->fetch_assoc();
+    if (!$mov) _json(false, 'Movimentação não encontrada', null, 404);
+
+    $tol   = $mov['valor'] * 0.05;
+    $v_min = $mov['valor'] - $tol;
+    $v_max = $mov['valor'] + $tol;
+    $dt    = $mov['data_lancamento'];
+
+    $receber = []; $pagar = [];
+
+    $res = $db->query("SELECT id, numero_documento, descricao, valor_original, data_vencimento, morador_nome AS favorecido
+                       FROM contas_receber
+                       WHERE ativo=1 AND status='PENDENTE'
+                         AND valor_original BETWEEN $v_min AND $v_max
+                         AND data_vencimento BETWEEN DATE_SUB('$dt',INTERVAL 30 DAY) AND DATE_ADD('$dt',INTERVAL 30 DAY)
+                       LIMIT 15");
+    if ($res) while ($r = $res->fetch_assoc()) { $r['valor_original'] = (float)$r['valor_original']; $receber[] = $r; }
+
+    $res2 = $db->query("SELECT id, numero_documento, descricao, valor_original, data_vencimento, '' AS favorecido
+                        FROM contas_pagar
+                        WHERE ativo=1 AND status='PENDENTE'
+                          AND valor_original BETWEEN $v_min AND $v_max
+                          AND data_vencimento BETWEEN DATE_SUB('$dt',INTERVAL 30 DAY) AND DATE_ADD('$dt',INTERVAL 30 DAY)
+                        LIMIT 15");
+    if ($res2) while ($r = $res2->fetch_assoc()) { $r['valor_original'] = (float)$r['valor_original']; $pagar[] = $r; }
+
+    _json(true, 'OK', ['movimentacao' => $mov, 'receber' => $receber, 'pagar' => $pagar]);
+}
+
+function _dashboard_financeiro($db) {
+    $mes = date('Y-m');
+
+    $r_banco = $db->query("SELECT COALESCE(SUM(saldo_atual),0) AS s FROM contas_bancarias WHERE ativo=1")->fetch_assoc();
+    $r_mes   = $db->query("SELECT
+        COALESCE(SUM(CASE WHEN tipo='credito' THEN valor ELSE 0 END),0) AS entradas,
+        COALESCE(SUM(CASE WHEN tipo='debito'  THEN valor ELSE 0 END),0) AS saidas
+        FROM movimentacoes_bancarias
+        WHERE DATE_FORMAT(data_lancamento,'%Y-%m')='$mes'")->fetch_assoc();
+    $r_pend  = $db->query("SELECT COUNT(*) AS c FROM movimentacoes_bancarias WHERE status='pendente'")->fetch_assoc();
+
+    _json(true, 'OK', [
+        'saldo_bancario'         => (float)($r_banco['s']        ?? 0),
+        'entradas_mes'           => (float)($r_mes['entradas']   ?? 0),
+        'saidas_mes'             => (float)($r_mes['saidas']     ?? 0),
+        'pendentes_conciliacao'  => (int)  ($r_pend['c']         ?? 0),
+    ]);
+}
+
 // ─── Garantir tabelas (migration silenciosa) ──────────
 function _garantir_tabelas($db) {
-    // Verifica se a tabela principal existe; se não, executa migration completa
     $check = $db->query("SHOW TABLES LIKE 'contas_bancarias'");
     if ($check && $check->num_rows === 0) {
         _executar_migration();
+    }
+    _garantir_colunas_v2($db);
+}
+
+function _garantir_colunas_v2($db) {
+    // Adiciona colunas v2 se ainda não existirem (idempotente via INFORMATION_SCHEMA)
+    $db_name = DB_NAME;
+    $colunas = [
+        ['movimentacoes_bancarias', 'favorecido',       'VARCHAR(255) NULL'],
+        ['movimentacoes_bancarias', 'memo',             'TEXT NULL'],
+        ['movimentacoes_bancarias', 'payee',            'VARCHAR(255) NULL'],
+        ['movimentacoes_bancarias', 'numero_documento', 'VARCHAR(60) NULL'],
+        ['movimentacoes_bancarias', 'banco_origem',     'VARCHAR(20) NULL'],
+        ['movimentacoes_bancarias', 'centro_custo',     'VARCHAR(80) NULL'],
+        ['movimentacoes_bancarias', 'conciliacao_id',   'INT UNSIGNED NULL'],
+        ['movimentacoes_bancarias', 'status',           "VARCHAR(20) NOT NULL DEFAULT 'pendente'"],
+        ['historico_importacoes_ofx', 'conciliadas_auto', 'INT UNSIGNED NOT NULL DEFAULT 0'],
+        ['historico_importacoes_ofx', 'pendentes',        'INT UNSIGNED NOT NULL DEFAULT 0'],
+        ['historico_importacoes_ofx', 'formato_ofx',      "VARCHAR(10) NULL"],
+    ];
+    foreach ($colunas as [$tabela, $coluna, $def]) {
+        $r = $db->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                         WHERE TABLE_SCHEMA='$db_name' AND TABLE_NAME='$tabela' AND COLUMN_NAME='$coluna'");
+        if ($r && $r->num_rows === 0) {
+            $db->query("ALTER TABLE `$tabela` ADD COLUMN `$coluna` $def");
+        }
+    }
+    // Tabela conciliacoes
+    $r = $db->query("SHOW TABLES LIKE 'conciliacoes'");
+    if ($r && $r->num_rows === 0) {
+        $db->query("CREATE TABLE conciliacoes (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            movimentacao_id BIGINT UNSIGNED NOT NULL,
+            tipo_titulo ENUM('receber','pagar') NOT NULL,
+            titulo_id INT UNSIGNED NOT NULL,
+            score TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            tipo_conciliacao ENUM('automatica','manual') NOT NULL DEFAULT 'manual',
+            criterios LONGTEXT NULL,
+            ativa TINYINT(1) NOT NULL DEFAULT 1,
+            conciliado_por VARCHAR(80) NULL,
+            conciliado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            desfeita_por VARCHAR(80) NULL,
+            desfeita_em DATETIME NULL,
+            INDEX idx_conc_movimentacao (movimentacao_id),
+            INDEX idx_conc_titulo (tipo_titulo, titulo_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 }
 

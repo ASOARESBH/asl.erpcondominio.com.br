@@ -23,6 +23,12 @@
         <a href="#" onclick="AppRouter.navigate('contas_bancarias'); return false;" class="submenu-link">
             <i class="fas fa-university"></i> Contas Bancárias
         </a>
+        <a href="#" onclick="AppRouter.navigate('conciliacao'); return false;" class="submenu-link">
+            <i class="fas fa-balance-scale"></i> Conciliação
+        </a>
+        <a href="#" onclick="AppRouter.navigate('relatorios_bancarios'); return false;" class="submenu-link">
+            <i class="fas fa-chart-bar"></i> Relatórios Bancários
+        </a>
         <a href="#" onclick="AppRouter.navigate('importacao_financeira'); return false;" class="submenu-link">
             <i class="fas fa-file-import"></i> Importação
         </a>
@@ -34,26 +40,34 @@
     <div class="stats-grid">
         <div class="page-card kpi-card">
             <div class="kpi-content">
-                <h3>Receitas do Mês</h3>
-                <div class="value receita">R$ 0,00</div>
+                <h3>Entradas do Mês</h3>
+                <div class="value receita" id="fin-entradas-mes">—</div>
             </div>
-            <div class="kpi-icon receita"><i class="fas fa-arrow-up"></i></div>
+            <div class="kpi-icon receita"><i class="fas fa-arrow-down"></i></div>
         </div>
 
         <div class="page-card kpi-card">
             <div class="kpi-content">
-                <h3>Despesas do Mês</h3>
-                <div class="value despesa">R$ 0,00</div>
+                <h3>Saídas do Mês</h3>
+                <div class="value despesa" id="fin-saidas-mes">—</div>
             </div>
-            <div class="kpi-icon despesa"><i class="fas fa-arrow-down"></i></div>
+            <div class="kpi-icon despesa"><i class="fas fa-arrow-up"></i></div>
         </div>
 
         <div class="page-card kpi-card">
             <div class="kpi-content">
-                <h3>Saldo Geral</h3>
-                <div class="value saldo">R$ 0,00</div>
+                <h3>Saldo Bancário</h3>
+                <div class="value saldo" id="fin-saldo-bancario">—</div>
             </div>
-            <div class="kpi-icon saldo"><i class="fas fa-wallet"></i></div>
+            <div class="kpi-icon saldo"><i class="fas fa-university"></i></div>
+        </div>
+
+        <div class="page-card kpi-card">
+            <div class="kpi-content">
+                <h3>Pendentes Conciliação</h3>
+                <div class="value" id="fin-pendentes-conc" style="color:#f59e0b">—</div>
+            </div>
+            <div class="kpi-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff"><i class="fas fa-clock"></i></div>
         </div>
     </div>
 
@@ -92,6 +106,20 @@
             <p>Gerencie contas correntes, poupança e investimentos. Importe extratos OFX, acompanhe movimentações e realize a conciliação bancária com detecção automática de duplicatas.</p>
             <a href="#" onclick="AppRouter.navigate('contas_bancarias'); return false;" class="action-link">Acessar Contas Bancárias</a>
         </div>
+
+        <div class="page-card action-card">
+            <div class="action-icon" style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;"><i class="fas fa-balance-scale"></i></div>
+            <h3>Conciliação Bancária</h3>
+            <p>Vincule movimentações bancárias OFX aos títulos financeiros. Motor de conciliação automática com score de correspondência. Desfaça vínculos e acompanhe histórico de ações.</p>
+            <a href="#" onclick="AppRouter.navigate('conciliacao'); return false;" class="action-link">Acessar Conciliação</a>
+        </div>
+
+        <div class="page-card action-card">
+            <div class="action-icon" style="background:linear-gradient(135deg,#4338ca,#7c3aed);color:#fff;"><i class="fas fa-chart-bar"></i></div>
+            <h3>Relatórios Bancários</h3>
+            <p>Extrato bancário detalhado, fluxo de caixa mensal com gráfico e DRE simplificado por categoria. Exporte para CSV com BOM UTF-8 para Excel.</p>
+            <a href="#" onclick="AppRouter.navigate('relatorios_bancarios'); return false;" class="action-link">Acessar Relatórios</a>
+        </div>
     </div>
 
     <div class="page-card">
@@ -123,3 +151,20 @@
         </div>
     </div>
 </div>
+
+<script type="module">
+(async () => {
+    try {
+        const r = await fetch('/api/api_contas_bancarias.php?acao=dashboard_financeiro', { credentials: 'include' });
+        const d = await r.json();
+        if (!d.sucesso) return;
+        const k = d.dados;
+        const fmt = v => 'R ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('fin-entradas-mes',  fmt(k.entradas_mes   || 0));
+        set('fin-saidas-mes',    fmt(k.saidas_mes     || 0));
+        set('fin-saldo-bancario',fmt(k.saldo_bancario || 0));
+        set('fin-pendentes-conc', k.pendentes_conciliacao ?? '—');
+    } catch(e) { /* silencioso — KPIs ficam em "—" */ }
+})();
+</script>

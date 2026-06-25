@@ -116,6 +116,10 @@
         <button class="cb-tab" data-tab="relatorios" onclick="ContasBancarias.mudarAba('relatorios')">
           <i class="fas fa-chart-bar"></i> Relatórios
         </button>
+        <button class="cb-tab" data-tab="conciliacao" onclick="ContasBancarias.mudarAba('conciliacao')">
+          <i class="fas fa-balance-scale"></i> Conciliação
+          <span class="cb-tab-badge" id="cb-badge-conc" style="display:none"></span>
+        </button>
       </div>
 
       <!-- ── ABA: MOVIMENTAÇÕES ───────────────────────── -->
@@ -362,6 +366,55 @@
         </div>
       </div>
 
+      <!-- ── ABA: CONCILIAÇÃO ────────────────────────── -->
+      <div class="cb-tab-content" id="tab-conciliacao">
+        <div class="cb-filtros">
+          <div class="cb-filtros-row">
+            <div class="cb-filtro-grupo">
+              <label>Tipo</label>
+              <select id="conc-filtro-tipo" onchange="ContasBancarias.filtrarConciliacao()">
+                <option value="">Todos</option>
+                <option value="credito">Crédito</option>
+                <option value="debito">Débito</option>
+              </select>
+            </div>
+            <div class="cb-filtro-grupo">
+              <label>De</label>
+              <input type="date" id="conc-filtro-dt-ini" onchange="ContasBancarias.filtrarConciliacao()">
+            </div>
+            <div class="cb-filtro-grupo">
+              <label>Até</label>
+              <input type="date" id="conc-filtro-dt-fim" onchange="ContasBancarias.filtrarConciliacao()">
+            </div>
+            <div class="cb-filtro-grupo flex-grow">
+              <label>Buscar</label>
+              <input type="text" id="conc-filtro-busca" placeholder="Descrição, favorecido..." oninput="ContasBancarias.filtrarConciliacao()">
+            </div>
+          </div>
+          <span class="cb-total-badge" id="conc-total-badge">0 pendentes</span>
+        </div>
+
+        <div class="cb-tabela-wrap">
+          <table class="cb-tabela">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Descrição / Favorecido</th>
+                <th>Doc.</th>
+                <th>Tipo</th>
+                <th class="text-right">Valor</th>
+                <th style="text-align:center">Candidatos</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="cb-tbody-conc">
+              <tr><td colspan="7" class="cb-vazio">Selecione uma conta para ver as pendências</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cb-paginacao" id="cb-pag-conc"></div>
+      </div>
+
     </div><!-- /cb-detalhe-conteudo -->
   </div><!-- /cb-painel-detalhe -->
 </div><!-- /cb-layout -->
@@ -494,20 +547,46 @@
         <input type="text" id="mov-descricao" placeholder="Descrição da movimentação...">
       </div>
 
+      <div class="cb-form-grupo">
+        <label>Favorecido / Pagador</label>
+        <input type="text" id="mov-favorecido" placeholder="Nome do favorecido ou pagador...">
+      </div>
+
       <div class="cb-form-row">
         <div class="cb-form-grupo">
           <label>Nº Documento / Cheque</label>
           <input type="text" id="mov-checknum" placeholder="Opcional">
         </div>
         <div class="cb-form-grupo">
-          <label>Categoria</label>
-          <input type="text" id="mov-categoria" placeholder="Ex: Manutenção, Taxas...">
+          <label>Nº Documento Financeiro</label>
+          <input type="text" id="mov-numero-documento" placeholder="NF, boleto, recibo...">
         </div>
       </div>
 
-      <div class="cb-form-grupo">
-        <label>Observações</label>
-        <textarea id="mov-obs" rows="2" placeholder="Observações adicionais..."></textarea>
+      <div class="cb-form-row">
+        <div class="cb-form-grupo">
+          <label>Categoria</label>
+          <input type="text" id="mov-categoria" placeholder="Ex: Manutenção, Taxas...">
+        </div>
+        <div class="cb-form-grupo">
+          <label>Centro de Custo</label>
+          <input type="text" id="mov-centro-custo" placeholder="Opcional">
+        </div>
+      </div>
+
+      <div class="cb-form-row">
+        <div class="cb-form-grupo cb-form-grupo-sm">
+          <label>Status</label>
+          <select id="mov-status">
+            <option value="pendente">Pendente</option>
+            <option value="conciliado">Conciliado</option>
+            <option value="ignorado">Ignorado</option>
+          </select>
+        </div>
+        <div class="cb-form-grupo">
+          <label>Observações</label>
+          <textarea id="mov-obs" rows="2" placeholder="Observações adicionais..."></textarea>
+        </div>
       </div>
     </div>
     <div class="cb-modal-footer">
@@ -519,6 +598,28 @@
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL: CANDIDATOS À CONCILIAÇÃO
+     ═══════════════════════════════════════════════════ -->
+<div class="cb-modal-overlay" id="modal-conc-candidatos" style="display:none;">
+  <div class="cb-modal">
+    <div class="cb-modal-header">
+      <h3><i class="fas fa-search"></i> Candidatos à Conciliação</h3>
+      <button class="cb-modal-fechar" onclick="ContasBancarias.fecharModalCandidatos()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="cb-modal-body" id="modal-conc-body">
+      <div style="text-align:center;padding:24px;color:#64748b;">
+        <i class="fas fa-spinner fa-spin"></i> Buscando candidatos...
+      </div>
+    </div>
+    <div class="cb-modal-footer">
+      <button class="btn-outline" onclick="ContasBancarias.fecharModalCandidatos()">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════════
      SCRIPT

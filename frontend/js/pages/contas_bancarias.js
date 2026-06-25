@@ -17,6 +17,12 @@ const S = {
     ofxArquivo:     null,
     ofxPreview:     null,
     relDados:       null,
+    // conciliação
+    concPendentes:  [],
+    concTotal:      0,
+    concOffset:     0,
+    concLimite:     50,
+    concMovId:      null,
 };
 
 const API = '/api/api_contas_bancarias.php';
@@ -69,6 +75,13 @@ function _api_publica() {
         gerarRelatorio,
         exportarRelatorioCSV,
         imprimirRelatorio,
+        // conciliação
+        filtrarConciliacao,
+        abrirModalCandidatos,
+        fecharModalCandidatos,
+        vincularConciliacao,
+        ignorarMovimentacao,
+        _carregarPendentes,
     };
 }
 
@@ -160,6 +173,7 @@ function mudarAba(aba) {
     if (aba === 'movimentacoes') _carregarMovimentacoes();
     if (aba === 'importar')      _verificarUltimoImportado();
     if (aba === 'historico')     _carregarHistorico();
+    if (aba === 'conciliacao')   _carregarPendentes(0);
 }
 
 // =====================================================
@@ -270,6 +284,7 @@ window.ContasBancarias._toggleSelecionado = function(id, checked) {
     _atualizarConciliacaoLote();
 };
 window.ContasBancarias._carregarMovimentacoes = _carregarMovimentacoes;
+window.ContasBancarias._carregarPendentes     = _carregarPendentes;
 
 function _atualizarConciliacaoLote() {
     const lote = _el('cb-conciliacao-lote');
@@ -474,13 +489,17 @@ function abrirModalMovimentacao(mov = null) {
     _el('modal-mov-titulo').innerHTML = mov
         ? '<i class="fas fa-edit"></i> Editar Lançamento'
         : '<i class="fas fa-exchange-alt"></i> Novo Lançamento';
-    _el('mov-id').value       = mov?.id || '';
-    _el('mov-data').value     = mov?.data_lancamento || new Date().toISOString().slice(0,10);
-    _el('mov-valor').value    = mov?.valor || '';
-    _el('mov-descricao').value= mov?.descricao || '';
-    _el('mov-checknum').value = mov?.checknum || '';
-    _el('mov-categoria').value= mov?.categoria || '';
-    _el('mov-obs').value      = mov?.observacoes || '';
+    _el('mov-id').value               = mov?.id || '';
+    _el('mov-data').value             = mov?.data_lancamento || new Date().toISOString().slice(0,10);
+    _el('mov-valor').value            = mov?.valor || '';
+    _el('mov-descricao').value        = mov?.descricao || '';
+    _el('mov-favorecido').value       = mov?.favorecido || '';
+    _el('mov-checknum').value         = mov?.checknum || '';
+    _el('mov-numero-documento').value = mov?.numero_documento || '';
+    _el('mov-categoria').value        = mov?.categoria || '';
+    _el('mov-centro-custo').value     = mov?.centro_custo || '';
+    _el('mov-status').value           = mov?.status || 'pendente';
+    _el('mov-obs').value              = mov?.observacoes || '';
     setTipoMov(mov?.tipo || 'credito');
     _el('modal-movimentacao').style.display = 'flex';
 }
@@ -518,16 +537,20 @@ async function excluirMovimentacao(id) {
 async function salvarMovimentacao() {
     const id = _val('mov-id');
     const body = {
-        acao:            id ? 'atualizar_movimentacao' : 'criar_movimentacao',
-        id:              id || undefined,
-        conta_id:        S.contaAtual?.id,
-        tipo:            _val('mov-tipo'),
-        data_lancamento: _val('mov-data'),
-        valor:           _val('mov-valor'),
-        descricao:       _val('mov-descricao'),
-        checknum:        _val('mov-checknum'),
-        categoria:       _val('mov-categoria'),
-        observacoes:     _val('mov-obs'),
+        acao:             id ? 'atualizar_movimentacao' : 'criar_movimentacao',
+        id:               id || undefined,
+        conta_id:         S.contaAtual?.id,
+        tipo:             _val('mov-tipo'),
+        data_lancamento:  _val('mov-data'),
+        valor:            _val('mov-valor'),
+        descricao:        _val('mov-descricao'),
+        favorecido:       _val('mov-favorecido'),
+        checknum:         _val('mov-checknum'),
+        numero_documento: _val('mov-numero-documento'),
+        categoria:        _val('mov-categoria'),
+        centro_custo:     _val('mov-centro-custo'),
+        status:           _val('mov-status'),
+        observacoes:      _val('mov-obs'),
     };
     if (!body.data_lancamento || !body.valor || !body.descricao) {
         _toast('Preencha data, valor e descrição', 'aviso'); return;
@@ -708,10 +731,15 @@ function _mostrarResultadoOFX(dados, sucesso) {
         : '<i class="fas fa-times-circle vermelho"></i>';
     _el('cb-resultado-titulo').textContent = sucesso ? 'Importação concluída com sucesso!' : 'Erro na importação';
     if (sucesso) {
+        const fmt = v => String(v ?? 0);
+        const fmtOFX = s => s === 'sgml' ? 'SGML (Bradesco/BB/Caixa/Santander)' : s === 'xml' ? 'XML (Itaú/Nubank)' : (s || '—');
         _el('cb-resultado-stats').innerHTML = `
-            <div class="cb-res-stat verde"><strong>${dados.importadas}</strong><span>Importadas</span></div>
-            <div class="cb-res-stat cinza"><strong>${dados.duplicatas}</strong><span>Já existiam</span></div>
-            <div class="cb-res-stat azul"><strong>${dados.total_arq}</strong><span>Total no arquivo</span></div>
+            <div class="cb-res-stat verde"><strong>${fmt(dados.importadas)}</strong><span>Importadas</span></div>
+            <div class="cb-res-stat cinza"><strong>${fmt(dados.duplicatas)}</strong><span>Já existiam</span></div>
+            <div class="cb-res-stat azul"><strong>${fmt(dados.total_arq)}</strong><span>Total no arquivo</span></div>
+            <div class="cb-res-stat verde"><strong>${fmt(dados.conciliadas_auto)}</strong><span>Auto-conciliadas</span></div>
+            <div class="cb-res-stat amarelo"><strong>${fmt(dados.pendentes)}</strong><span>Pendentes conciliação</span></div>
+            <div class="cb-res-stat" style="font-size:11px;color:#64748b"><strong>${fmtOFX(dados.formato_ofx)}</strong><span>Formato OFX</span></div>
         `;
     } else {
         _el('cb-resultado-stats').innerHTML = `<p class="cb-erro">${dados.erro}</p>`;
@@ -808,6 +836,178 @@ function imprimirRelatorio() {
     const dtFim = _val('rel-dt-fim');
     const url = `/api/api_contas_bancarias.php?acao=relatorio_extrato&conta_id=${S.contaAtual.id}&dt_ini=${dtIni}&dt_fim=${dtFim}&formato=html`;
     window.open(url, '_blank');
+}
+
+// =====================================================
+// ABA CONCILIAÇÃO
+// =====================================================
+
+async function _carregarPendentes(offset = 0) {
+    if (!S.contaAtual) return;
+    S.concOffset = offset;
+    const tbody = _el('cb-tbody-conc');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="cb-loading"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+    const p = new URLSearchParams({
+        acao:       'pendentes_conciliacao',
+        conta_id:   S.contaAtual.id,
+        tipo:       _val('conc-filtro-tipo'),
+        dt_ini:     _val('conc-filtro-dt-ini'),
+        dt_fim:     _val('conc-filtro-dt-fim'),
+        busca:      _val('conc-filtro-busca'),
+        limite:     S.concLimite,
+        offset,
+    });
+
+    try {
+        const d = await _get_params(p);
+        if (!d.sucesso) {
+            if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="cb-erro">${d.mensagem}</td></tr>`;
+            return;
+        }
+        S.concPendentes = d.dados.movimentacoes;
+        S.concTotal     = d.dados.total;
+
+        const badge = _el('conc-total-badge');
+        if (badge) badge.textContent = `${S.concTotal} pendente${S.concTotal !== 1 ? 's' : ''}`;
+
+        const tabBadge = _el('cb-badge-conc');
+        if (tabBadge) {
+            tabBadge.textContent = S.concTotal || '';
+            tabBadge.style.display = S.concTotal > 0 ? 'inline-flex' : 'none';
+        }
+
+        if (!S.concPendentes.length) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="cb-vazio">Nenhuma movimentação pendente de conciliação</td></tr>';
+            const pag = _el('cb-pag-conc'); if (pag) pag.innerHTML = '';
+            return;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = S.concPendentes.map(m => {
+                const cands = (parseInt(m.cand_receber || 0) + parseInt(m.cand_pagar || 0));
+                const candBadge = cands > 0
+                    ? `<span style="background:#dcfce7;color:#15803d;padding:3px 8px;border-radius:12px;font-size:11.5px;font-weight:600">${cands}</span>`
+                    : `<span style="color:#94a3b8;font-size:12px">—</span>`;
+                return `<tr>
+                    <td style="white-space:nowrap;font-size:12px">${_formatarData(m.data_lancamento)}</td>
+                    <td>
+                        <div style="font-size:13px">${_esc(m.descricao)}</div>
+                        ${m.favorecido ? `<div style="font-size:11.5px;color:#64748b">${_esc(m.favorecido)}</div>` : ''}
+                    </td>
+                    <td style="font-size:12px">${_esc(m.numero_documento || m.checknum || '—')}</td>
+                    <td><span class="cb-badge ${m.tipo}">${m.tipo === 'credito' ? '▼' : '▲'}</span></td>
+                    <td class="text-right ${m.tipo}">${m.tipo === 'credito' ? '+' : '-'} ${_moeda(m.valor)}</td>
+                    <td style="text-align:center">${candBadge}</td>
+                    <td class="cb-acoes-cell">
+                        <button class="cb-btn-icon" title="Ver candidatos"
+                                onclick="ContasBancarias.abrirModalCandidatos(${m.id})">
+                            <i class="fas fa-link"></i>
+                        </button>
+                        <button class="cb-btn-icon cinza" title="Ignorar"
+                                onclick="ContasBancarias.ignorarMovimentacao(${m.id})">
+                            <i class="fas fa-eye-slash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Paginação
+        const pag = _el('cb-pag-conc');
+        if (pag) {
+            const pages = Math.ceil(S.concTotal / S.concLimite);
+            const cur   = Math.floor(offset / S.concLimite) + 1;
+            if (pages <= 1) { pag.innerHTML = ''; return; }
+            let h = '';
+            if (cur > 1) h += `<button onclick="ContasBancarias._carregarPendentes(${(cur-2)*S.concLimite})">‹</button>`;
+            for (let i = Math.max(1, cur-2); i <= Math.min(pages, cur+2); i++) {
+                h += `<button class="${i===cur?'ativa':''}" onclick="ContasBancarias._carregarPendentes(${(i-1)*S.concLimite})">${i}</button>`;
+            }
+            if (cur < pages) h += `<button onclick="ContasBancarias._carregarPendentes(${cur*S.concLimite})">›</button>`;
+            pag.innerHTML = h;
+        }
+    } catch(e) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="cb-erro">Erro ao carregar pendências</td></tr>';
+    }
+}
+
+function filtrarConciliacao() {
+    clearTimeout(window._cbConcTimer);
+    window._cbConcTimer = setTimeout(() => _carregarPendentes(0), 400);
+}
+
+async function abrirModalCandidatos(movId) {
+    S.concMovId = movId;
+    const modal = _el('modal-conc-candidatos');
+    const body  = _el('modal-conc-body');
+    if (!modal || !body) return;
+    modal.style.display = 'flex';
+    body.innerHTML = '<div style="text-align:center;padding:24px;color:#64748b;"><i class="fas fa-spinner fa-spin"></i> Buscando candidatos...</div>';
+
+    try {
+        const d = await _get_params(new URLSearchParams({ acao: 'candidatos_conciliacao', mov_id: movId }));
+        if (!d.sucesso) { body.innerHTML = `<p style="color:#ef4444;padding:16px">${_esc(d.mensagem)}</p>`; return; }
+
+        const { movimentacao, receber, pagar } = d.dados;
+        let html = `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;">
+            <strong>${_esc(movimentacao.descricao)}</strong>
+            <span style="float:right;font-weight:700;color:${movimentacao.tipo==='credito'?'#15803d':'#dc2626'}">${movimentacao.tipo==='credito'?'+':'-'}${_moeda(movimentacao.valor)}</span>
+            <div style="color:#64748b;font-size:11.5px;margin-top:2px">${_formatarData(movimentacao.data_lancamento)}${movimentacao.favorecido ? ' · ' + _esc(movimentacao.favorecido) : ''}</div>
+        </div>`;
+
+        const mkCand = (arr, tipo) => arr.length ? arr.map(c => `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;background:#fff;">
+                <div style="flex:1">
+                    <div style="font-size:13px;font-weight:500">${_esc(c.descricao || c.numero_documento || '—')}</div>
+                    <div style="font-size:11.5px;color:#64748b">${_formatarData(c.data_vencimento)} · ${_esc(c.favorecido || c.morador_nome || '—')}</div>
+                    ${c.score ? `<span style="background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600">Score ${c.score}</span>` : ''}
+                </div>
+                <div style="white-space:nowrap;font-weight:700;color:#1e293b;font-size:14px">${_moeda(c.valor_original || c.valor)}</div>
+                <button class="btn-sm-verde" onclick="ContasBancarias.vincularConciliacao(${movId},'${tipo}',${c.id})">
+                    <i class="fas fa-link"></i> Vincular
+                </button>
+            </div>`).join('')
+            : `<p style="color:#94a3b8;font-size:13px;padding:8px 0">Nenhum candidato encontrado</p>`;
+
+        if (receber.length) html += `<h4 style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em;margin:16px 0 8px">Contas a Receber (${receber.length})</h4>${mkCand(receber,'receber')}`;
+        if (pagar.length)   html += `<h4 style="font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em;margin:16px 0 8px">Contas a Pagar (${pagar.length})</h4>${mkCand(pagar,'pagar')}`;
+        if (!receber.length && !pagar.length) html += '<p style="text-align:center;color:#94a3b8;padding:24px">Nenhum candidato encontrado no período ±30 dias e tolerância ±5% de valor</p>';
+
+        body.innerHTML = html;
+    } catch(e) {
+        body.innerHTML = '<p style="color:#ef4444;padding:16px">Erro ao buscar candidatos</p>';
+    }
+}
+
+function fecharModalCandidatos() {
+    const modal = _el('modal-conc-candidatos');
+    if (modal) modal.style.display = 'none';
+    S.concMovId = null;
+}
+
+async function vincularConciliacao(movId, tipoTitulo, tituloId) {
+    const d = await _post({ acao: 'conciliar_manual', mov_id: movId, tipo_titulo: tipoTitulo, titulo_id: tituloId });
+    if (d.sucesso) {
+        _toast('Conciliação realizada com sucesso', 'sucesso');
+        fecharModalCandidatos();
+        _carregarPendentes(S.concOffset);
+        _carregarKPIs();
+    } else {
+        _toast(d.mensagem, 'erro');
+    }
+}
+
+async function ignorarMovimentacao(movId) {
+    if (!confirm('Ignorar esta movimentação? Ela não aparecerá mais como pendente.')) return;
+    const d = await _post({ acao: 'atualizar_movimentacao', id: movId, status: 'ignorado' });
+    if (d.sucesso) {
+        _toast('Movimentação ignorada', 'sucesso');
+        _carregarPendentes(S.concOffset);
+        _carregarKPIs();
+    } else {
+        _toast(d.mensagem, 'erro');
+    }
 }
 
 // =====================================================

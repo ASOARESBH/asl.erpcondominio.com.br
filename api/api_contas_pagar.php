@@ -354,6 +354,60 @@ if ($acao === 'deletar' && $metodo === 'POST') {
     }
 }
 
+// ========== CONCILIAR MOVIMENTAÇÃO BANCÁRIA ==========
+if ($acao === 'conciliar_movimentacao' && $metodo === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    $titulo_id = intval($body['titulo_id'] ?? 0);
+    $mov_id    = intval($body['mov_id']    ?? 0);
+    if (!$titulo_id || !$mov_id) { retornar_json(false, 'titulo_id e mov_id obrigatórios'); }
+
+    $conexao->begin_transaction();
+    try {
+        $stmt = $conexao->prepare("UPDATE contas_pagar SET status='PAGO', data_pagamento=CURDATE() WHERE id=? AND ativo=1");
+        $stmt->bind_param('i', $titulo_id);
+        $stmt->execute();
+
+        $stmt2 = $conexao->prepare("UPDATE movimentacoes_bancarias SET status='conciliado' WHERE id=?");
+        $stmt2->bind_param('i', $mov_id);
+        $stmt2->execute();
+
+        $conexao->commit();
+        fechar_conexao($conexao);
+        retornar_json(true, 'Conciliação registrada');
+    } catch (Exception $e) {
+        $conexao->rollback();
+        fechar_conexao($conexao);
+        retornar_json(false, 'Erro ao conciliar: ' . $e->getMessage());
+    }
+}
+
+// ========== DESFAZER CONCILIAÇÃO ==========
+if ($acao === 'desfazer_conciliacao' && $metodo === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    $titulo_id = intval($body['titulo_id'] ?? 0);
+    $mov_id    = intval($body['mov_id']    ?? 0);
+    if (!$titulo_id || !$mov_id) { retornar_json(false, 'titulo_id e mov_id obrigatórios'); }
+
+    $conexao->begin_transaction();
+    try {
+        $stmt = $conexao->prepare("UPDATE contas_pagar SET status='PENDENTE', data_pagamento=NULL WHERE id=? AND ativo=1");
+        $stmt->bind_param('i', $titulo_id);
+        $stmt->execute();
+
+        $stmt2 = $conexao->prepare("UPDATE movimentacoes_bancarias SET status='pendente', conciliacao_id=NULL WHERE id=?");
+        $stmt2->bind_param('i', $mov_id);
+        $stmt2->execute();
+
+        $conexao->commit();
+        fechar_conexao($conexao);
+        retornar_json(true, 'Conciliação desfeita');
+    } catch (Exception $e) {
+        $conexao->rollback();
+        fechar_conexao($conexao);
+        retornar_json(false, 'Erro ao desfazer: ' . $e->getMessage());
+    }
+}
+
 fechar_conexao($conexao);
 retornar_json(false, 'Ação inválida');
 ?>
