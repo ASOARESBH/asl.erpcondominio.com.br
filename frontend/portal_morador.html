@@ -6,7 +6,22 @@
     <meta name="theme-color" content="#2563eb">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Portal do Morador</title>
+    <title>Portal do Morador — Serra da Liberdade</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/portal-morador-manifest.json">
+    <!-- PWA iOS -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/ico/icon-180x180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/ico/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/ico/icon-120x120.png">
+    <!-- PWA Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/ico/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/ico/icon-16x16.png">
+    <!-- PWA Meta -->
+    <meta name="application-name" content="Portal do Morador">
+    <meta name="apple-mobile-web-app-title" content="Portal Morador">
+    <meta name="description" content="Portal do Morador — Serra da Liberdade. Acesse seus dados, abra chamados e receba notificações.">
+    <meta name="msapplication-TileColor" content="#2563eb">
+    <meta name="msapplication-TileImage" content="/ico/icon-144x144.png">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* ============================================================
@@ -4284,5 +4299,17 @@ function escHtml(str) {
         .replace(/'/g, '&#039;');
 }
 </script>
+
+<!-- ============================================================
+     FIREBASE SDK + PWA Portal
+     ATENÇÃO: Substitua as credenciais em /frontend/js/pwa-portal.js
+     ============================================================ -->
+<!-- Firebase App (obrigatório) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<!-- Firebase Cloud Messaging -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+<!-- PWA Portal Logic -->
+<script src="js/pwa-portal.js"></script>
+
 </body>
 </html>
